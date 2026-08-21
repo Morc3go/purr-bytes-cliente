@@ -1,0 +1,19 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://cenas/base/jogador.gd" id="1_jogador"]
+[ext_resource type="Texture2D" path="res://recursos/arte/jogador_placeholder.png" id="2_sprite"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jogador"]
+size = Vector2(10, 10)
+
+[node name="Jogador" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_jogador")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+texture = ExtResource("2_sprite")
+
+[node name="Colisao" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_jogador")
