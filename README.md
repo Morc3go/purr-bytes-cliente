@@ -8,13 +8,15 @@ O contexto completo do projeto — restrições, marcos e critérios de aceite �
 [`CLAUDE.md`](CLAUDE.md). As decisões tomadas e o porquê de cada uma estão em
 [`docs/decisoes/`](docs/decisoes/).
 
-**Godot 4.7.2** · GDScript com tipagem estática · renderizador Mobile · 640×360.
+**Godot 4.4+** (testado em 4.6.2 e 4.7.2) · GDScript com tipagem estática ·
+renderizador Mobile · 640×360.
 
 ---
 
 ## Rodando
 
 ```powershell
+# ajuste para onde o binário do Godot estiver na sua máquina
 $godot = "$env:LOCALAPPDATA\Programs\godot\Godot_v4.7.2-stable_win64.exe"
 
 # abrir no editor
@@ -96,14 +98,25 @@ sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
 | Marco | Situação |
 |---|---|
 | 0 — Fundação | ✅ concluído |
-| 1 — Fase 1: César, labirinto e A\* | ⏳ próximo |
-| 2 — Fase 2: Vigenère e Diretor de IA | 🔜 |
+| 1 — Fase 1: César, labirinto e A\* | ✅ concluído |
+| 2 — Fase 2: Vigenère e Diretor de IA | ⏳ próximo |
 | 3 — Fase 3: SHA-256 e telemetria HTTP | 🔜 |
 
-### Pendências conhecidas do Marco 0
+### Pendências conhecidas do Marco 1
 
-- O labirinto do `TileMapLayer` está **vazio**: desenhar mapa e posicionar
-  `PontoDeEntrada`/`PontoDeSaida` é trabalho de editor, não de código.
+- O labirinto de `fase_01.tscn` foi pintado por código
+  (`tools/gerar_fase_01.gd`), não desenhado no editor -- funcional e testado,
+  mas vale abrir uma vez no editor para conferir visualmente o traçado e
+  trocar a arte placeholder pela definitiva quando ela existir.
+- A depuração visual do A\* (F3) desenha o caminho final, não os "nós
+  expandidos": `AStarGrid2D` não expõe o conjunto fechado pela API pública, e
+  a implementação didática que expõe (`scripts/ia/astar_referencia.gd`) é
+  vetada para uso em runtime pelo próprio `CLAUDE.md`. Detalhe em
+  [ADR 0007](docs/decisoes/0007-marco1-cachorro-e-desafios.md#7-depuração-visual-do-a-f3-só-o-caminho-final-não-os-nós-expandidos).
+- `CatalogoResultados.TIMEOUT` não tem gatilho de jogo no Marco 1: não há
+  campo de prazo por desafio especificado no briefing. `ABANDONO` tem gatilho
+  real (abandonar a fase com desafio ativo). Detalhe na
+  [ADR 0007](docs/decisoes/0007-marco1-cachorro-e-desafios.md).
 - Arte é placeholder gerado (`recursos/arte/*_placeholder.png`), esperando a pixel art.
 - `TransporteHttp` é esqueleto; `disponivel()` devolve `false` e o modo HTTP cai para MOCK
   com erro no log até o Marco 3.

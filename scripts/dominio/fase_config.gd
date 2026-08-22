@@ -36,6 +36,15 @@ extends Resource
 ## por AMOSTRA_DESEMPENHO (Eixo 7).
 @export_range(0.0, 30.0, 0.1) var intervalo_replanejamento_s: float = 1.0
 
+## Distancia maxima em pixels na qual o cachorro pode enxergar o jogador em
+## linha reta (RayCast2D contra o labirinto -- ver Cachorro.tem_linha_de_visao).
+## No Marco 1 o cachorro persegue a posicao real do jogador o tempo todo (nao
+## ha Diretor ainda); este raio so controla quando CACHORRO_DETECTOU/
+## CACHORRO_PERDEU disparam, preparando o terreno para o Marco 2, quando a
+## linha de visao passa a decidir entre perseguir a posicao real ou o alvo do
+## Diretor (docs/decisoes/0007-marco1-cachorro-e-desafios.md).
+@export_range(8.0, 400.0, 1.0) var alcance_deteccao_cachorro: float = 90.0
+
 @export_multiline var briefing_pedagogico: String = ""
 
 @export_group("Economia de erro")

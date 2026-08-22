@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="FaseConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="1_nusyi"]
+[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="2_xhulk"]
+
+[sub_resource type="Resource" id="Resource_4v4o1"]
+script = ExtResource("1_nusyi")
+identificador = "cesar-01"
+enunciado = "o pacote 'pacote' precisa de protecao. desloque 3 posicoes: cifrar pacote chave=3"
+texto_claro = "pacote"
+chave_esperada = "3"
+dica = "conte 3 letras a frente de cada letra: 'p'->'s', 'a'->'d' ..."
+pontos_acerto_de_primeira = 150
+
+[sub_resource type="Resource" id="Resource_a3w8w"]
+script = ExtResource("1_nusyi")
+identificador = "cesar-02"
+enunciado = "novo pacote 'rede' atravessando. desta vez o deslocamento e outro: cifrar rede chave=5"
+texto_claro = "rede"
+chave_esperada = "5"
+dica = "desloque 5 posicoes desta vez, nao 3 -- cada pacote pode usar uma chave diferente."
+pontos_acerto_de_primeira = 150
+
+[resource]
+script = ExtResource("2_xhulk")
+titulo = "o labirinto de Cesar"
+verbos_permitidos = PackedStringArray("cifrar", "decifrar", "dica", "status")
+desafios = Array[ExtResource("1_nusyi")]([SubResource("Resource_4v4o1"), SubResource("Resource_a3w8w")])
+velocidade_cachorro = 40.0
+briefing_pedagogico = "o pacote precisa atravessar o labirinto ate a saida.
+em texto claro, o cachorro fareja e intercepta -- use 'cifrar <pacote> chave=<numero>' para proteger, 'dica' se travar, 'status' para reler o desafio atual."
+faixa_chave_maxima = 25

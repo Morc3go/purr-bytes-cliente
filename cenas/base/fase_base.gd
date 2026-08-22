@@ -40,6 +40,19 @@ var _configurada: bool = false
 var _encerrada: bool = false
 var _capturas: int = 0
 
+## IA de perseguicao (scripts/ia/navegacao.gd, wrapper de AStarGrid2D). Uma
+## instancia por fase porque a grade depende do labirinto desta cena.
+var _navegacao: Navegacao = Navegacao.new()
+var _temporizador_replanejamento: Timer = null
+var _cachorro_com_linha_de_visao: bool = false
+var _depuracao_astar_visivel: bool = false
+
+## Progresso do terminal. Marco 1 nao tem "escolher desafio": os desafios de
+## FaseConfig.desafios sao resolvidos em ordem -- e a decisao mais simples que
+## atende Cesar e Vigenere sem mudar (docs/decisoes/0007-marco1-cachorro-e-desafios.md).
+var _indice_desafio: int = 0
+var _numero_tentativa_do_desafio: int = 1
+
 
 func _ready() -> void:
 	aviso.visible = false
@@ -55,6 +68,11 @@ func _ready() -> void:
 	jogador.reposicionar(ponto_de_entrada.global_position)
 	jogador.velocidade = maxf(jogador.velocidade, 1.0)
 	cachorro.velocidade = configuracao.velocidade_cachorro
+	cachorro.alcance_deteccao = configuracao.alcance_deteccao_cachorro
+
+	_navegacao.configurar(labirinto)
+	_configurar_temporizador_replanejamento()
+	_replanejar_caminho_do_cachorro()
 
 	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais)
 	hud.definir_titulo("fase %d -- %s" % [configuracao.numero, configuracao.titulo])
@@ -67,6 +85,9 @@ func _ready() -> void:
 
 	if configuracao.briefing_pedagogico != "":
 		terminal.escrever(configuracao.briefing_pedagogico)
+	var desafio_inicial: DesafioConfig = _desafio_atual()
+	if desafio_inicial != null:
+		terminal.escrever("desafio: %s" % desafio_inicial.enunciado)
 
 
 func _physics_process(_delta: float) -> void:
@@ -76,10 +97,41 @@ func _physics_process(_delta: float) -> void:
 	# poder aplicar limites (limit_left/right) vindos do tamanho do labirinto sem
 	# mexer na cena do jogador.
 	camera.global_position = jogador.global_position
+	_atualizar_deteccao_do_cachorro()
+
+
+func _draw() -> void:
+	# Depuracao visual obrigatoria (secao 6 do CLAUDE.md, apontamento 7): F3
+	# mostra o caminho que o AStarGrid2D calculou por ultimo. Os "nos
+	# expandidos" do algoritmo NAO aparecem aqui de proposito -- AStarGrid2D
+	# nao expoe o conjunto fechado pela API publica, e astar_referencia.gd (que
+	# expoe) e explicitamente vetada para uso em runtime pela secao 2 do
+	# CLAUDE.md. Registrado como pendencia no relatorio de fim de marco.
+	if not _depuracao_astar_visivel:
+		return
+
+	var caminho: PackedVector2Array = cachorro.caminho_atual()
+	if caminho.size() < 2:
+		return
+
+	var pontos_locais := PackedVector2Array()
+	for ponto: Vector2 in caminho:
+		pontos_locais.append(to_local(ponto))
+
+	const COR_CAMINHO: Color = Color(1.0, 0.3, 0.3, 0.9)
+	draw_polyline(pontos_locais, COR_CAMINHO, 1.5)
+	for ponto_local: Vector2 in pontos_locais:
+		draw_circle(ponto_local, 2.0, COR_CAMINHO)
 
 
 func _unhandled_input(evento: InputEvent) -> void:
 	if not _configurada or _encerrada:
+		return
+
+	if evento.is_action_pressed("alternar_depuracao"):
+		_depuracao_astar_visivel = not _depuracao_astar_visivel
+		queue_redraw()
+		get_viewport().set_input_as_handled()
 		return
 
 	if evento.is_action_pressed("abrir_terminal"):
@@ -120,6 +172,18 @@ func abandonar() -> void:
 	if _encerrada or not _configurada:
 		return
 	_encerrada = true
+
+	# Desafio deixado pra tras sem solucao: registra ABANDONO nessa tentativa
+	# em vez de simplesmente nao gerar nenhuma linha. E o unico gatilho de
+	# gameplay deste marco para o resultado ABANDONO -- documentado em
+	# docs/decisoes/0007-marco1-cachorro-e-desafios.md junto com a pendencia de
+	# TIMEOUT (sem mecanica de prazo por desafio especificada ate aqui).
+	var desafio_atual: DesafioConfig = _desafio_atual()
+	if desafio_atual != null:
+		Telemetria.registrar_tentativa(
+			configuracao.numero, desafio_atual.identificador, "", [],
+			CatalogoResultados.ABANDONO, "", 0, _numero_tentativa_do_desafio)
+
 	Telemetria.registrar_evento(CatalogoEventos.FASE_ABANDONADA, {
 		"capturas": _capturas,
 		"pontuacao": Sessao.pontuacao,
@@ -180,17 +244,128 @@ func _ao_esgotar_vidas() -> void:
 	terminal.escrever("vidas esgotadas. a fase recomeca -- o pacote volta ao inicio.")
 
 
-## Marco 0 apenas registra o comando. O analisador lexico-sintatico entra no
-## Marco 1 e passa a produzir tentativa_comando com o resultado real; ate la,
-## nao se emite tentativa nenhuma, porque um resultado inventado sujaria a taxa
-## de acerto do Eixo 1.
+# ---------------------------------------------------------------------------
+# Terminal: pipeline lexico -> sintatico -> semantico
+# ---------------------------------------------------------------------------
+
+## ERRO_LEXICO e ERRO_SINTATICO sao veredito final de AnalisadorComando; so
+## quando os dois passam e que ResolvedorComando entra para decidir SUCESSO vs
+## ERRO_SEMANTICO contra o FaseConfig e o desafio corrente.
 func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
-	Telemetria.registrar_evento(CatalogoEventos.COMANDO_SUBMETIDO, {
-		"tamanho": texto.length(),
-		"tempo_resposta_ms": tempo_resposta_ms,
-	}, configuracao.numero)
-	terminal.escrever("> %s" % texto)
-	terminal.escrever("analisador lexico-sintatico chega no Marco 1.")
+	var resultado: ResultadoComando = AnalisadorComando.analisar(texto)
+
+	if resultado.resultado == CatalogoResultados.ERRO_LEXICO:
+		terminal.escrever("erro lexico: caractere nao reconhecido no comando.")
+		Telemetria.registrar_evento(CatalogoEventos.ERRO_LEXICO, {}, configuracao.numero)
+		_registrar_tentativa(resultado, resultado.resultado, resultado.codigo_erro, tempo_resposta_ms)
+		return
+
+	if resultado.resultado == CatalogoResultados.ERRO_SINTATICO:
+		terminal.escrever("erro sintatico: comando mal formado. digite 'status' para ver o desafio atual.")
+		Telemetria.registrar_evento(CatalogoEventos.ERRO_SINTATICO, {}, configuracao.numero)
+		_registrar_tentativa(resultado, resultado.resultado, resultado.codigo_erro, tempo_resposta_ms)
+		return
+
+	var desafio_atual: DesafioConfig = _desafio_atual()
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		configuracao, desafio_atual, _numero_tentativa_do_desafio, resultado)
+
+	terminal.escrever(veredicto.texto_para_terminal)
+	_registrar_tentativa(resultado, veredicto.resultado, veredicto.codigo_erro, tempo_resposta_ms)
+
+	if veredicto.delta_pontos != 0:
+		Sessao.somar_pontos(veredicto.delta_pontos)
+
+	if veredicto.dica_solicitada and desafio_atual != null:
+		Telemetria.registrar_evento(CatalogoEventos.DICA_SOLICITADA,
+			{"desafio": desafio_atual.identificador}, configuracao.numero)
+
+	if veredicto.resolveu_desafio:
+		jogador.ativar_protecao(veredicto.duracao_protecao_s)
+		_avancar_desafio()
+	elif _e_tentativa_do_desafio_corrente(desafio_atual, resultado.ast.verbo):
+		# So conta como nova tentativa do MESMO desafio quando o verbo bate com
+		# o que o desafio espera -- "status" e "dica" nao consomem tentativa.
+		_numero_tentativa_do_desafio += 1
+
+
+func _registrar_tentativa(
+		resultado: ResultadoComando, resultado_final: String, codigo_erro: String, tempo_resposta_ms: int) -> void:
+	var desafio_atual: DesafioConfig = _desafio_atual()
+	var identificador_desafio: String = desafio_atual.identificador if desafio_atual != null \
+		else "sem-desafio-ativo"
+	Telemetria.registrar_tentativa(
+		configuracao.numero,
+		identificador_desafio,
+		resultado.texto_normalizado,
+		resultado.tokens_para_telemetria(),
+		resultado_final,
+		codigo_erro,
+		tempo_resposta_ms,
+		_numero_tentativa_do_desafio)
+
+
+func _e_tentativa_do_desafio_corrente(desafio_atual: DesafioConfig, verbo: String) -> bool:
+	return desafio_atual != null and verbo == desafio_atual.verbo_esperado
+
+
+func _desafio_atual() -> DesafioConfig:
+	if _indice_desafio < 0 or _indice_desafio >= configuracao.desafios.size():
+		return null
+	return configuracao.desafios[_indice_desafio]
+
+
+func _avancar_desafio() -> void:
+	_indice_desafio += 1
+	_numero_tentativa_do_desafio = 1
+	var proximo: DesafioConfig = _desafio_atual()
+	if proximo != null:
+		terminal.escrever("proximo desafio: %s" % proximo.enunciado)
+	else:
+		terminal.escrever("todos os desafios resolvidos. va ate a saida.")
+
+
+# ---------------------------------------------------------------------------
+# IA do cachorro: replanejamento (AStarGrid2D via Navegacao) e deteccao
+# ---------------------------------------------------------------------------
+
+func _configurar_temporizador_replanejamento() -> void:
+	_temporizador_replanejamento = Timer.new()
+	_temporizador_replanejamento.name = "TemporizadorDeReplanejamento"
+	# Timer nao aceita wait_time 0 -- e o mesmo piso defensivo que Telemetria
+	# aplica ao intervalo de descarga, pelo mesmo motivo: um FaseConfig com 0.0
+	# nao pode virar recalculo por quadro (secao 6: "replanejamento por
+	# intervalo, nao por quadro").
+	_temporizador_replanejamento.wait_time = maxf(0.05, configuracao.intervalo_replanejamento_s)
+	_temporizador_replanejamento.autostart = true
+	_temporizador_replanejamento.timeout.connect(_replanejar_caminho_do_cachorro)
+	add_child(_temporizador_replanejamento)
+
+
+func _replanejar_caminho_do_cachorro() -> void:
+	if _encerrada:
+		return
+	var caminho: PackedVector2Array = _navegacao.calcular_caminho(
+		cachorro.global_position, jogador.global_position)
+	cachorro.definir_caminho(caminho)
+	if _depuracao_astar_visivel:
+		queue_redraw()
+
+
+## CACHORRO_DETECTOU/CACHORRO_PERDEU sao emitidos na borda de subida/descida da
+## linha de visao, checada a cada quadro (a deteccao tem que ser tao responsiva
+## quanto o jogo, mesmo com o replanejamento do A* rodando so por intervalo).
+## No Marco 1 o cachorro ja persegue a posicao real do jogador sempre -- nao ha
+## Diretor ainda (Marco 2); a linha de visao aqui so controla estes dois
+## eventos, preparando o terreno para quando ela tambem decidir o alvo.
+func _atualizar_deteccao_do_cachorro() -> void:
+	var visivel: bool = cachorro.tem_linha_de_visao(jogador.global_position)
+	if visivel and not _cachorro_com_linha_de_visao:
+		Telemetria.registrar_evento(CatalogoEventos.CACHORRO_DETECTOU,
+			{"posicao": jogador.global_position}, configuracao.numero)
+	elif not visivel and _cachorro_com_linha_de_visao:
+		Telemetria.registrar_evento(CatalogoEventos.CACHORRO_PERDEU, {}, configuracao.numero)
+	_cachorro_com_linha_de_visao = visivel
 
 
 # ---------------------------------------------------------------------------

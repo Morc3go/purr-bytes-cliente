@@ -18,14 +18,22 @@ signal destino_alcancado()
 ## celula (8 px) faria o corpo orbitar o ponto sem nunca chegar.
 @export_range(1.0, 16.0, 0.5) var tolerancia_de_chegada: float = 4.0
 
+## Alcance maximo de LinhaDeVisao, normalmente copiado de
+## FaseConfig.alcance_deteccao_cachorro por fase_base.gd -- fica com um default
+## proprio para o no continuar valido se algum dia for instanciado fora de uma
+## fase (ex: cena de teste isolada).
+@export_range(8.0, 400.0, 1.0) var alcance_deteccao: float = 90.0
+
 var _caminho: PackedVector2Array = PackedVector2Array()
 var _indice: int = 0
 
 @onready var _area_de_contato: Area2D = $AreaDeContato
+@onready var _linha_de_visao: RayCast2D = $LinhaDeVisao
 
 
 func _ready() -> void:
 	_area_de_contato.body_entered.connect(_ao_encostar)
+	_linha_de_visao.enabled = false  # forcamos o update manualmente em tem_linha_de_visao()
 
 
 func _physics_process(_delta: float) -> void:
@@ -63,6 +71,20 @@ func caminho_atual() -> PackedVector2Array:
 
 func indice_atual() -> int:
 	return _indice
+
+
+## Linha de visao direta ate alvo_global: falso se estiver fora de
+## alcance_deteccao OU se uma parede do labirinto (RayCast2D.collision_mask = 1,
+## a mesma camada fisica de TileMapLayer) cortar o caminho. Nao usa a posicao do
+## jogador "de gracas" -- fase_base.gd chama isto a cada quadro exatamente
+## porque a deteccao precisa ser tao responsiva quanto o jogo, mesmo com o
+## replanejamento do A* rodando so por intervalo (secao 6 do CLAUDE.md).
+func tem_linha_de_visao(alvo_global: Vector2) -> bool:
+	if global_position.distance_to(alvo_global) > alcance_deteccao:
+		return false
+	_linha_de_visao.target_position = to_local(alvo_global)
+	_linha_de_visao.force_raycast_update()
+	return not _linha_de_visao.is_colliding()
 
 
 func _ao_encostar(corpo: Node2D) -> void:
