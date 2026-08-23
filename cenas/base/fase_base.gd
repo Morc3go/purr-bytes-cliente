@@ -18,6 +18,15 @@ signal fase_abandonada(numero: int)
 
 const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 
+## Concluir uma fase encadeia direto para a proxima, em vez de voltar ao menu
+## a cada uma -- e o que faz "as tres fases jogaveis em sequencia" (criterio
+## de aceite do Marco 3) acontecer sem o jogador precisar clicar em "jogar"
+## de novo a cada fase. So a ultima fase (sem entrada aqui) volta ao menu.
+const _PROXIMA_CENA_POR_FASE: Dictionary = {
+	1: "res://cenas/fases/fase_02.tscn",
+	2: "res://cenas/fases/fase_03.tscn",
+}
+
 ## O unico ponto de configuracao de uma fase. Sem ele a cena nao roda -- e isso
 ## e proposital: fase_base.tscn aberta direto no editor tem que falhar com
 ## mensagem clara, nao rodar meio funcionando.
@@ -192,7 +201,12 @@ func concluir() -> void:
 	}, configuracao.numero)
 	Sessao.sair_da_fase()
 	fase_concluida.emit(configuracao.numero)
-	_voltar_ao_menu()
+
+	var proxima_cena: String = String(_PROXIMA_CENA_POR_FASE.get(configuracao.numero, ""))
+	if proxima_cena != "":
+		get_tree().change_scene_to_file(proxima_cena)
+	else:
+		_voltar_ao_menu()
 
 
 func abandonar() -> void:

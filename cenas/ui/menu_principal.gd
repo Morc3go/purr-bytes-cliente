@@ -7,13 +7,13 @@ extends Control
 ## se ha evento preso na fila e qual id_sujeito esta configurado. Ele mostra
 ## ConfigJogo.resumo_seguro(), que por construcao nao inclui a chave de API.
 ##
-## Marco 0 nao tem fase jogavel: "jogar" abre a sessao e diz isso na tela, em vez
-## de fingir um botao morto.
+## "Jogar" sempre comeca pela fase 1 -- fase_base.gd e quem encadeia fase 2 e
+## fase 3 automaticamente ao concluir cada uma (ver FaseBase.concluir()).
 
 const INTERVALO_DE_ATUALIZACAO_S: float = 1.0
+const CENA_DA_FASE_1: String = "res://cenas/fases/fase_01.tscn"
 
 @onready var _menu: VBoxContainer = $Coluna
-@onready var _mensagem: Label = $Coluna/Mensagem
 @onready var _painel: PanelContainer = $PainelTelemetria
 @onready var _diagnostico: RichTextLabel = $PainelTelemetria/Margem/Coluna/Diagnostico
 @onready var _relogio: Timer = $RelogioDeAtualizacao
@@ -28,15 +28,13 @@ func _ready() -> void:
 	_relogio.timeout.connect(_atualizar_diagnostico)
 
 	_painel.visible = false
-	_mensagem.text = ""
 	$Coluna/Botoes/Jogar.grab_focus()
 
 
 func _ao_jogar() -> void:
 	if not Sessao.ativa:
 		Sessao.iniciar()
-	_mensagem.text = ("sessao %s aberta.\nas fases jogaveis entram no Marco 1; "
-		+ "a telemetria ja esta coletando.") % Sessao.id_sessao.substr(0, 8)
+	get_tree().change_scene_to_file(CENA_DA_FASE_1)
 
 
 func _ao_abrir_telemetria() -> void:
