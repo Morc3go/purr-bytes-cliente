@@ -64,6 +64,15 @@ var _indice_varredura: int = 0
 var _indice_desafio: int = 0
 var _numero_tentativa_do_desafio: int = 1
 
+## Instrumentacao de desempenho (Marco 3, Eixo 7): acumula desde a ultima
+## AMOSTRA_DESEMPENHO para reportar a MEDIA do tempo de replanejamento, nao
+## so a ultima amostra isolada -- um pico unico nao prova nada sobre
+## orcamento de quadro, uma media ao longo de 30s prova.
+const _INTERVALO_AMOSTRA_DESEMPENHO_S: float = 30.0
+var _temporizador_desempenho: Timer = null
+var _soma_replanejamento_us: int = 0
+var _contagem_replanejamento: int = 0
+
 
 func _ready() -> void:
 	aviso.visible = false
@@ -84,6 +93,7 @@ func _ready() -> void:
 	_navegacao.configurar(labirinto)
 	_configurar_temporizador_replanejamento()
 	_configurar_diretor()
+	_configurar_temporizador_desempenho()
 	_replanejar_caminho_do_cachorro()
 
 	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais)
@@ -372,8 +382,12 @@ func _configurar_temporizador_replanejamento() -> void:
 func _replanejar_caminho_do_cachorro() -> void:
 	if _encerrada:
 		return
+	var inicio_us: int = Time.get_ticks_usec()
 	var caminho: PackedVector2Array = _navegacao.calcular_caminho(
 		cachorro.global_position, _alvo_de_perseguicao())
+	_soma_replanejamento_us += Time.get_ticks_usec() - inicio_us
+	_contagem_replanejamento += 1
+
 	cachorro.definir_caminho(caminho)
 	if _depuracao_astar_visivel:
 		queue_redraw()
@@ -466,6 +480,43 @@ func _ao_vencer_temporizador_do_diretor() -> void:
 	_diretor.decair(_temporizador_diretor.wait_time)
 
 
+# ---------------------------------------------------------------------------
+# Instrumentacao de desempenho (Marco 3): AMOSTRA_DESEMPENHO a cada 30s
+# ---------------------------------------------------------------------------
+
+func _configurar_temporizador_desempenho() -> void:
+	_temporizador_desempenho = Timer.new()
+	_temporizador_desempenho.name = "TemporizadorDeDesempenho"
+	_temporizador_desempenho.wait_time = _INTERVALO_AMOSTRA_DESEMPENHO_S
+	_temporizador_desempenho.autostart = true
+	_temporizador_desempenho.timeout.connect(_ao_vencer_temporizador_de_desempenho)
+	add_child(_temporizador_desempenho)
+
+
+## FPS, memoria estatica e objetos desenhados vem de Performance.get_monitor()
+## (ferramenta nativa, secao 2 do CLAUDE.md); o tempo medio de replanejamento
+## do A* e o unico numero que so este arquivo pode medir, porque so ele sabe
+## quando cada replanejamento comeca e termina. Junto, os quatro respondem
+## "a IA cabe no orcamento de quadro?" com numero, nao com impressao.
+func _ao_vencer_temporizador_de_desempenho() -> void:
+	if _encerrada:
+		return
+
+	var media_replanejamento_ms: float = 0.0
+	if _contagem_replanejamento > 0:
+		media_replanejamento_ms = (float(_soma_replanejamento_us) / float(_contagem_replanejamento)) / 1000.0
+
+	Telemetria.registrar_evento(CatalogoEventos.AMOSTRA_DESEMPENHO, {
+		"fps": Performance.get_monitor(Performance.TIME_FPS),
+		"memoria_estatica_bytes": Performance.get_monitor(Performance.MEMORY_STATIC),
+		"objetos_desenhados": Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+		"replanejamento_medio_ms": media_replanejamento_ms,
+	}, configuracao.numero)
+
+	_soma_replanejamento_us = 0
+	_contagem_replanejamento = 0
+
+
 ## Pista fraca, disparada uma vez por entrada na regiao (nao a cada quadro
 ## parado dentro dela) -- reforcar continuamente equivaleria a entregar a
 ## posicao quase exata ao Diretor, o que contradiria a propria premissa da
@@ -493,26 +544,37 @@ func _ao_jogador_sair_da_regiao(corpo: Node2D, regiao: Area2D) -> void:
 ## o desafio corrente -- o painel ensina o MECANISMO da cifra, nao e um jeito
 ## de espiar a chave que resolve o desafio ativo (isso ja existe, com custo:
 ## o verbo "dica"). Ver docs/decisoes/0008-vigenere-e-painel-de-demonstracao.md.
+##
+## SHA256 nao tem chave nem "desloca letra por letra" -- a demonstracao dele e
+## o efeito avalanche (docs/decisoes/0009), entao o painel muda de conteudo
+## por algoritmo aqui, mas continua sendo o MESMO no e o MESMO evento.
 func _alternar_painel_de_demonstracao() -> void:
 	if painel_cifra.esta_aberto():
 		painel_cifra.fechar()
 		return
 
-	if configuracao.texto_exemplo_demonstracao.is_empty() \
-			or configuracao.chave_exemplo_demonstracao.is_empty():
+	if configuracao.texto_exemplo_demonstracao.is_empty():
 		terminal.escrever("esta fase nao tem exemplo de demonstracao configurado.")
 		return
 
-	var cifra: Cifra = FabricaCifra.para_algoritmo(configuracao.algoritmo)
-	if cifra == null:
-		terminal.escrever("nao ha demonstracao disponivel para o algoritmo '%s'." % configuracao.algoritmo)
-		return
+	if configuracao.algoritmo == "SHA256":
+		var texto_a: String = configuracao.texto_exemplo_demonstracao
+		var texto_b: String = texto_a + texto_a[texto_a.length() - 1]
+		painel_cifra.abrir_avalanche("efeito avalanche: um caractere a mais muda tudo", texto_a, texto_b)
+	else:
+		if configuracao.chave_exemplo_demonstracao.is_empty():
+			terminal.escrever("esta fase nao tem exemplo de demonstracao configurado.")
+			return
+		var cifra: Cifra = FabricaCifra.para_algoritmo(configuracao.algoritmo)
+		if cifra == null:
+			terminal.escrever("nao ha demonstracao disponivel para o algoritmo '%s'." % configuracao.algoritmo)
+			return
+		painel_cifra.abrir(
+			"como o %s desloca cada letra" % configuracao.algoritmo,
+			configuracao.texto_exemplo_demonstracao,
+			configuracao.chave_exemplo_demonstracao,
+			cifra)
 
-	painel_cifra.abrir(
-		"como o %s desloca cada letra" % configuracao.algoritmo,
-		configuracao.texto_exemplo_demonstracao,
-		configuracao.chave_exemplo_demonstracao,
-		cifra)
 	Telemetria.registrar_evento(CatalogoEventos.CIFRA_DEMONSTRADA, {
 		"algoritmo": configuracao.algoritmo,
 	}, configuracao.numero)

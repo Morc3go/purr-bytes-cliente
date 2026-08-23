@@ -16,6 +16,9 @@ const CENAS: PackedStringArray = [
 	"res://cenas/ui/tela_captura.tscn",
 	"res://cenas/ui/menu_principal.tscn",
 	"res://cenas/fases/fase_01.tscn",
+	"res://cenas/fases/fase_02.tscn",
+	"res://cenas/fases/fase_03.tscn",
+	"res://cenas/base/painel_cifra.tscn",
 ]
 
 var _nivel_original: String

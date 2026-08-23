@@ -1,27 +1,20 @@
 class_name TransporteHttp
 extends TransporteTelemetria
 
-## Transporte HTTP -- ESQUELETO. Corpo real no Marco 3.
+## Transporte HTTP -- fala com a API de ingestao (ou, em desenvolvimento, com
+## o servidor de eco de tools/servidor_eco.py) usando HTTPRequest, o no
+## assincrono nativo da secao 2 do CLAUDE.md. Nao ha requisicao concorrente:
+## Telemetria.descarregar() so chama enviar() de novo depois de aguardar o
+## anterior (secao 8), entao um unico HTTPRequest filho, reaproveitado a cada
+## chamada, e suficiente e mais simples que um por requisicao.
 ##
-## Nao esta implementado de proposito: as rotas de ingestao ainda nao existem no
-## back-end (docs/arquitetura/visao-geral.md, secao 5: "Entidades JPA e rotas
-## REST -- proxima etapa"). Implementar contra um contrato que ninguem pode
-## responder produziria codigo nao testavel, e o Marco 3 comeca justamente pelo
-## servidor de eco para ter contra o que testar.
-##
-## O que este arquivo garante hoje: a fronteira existe e tem a forma final, logo
-## habilitar HTTP no Marco 3 e preencher enviar() -- nao mexer em Telemetria.
-##
-## Marco 3, quando for implementado aqui:
-##   - HTTPRequest como filho deste no, um por requisicao em voo
-##   - header Authorization: Bearer <chave_api> (nunca logar a chave)
-##   - 2xx sucesso (a API responde 202: aceito para processar, nao gravado)
-##   - 4xx ResultadoEnvio.falha_permanente  -> descarta o lote e loga
-##   - 5xx / rede ResultadoEnvio.falha_transitoria -> preserva a fila
-##   - flip de disponivel() para true
+## Authorization: Bearer <chave_api> vai no cabecalho -- nunca em log, nunca
+## na tela (restricao 8 da secao 4).
 
 var url_base: String = ""
 var chave_api: String = ""
+
+var _http: HTTPRequest = null
 
 
 func _init(url_base_: String = "", chave_api_: String = "") -> void:
@@ -29,24 +22,62 @@ func _init(url_base_: String = "", chave_api_: String = "") -> void:
 	chave_api = chave_api_
 
 
-## Telemetria consulta isto antes de escolher o transporte. Enquanto for false,
-## configurar modo_telemetria = "HTTP" cai para MOCK com erro visivel, em vez de
-## deixar a fila crescer sem destino ate estourar a memoria.
+func _ready() -> void:
+	_http = HTTPRequest.new()
+	_http.name = "RequisicaoHttp"
+	add_child(_http)
+
+
 static func disponivel() -> bool:
-	return false
+	return true
 
 
 func rotulo() -> String:
 	return "HTTP(%s)" % url_base
 
 
-func enviar(_pacote: Dictionary) -> ResultadoEnvio:
+func enviar(pacote: Dictionary) -> ResultadoEnvio:
 	await _ceder_quadro()
-	return ResultadoEnvio.falha_transitoria("transporte HTTP chega no Marco 3")
+
+	var rota: String = String(pacote.get("rota", ""))
+	var id_sessao: String = String(pacote.get("id_sessao", ""))
+	var caminho: String = caminho_da_rota(rota, id_sessao)
+	if caminho.is_empty():
+		return ResultadoEnvio.falha_permanente("rota desconhecida: %s" % rota)
+
+	var corpo: Dictionary = _corpo_do_pacote(pacote, rota)
+	if corpo.is_empty():
+		return ResultadoEnvio.falha_permanente("pacote sem corpo reconhecivel para a rota %s" % rota)
+
+	var cabecalhos: PackedStringArray = PackedStringArray([
+		"Content-Type: application/json",
+		"Authorization: Bearer %s" % chave_api,
+	])
+
+	var erro: Error = _http.request(
+		url_base + caminho, cabecalhos, HTTPClient.METHOD_POST, JSON.stringify(corpo))
+	if erro != OK:
+		# Erro de montagem da requisicao (URL invalida, etc.) -- nao ha lote
+		# malformado aqui, entao transitorio: uma URL configurada errada nao
+		# deveria descartar dado de pesquisa, so acumular ate alguem notar.
+		return ResultadoEnvio.falha_transitoria("HTTPRequest.request() recusou (erro %d)" % erro)
+
+	var resposta: Array = await _http.request_completed
+	var resultado: int = resposta[0] as int
+	var codigo_http: int = resposta[1] as int
+
+	if resultado != HTTPRequest.RESULT_SUCCESS:
+		return ResultadoEnvio.falha_transitoria(
+			"falha de rede antes de qualquer resposta HTTP (resultado %d)" % resultado)
+
+	if codigo_http >= 200 and codigo_http < 300:
+		return ResultadoEnvio.ok("HTTP %d" % codigo_http)
+	if codigo_http >= 400 and codigo_http < 500:
+		return ResultadoEnvio.falha_permanente("HTTP %d" % codigo_http)
+	return ResultadoEnvio.falha_transitoria("HTTP %d" % codigo_http)
 
 
-## A rota concreta de cada pacote, ja definida para o Marco 3 nao ter que
-## reinventar o mapeamento.
+## A rota concreta de cada pacote.
 func caminho_da_rota(rota: String, id_sessao: String) -> String:
 	match rota:
 		ROTA_ABRIR_SESSAO:
@@ -60,3 +91,18 @@ func caminho_da_rota(rota: String, id_sessao: String) -> String:
 		_:
 			Registro.erro("TransporteHttp", "rota desconhecida: %s" % rota)
 			return ""
+
+
+## Corpo JSON exato por rota -- docs/contrato-telemetria.md documenta cada um
+## com um exemplo real, gerado por este mesmo caminho de codigo.
+func _corpo_do_pacote(pacote: Dictionary, rota: String) -> Dictionary:
+	match rota:
+		ROTA_ABRIR_SESSAO, ROTA_ENCERRAR_SESSAO:
+			return pacote.get("corpo", {}) as Dictionary
+		ROTA_EVENTOS:
+			var eventos: Array = pacote.get("eventos", [])
+			return {} if eventos.is_empty() else {"eventos": eventos}
+		ROTA_TENTATIVAS:
+			var tentativas: Array = pacote.get("tentativas", [])
+			return {} if tentativas.is_empty() else {"tentativas": tentativas}
+	return {}

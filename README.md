@@ -64,6 +64,21 @@ o segundo lê a fila do disco e drena.
 Resultado esperado: zero evento perdido, zero duplicado, sequência contígua, e a sessão
 interrompida marcada como `ABANDONADA`.
 
+## Servidor de eco (desenvolvimento do transporte HTTP)
+
+As rotas reais de `Morc3go/prototipo` ainda não existem. `tools/servidor_eco.py`
+é um servidor mínimo (biblioteca padrão do Python, sem dependência) que aceita
+qualquer `POST` nas quatro rotas do contrato e responde `202`, gravando o corpo
+recebido em log — é contra ele que `TransporteHttp` foi desenvolvido e testado
+(`tests/teste_transporte_http.gd`, `tests/teste_resiliencia_http.gd`):
+
+```powershell
+python tools/servidor_eco.py 8091 caminho\para\log.jsonl
+```
+
+Para apontar o jogo para ele, `config.cfg`: `modo_telemetria="HTTP"`,
+`url_api="http://127.0.0.1:8091"`.
+
 ## Configuração da coleta
 
 O jogo cria `user://config.cfg` no primeiro boot
@@ -71,7 +86,7 @@ O jogo cria `user://config.cfg` no primeiro boot
 
 ```ini
 [telemetria]
-modo_telemetria="MOCK"        ; MOCK grava em disco, HTTP fala com a API (Marco 3)
+modo_telemetria="MOCK"        ; MOCK grava em disco, HTTP fala com a API (ver servidor de eco acima)
 url_api="http://localhost:8080"
 chave_api=""                  ; escopo INGESTAO, só escreve
 tamanho_lote=50               ; teto do back-end é 500
@@ -100,7 +115,29 @@ sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
 | 0 — Fundação | ✅ concluído |
 | 1 — Fase 1: César, labirinto e A\* | ✅ concluído |
 | 2 — Fase 2: Vigenère e Diretor de IA | ✅ concluído |
-| 3 — Fase 3: SHA-256 e telemetria HTTP | ⏳ próximo |
+| 3 — Fase 3: SHA-256 e telemetria HTTP | ✅ concluído |
+
+### Pendências conhecidas do Marco 3
+
+- `tests/teste_resiliencia_http.gd` e `tests/teste_transporte_http.gd` sobem
+  um processo Python real (`tools/servidor_eco.py`) -- rodam bem mais devagar
+  que o resto da suíte (conexão recusada contra uma porta fechada não falha
+  instantaneamente no Windows). Rode a suíte inteira com folga de tempo; para
+  iterar rápido, filtre por outro nome de arquivo.
+- **"As três fases jogáveis em sequência com progressão de vidas e
+  pontuação"** (critério de aceite do Marco 3) está validado fase a fase por
+  integração automatizada (`tests/teste_fase_0{1,2,3}_integracao.gd`), mas a
+  travessia completa **menu → fase 1 → fase 2 → fase 3 → menu**, pela
+  navegação de cena de verdade, não tem teste automatizado -- o Marco 1 já
+  havia identificado `get_tree().change_scene_to_file()` como arriscado de
+  exercitar dentro do processo compartilhado da suíte de testes. Isso precisa
+  de uma partida manual no editor antes de considerar o critério
+  100% fechado.
+- O labirinto de `fase_03.tscn` reaproveita o MESMO traçado de `fase_02.tscn`
+  (gerado por `tools/gerar_fase_03.gd`) -- funcional, mas repetitivo
+  visualmente; candidato a variar quando a arte definitiva entrar.
+- Decisões completas em
+  [ADR 0009](docs/decisoes/0009-sha256-http-e-resiliencia.md).
 
 ### Pendências conhecidas do Marco 2
 
@@ -132,5 +169,3 @@ sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
   real (abandonar a fase com desafio ativo). Detalhe na
   [ADR 0007](docs/decisoes/0007-marco1-cachorro-e-desafios.md).
 - Arte é placeholder gerado (`recursos/arte/*_placeholder.png`), esperando a pixel art.
-- `TransporteHttp` é esqueleto; `disponivel()` devolve `false` e o modo HTTP cai para MOCK
-  com erro no log até o Marco 3.

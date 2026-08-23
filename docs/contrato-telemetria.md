@@ -8,12 +8,23 @@ foram **gerados pelo cliente**, não escritos à mão:
 godot --headless --path . --script res://tools/sessao_de_demonstracao.gd
 ```
 
-O comando roda uma partida curta da fase 1 em modo MOCK e imprime exatamente os
-corpos que iriam para a rede. Reexecute-o sempre que mudar a serialização — se a
-saída divergir deste arquivo, este arquivo está desatualizado.
+O comando monta `cenas/fases/fase_01.tscn` de verdade e aciona o pipeline pelo
+mesmo caminho que o jogador usa (o sinal `Terminal.comando_submetido`) —
+imprime exatamente os corpos que iriam para a rede. Reexecute-o sempre que
+mudar a serialização — se a saída divergir deste arquivo, este arquivo está
+desatualizado. (A versão anterior deste roteiro escrevia os payloads à mão;
+foi assim que o exemplo de TC-04 abaixo ficou incorreto por dois marcos —
+classificado como `ERRO_LEXICO` quando o ADR 0006 já tinha decidido
+`ERRO_SINTATICO`. Gerar de verdade, executando o código, é o que evita esse
+tipo de deriva.)
 
-Estado em 2026-08-21: as rotas **ainda não existem** no back-end. O cliente está
-em modo MOCK e o transporte HTTP entra no Marco 3.
+Estado em 2026-08-23 (Marco 3): as rotas **ainda não existem** no back-end de
+produção (`Morc3go/prototipo`). O transporte HTTP (`scripts/telemetria/
+transporte_http.gd`) já está implementado e testado contra
+`tools/servidor_eco.py`, um servidor de eco local (`python tools/servidor_eco.py
+<porta> <arquivo_de_log>`) que aceita qualquer `POST` nas rotas abaixo e
+responde `202`. `tests/teste_transporte_http.gd` e
+`tests/teste_resiliencia_http.gd` validam o cliente contra ele.
 
 ---
 
@@ -130,14 +141,16 @@ Payloads por tipo de evento usados até aqui:
 | `FASE_CONCLUIDA` | `{"capturas", "pontuacao", "vidas_restantes"}` |
 | `FASE_ABANDONADA` | `{"capturas", "pontuacao"}` |
 | `COMANDO_SUBMETIDO` | `{"tamanho", "tempo_resposta_ms"}` |
-| `ERRO_LEXICO` | `{"lexema", "posicao"}` |
+| `ERRO_LEXICO` / `ERRO_SINTATICO` | `{}` — o detalhe do erro vai na `tentativa_comando` correspondente (`tokens` + `codigo_erro`), não duplicado aqui |
+| `DICA_SOLICITADA` | `{"desafio"}` |
+| `CIFRA_DEMONSTRADA` | `{"algoritmo"}` |
 | `JOGADOR_CAPTURADO` | `{"protecao_ativa", "captura_numero"}` |
-| `CACHORRO_DETECTOU` | `{"distancia_celulas"}` |
+| `CACHORRO_DETECTOU` | `{"posicao": {"x", "y"}}` |
+| `CACHORRO_PERDEU` | `{}` |
+| `AMOSTRA_DESEMPENHO` | `{"fps", "memoria_estatica_bytes", "objetos_desenhados", "replanejamento_medio_ms"}` (Eixo 7 — média desde a amostra anterior, a cada 30s) |
 
-Marcos 1 a 3 acrescentam `ERRO_SINTATICO`, `CACHORRO_PERDEU`, `DICA_SOLICITADA`,
-`CIFRA_DEMONSTRADA` e `AMOSTRA_DESEMPENHO`. **A lista de códigos é fechada** e
-espelha `V5__catalogo_de_eventos.sql`; `tests/teste_catalogos.gd` compara as duas
-e falha se divergirem.
+**A lista de códigos é fechada** e espelha `V5__catalogo_de_eventos.sql`;
+`tests/teste_catalogos.gd` compara as duas e falha se divergirem.
 
 ---
 
@@ -145,12 +158,20 @@ e falha se divergirem.
 
 Corpo: `{"tentativas": [ ... ]}`.
 
-Erro léxico (caso TC-04 da monografia — `cyfrar` não é reconhecido como `VERBO`):
+`codigo_erro` é **vocabulário fixo e curto** (`caractere_invalido`,
+`token_inesperado`, `verbo_nao_permitido`, `chave_incorreta`, ... — lista
+completa e o porquê de cada um em
+[ADR 0006](decisoes/0006-analisador-lexico-sintatico.md)), não texto livre com
+a posição embutida — a posição já está em `tokens`.
+
+Caso TC-04 da monografia (`cyfrar pacote chave=3`) — o AFD tokeniza `cyfrar`
+como `IDENTIFICADOR` (não é uma palavra reservada da gramática), e é o parser
+que rejeita por faltar `VERBO` na primeira posição:
 
 ```json
 {
-  "id_tentativa": "36199e51-934e-4e92-8b2b-1b3c34e6945e",
-  "id_sessao": "d74c9f6e-818f-4fd5-bf5a-59427d614f1b",
+  "id_tentativa": "8521f615-1b22-4850-b393-c640d9218fd3",
+  "id_sessao": "ebc7847c-3345-4a19-bd83-852b01fe6a46",
   "fase": 1,
   "desafio": "cesar-01",
   "entrada_normalizada": "cyfrar pacote chave=3",
@@ -159,22 +180,46 @@ Erro léxico (caso TC-04 da monografia — `cyfrar` não é reconhecido como `VE
     {"tipo": "IDENTIFICADOR", "lexema": "pacote", "posicao": 7},
     {"tipo": "IDENTIFICADOR", "lexema": "chave", "posicao": 14},
     {"tipo": "ATRIBUICAO", "lexema": "=", "posicao": 19},
-    {"tipo": "NUMERO", "lexema": "3", "posicao": 20}
+    {"tipo": "NUMERO", "lexema": "3", "posicao": 20},
+    {"tipo": "EOF", "lexema": "", "posicao": 21}
   ],
-  "resultado": "ERRO_LEXICO",
-  "codigo_erro": "VERBO_NAO_RECONHECIDO",
+  "resultado": "ERRO_SINTATICO",
+  "codigo_erro": "token_inesperado",
   "tempo_resposta_ms": 4310,
   "numero_tentativa": 1,
-  "ocorrido_em": "2026-08-21T23:04:16.397Z"
+  "ocorrido_em": "2026-08-23T05:04:46.058Z"
 }
 ```
 
-Acerto na segunda tentativa do mesmo desafio:
+Erro léxico de verdade (`cifrar pacote!` — `!` não pertence ao alfabeto da
+gramática): o AFD nem chega a formar todos os tokens, então `tokens` sai
+vazio — não há árvore nenhuma para descrever, o erro é anterior a isso.
 
 ```json
 {
-  "id_tentativa": "d5fe1463-fb3f-4d8a-be9a-cef6c3e1c319",
-  "id_sessao": "d74c9f6e-818f-4fd5-bf5a-59427d614f1b",
+  "id_tentativa": "3e6c70bc-9c49-4d19-977c-f9f6984cd65a",
+  "id_sessao": "ebc7847c-3345-4a19-bd83-852b01fe6a46",
+  "fase": 1,
+  "desafio": "cesar-01",
+  "entrada_normalizada": "cifrar pacote!",
+  "tokens": [],
+  "resultado": "ERRO_LEXICO",
+  "codigo_erro": "caractere_invalido",
+  "tempo_resposta_ms": 1200,
+  "numero_tentativa": 1,
+  "ocorrido_em": "2026-08-23T05:04:46.058Z"
+}
+```
+
+Acerto — `numero_tentativa` continua **1**: as duas tentativas acima nunca
+passaram da etapa léxico-sintática, então nunca chegaram ao resolvedor
+semântico e não contam como "tentativa real" do desafio (ver
+[ADR 0007](decisoes/0007-marco1-cachorro-e-desafios.md), decisão 4):
+
+```json
+{
+  "id_tentativa": "3c54b4da-1dd5-4794-8e2e-84a270a42e9b",
+  "id_sessao": "ebc7847c-3345-4a19-bd83-852b01fe6a46",
   "fase": 1,
   "desafio": "cesar-01",
   "entrada_normalizada": "cifrar pacote chave=3",
@@ -183,13 +228,14 @@ Acerto na segunda tentativa do mesmo desafio:
     {"tipo": "IDENTIFICADOR", "lexema": "pacote", "posicao": 7},
     {"tipo": "IDENTIFICADOR", "lexema": "chave", "posicao": 14},
     {"tipo": "ATRIBUICAO", "lexema": "=", "posicao": 19},
-    {"tipo": "NUMERO", "lexema": "3", "posicao": 20}
+    {"tipo": "NUMERO", "lexema": "3", "posicao": 20},
+    {"tipo": "EOF", "lexema": "", "posicao": 21}
   ],
   "resultado": "SUCESSO",
   "codigo_erro": null,
   "tempo_resposta_ms": 2180,
-  "numero_tentativa": 2,
-  "ocorrido_em": "2026-08-21T23:04:16.397Z"
+  "numero_tentativa": 1,
+  "ocorrido_em": "2026-08-23T05:04:46.066Z"
 }
 ```
 
@@ -200,9 +246,9 @@ Garantias do cliente, todas cobertas por teste:
 | `desafio` | ≤ 60 caracteres (`VARCHAR(60)`) |
 | `entrada_normalizada` | sanitizada e ≤ 240 (`VARCHAR(240)` e `limite-texto-livre`) |
 | `resultado` | um de `SUCESSO`, `ERRO_LEXICO`, `ERRO_SINTATICO`, `ERRO_SEMANTICO`, `TIMEOUT`, `ABANDONO` |
-| `codigo_erro` | `null` em caso de sucesso; ≤ 40 caracteres |
+| `codigo_erro` | `null` em caso de sucesso; vocabulário fixo, ≤ 40 caracteres |
 | `tempo_resposta_ms` | ≥ 0, medido com relógio monotônico do foco no terminal até o Enter |
-| `numero_tentativa` | ≥ 1, contado por desafio |
+| `numero_tentativa` | ≥ 1, conta só tentativas que passaram léxico + sintático para o verbo esperado pelo desafio |
 
 Nota: `tentativa_comando` **não tem** coluna `sequencia`. Ordem e detecção de
 perda vivem em `evento_telemetria`.

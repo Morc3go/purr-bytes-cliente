@@ -354,8 +354,8 @@ func teste_rotas_do_contrato_rest() -> void:
 		"/v1/sessoes/%s/tentativas" % id, "rota de tentativas")
 	afirmar_igual(http.caminho_da_rota(TransporteTelemetria.ROTA_ENCERRAR_SESSAO, id),
 		"/v1/sessoes/%s/encerrar" % id, "rota de encerramento")
-	afirmar_falso(TransporteHttp.disponivel(),
-		"o transporte HTTP so fica disponivel no Marco 3")
+	afirmar_verdadeiro(TransporteHttp.disponivel(),
+		"o transporte HTTP esta disponivel a partir do Marco 3")
 	http.free()
 
 

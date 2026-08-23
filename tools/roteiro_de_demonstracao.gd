@@ -3,12 +3,20 @@ extends RefCounted
 
 ## Roteiro da sessao de demonstracao (ver tools/sessao_de_demonstracao.gd).
 ##
-## Reproduz uma partida curta da fase 1 do jeito que ela vai acontecer no Marco
-## 1, inclusive o caso TC-04 da monografia -- "cyfrar pacote chave=3", que o AFD
-## rejeita como ERRO_LEXICO -- seguido do acerto na segunda tentativa. Os corpos
-## produzidos aqui sao os exemplos reais de docs/contrato-telemetria.md.
+## Monta cenas/fases/fase_01.tscn de verdade e aciona o pipeline pelo mesmo
+## caminho que o jogador usa (o sinal Terminal.comando_submetido) -- os corpos
+## produzidos aqui sao REAIS, nao hand-typed, e viram os exemplos de
+## docs/contrato-telemetria.md. Reexecutar isto depois de qualquer mudanca no
+## analisador, no resolvedor ou no catalogo de eventos regenera os exemplos
+## automaticamente, em vez de deixar a documentacao divergir da implementacao
+## (foi exatamente isso que aconteceu com a versao anterior deste arquivo:
+## escrita a mao no Marco 0, antes do analisador existir, e desatualizada
+## desde entao -- inclusive classificando o caso TC-04 como ERRO_LEXICO, que
+## a decisao de ADR 0006 corrigiu para ERRO_SINTATICO).
 ##
-## Escreve em user://demonstracao/, nunca no .jsonl da coleta real.
+## Inclui o caso TC-04 da monografia ("cyfrar pacote chave=3"), captura e
+## acerto -- em modo MOCK. Escreve em user://demonstracao/, nunca no .jsonl da
+## coleta real.
 
 const DIRETORIO: String = "user://demonstracao"
 
@@ -21,58 +29,37 @@ func executar() -> void:
 
 	Telemetria.reiniciar(TransporteMock.new(caminho_mock), "%s/fila.json" % DIRETORIO)
 
-	var id_sessao: String = Identificador.uuid_v4()
-	Telemetria.iniciar_sessao(id_sessao, ConfigJogo.id_sujeito)
+	var id_sessao: String = Sessao.iniciar()
 
-	Telemetria.registrar_evento(CatalogoEventos.FASE_INICIADA, {
-		"algoritmo": "CESAR",
-		"desafios": 1,
-		"vidas_iniciais": 3,
-	}, 1)
+	var arvore: SceneTree = Engine.get_main_loop() as SceneTree
+	var cena: PackedScene = load("res://cenas/fases/fase_01.tscn") as PackedScene
+	var fase: FaseBase = cena.instantiate() as FaseBase
+	arvore.root.add_child(fase)
+	await arvore.process_frame
 
-	Telemetria.registrar_evento(CatalogoEventos.COMANDO_SUBMETIDO, {
-		"tamanho": 21,
-		"tempo_resposta_ms": 4310,
-	}, 1)
+	# TC-04 (monografia): "cyfrar" nao e reconhecido como VERBO -- ver ADR 0006.
+	fase.terminal.comando_submetido.emit("cyfrar pacote chave=3", 4310)
+	# Um caractere fora do alfabeto -- ERRO_LEXICO de verdade, para diferenciar
+	# do caso acima.
+	fase.terminal.comando_submetido.emit("cifrar pacote!", 1200)
 
-	Telemetria.registrar_evento(CatalogoEventos.ERRO_LEXICO, {
-		"lexema": "cyfrar",
-		"posicao": 0,
-	}, 1)
+	# Cachorro perto do jogador: detecta, depois encosta em texto claro.
+	fase.cachorro.global_position = fase.jogador.global_position + Vector2(16, 0)
+	fase._atualizar_deteccao_do_cachorro()
+	fase.cachorro.parar()
+	fase.cachorro.global_position = fase.jogador.global_position
+	for _tentativa: int in 10:
+		await arvore.physics_frame
+		if Sessao.vidas < fase.configuracao.vidas_iniciais:
+			break
+	fase.cachorro.global_position = Vector2(2000, 2000)
+	fase.tela_captura.encerrada.emit()
+	await arvore.process_frame
 
-	Telemetria.registrar_tentativa(
-		1, "cesar-01", "cyfrar pacote chave=3",
-		[
-			{"tipo": "IDENTIFICADOR", "lexema": "cyfrar", "posicao": 0},
-			{"tipo": "IDENTIFICADOR", "lexema": "pacote", "posicao": 7},
-			{"tipo": "IDENTIFICADOR", "lexema": "chave", "posicao": 14},
-			{"tipo": "ATRIBUICAO", "lexema": "=", "posicao": 19},
-			{"tipo": "NUMERO", "lexema": "3", "posicao": 20},
-		],
-		CatalogoResultados.ERRO_LEXICO, "VERBO_NAO_RECONHECIDO", 4310, 1)
+	# Acerto na segunda tentativa do mesmo desafio.
+	fase.terminal.comando_submetido.emit("cifrar pacote chave=3", 2180)
 
-	Telemetria.registrar_tentativa(
-		1, "cesar-01", "cifrar pacote chave=3",
-		[
-			{"tipo": "VERBO", "lexema": "cifrar", "posicao": 0},
-			{"tipo": "IDENTIFICADOR", "lexema": "pacote", "posicao": 7},
-			{"tipo": "IDENTIFICADOR", "lexema": "chave", "posicao": 14},
-			{"tipo": "ATRIBUICAO", "lexema": "=", "posicao": 19},
-			{"tipo": "NUMERO", "lexema": "3", "posicao": 20},
-		],
-		CatalogoResultados.SUCESSO, "", 2180, 2)
-
-	Telemetria.registrar_evento(CatalogoEventos.CACHORRO_DETECTOU, {
-		"distancia_celulas": 6,
-	}, 1)
-
-	Telemetria.registrar_evento(CatalogoEventos.FASE_CONCLUIDA, {
-		"capturas": 0,
-		"pontuacao": 150,
-		"vidas_restantes": 3,
-	}, 1)
-
-	Telemetria.encerrar_sessao()
+	Sessao.encerrar()
 	await Telemetria.descarregar()
 
 	print("id_sessao: %s" % id_sessao)
@@ -86,3 +73,6 @@ func executar() -> void:
 		if not linha.is_empty():
 			print(linha)
 	arquivo.close()
+
+	fase.queue_free()
+	await arvore.process_frame

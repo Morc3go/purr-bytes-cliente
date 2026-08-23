@@ -35,7 +35,8 @@ const _CODIGO_CHAVE_INVALIDA: String = "chave_invalida"
 const _CODIGO_CHAVE_FORA_DA_FAIXA: String = "chave_fora_da_faixa"
 const _CODIGO_CHAVE_INCORRETA: String = "chave_incorreta"
 const _CODIGO_ALGORITMO_NAO_SUPORTADO: String = "algoritmo_nao_suportado_nesta_fase"
-const _CODIGO_VERBO_NAO_IMPLEMENTADO: String = "verbo_nao_implementado_nesta_fase"
+const _CODIGO_ARGUMENTO_AUSENTE: String = "argumento_ausente"
+const _CODIGO_DIGEST_INCORRETO: String = "digest_incorreto"
 
 
 ## desafio pode ser null (todos os desafios da fase ja foram resolvidos):
@@ -64,9 +65,10 @@ static func resolver(
 			return _resolver_dica(desafio)
 		"cifrar", "decifrar":
 			return _resolver_cifra(configuracao, desafio, numero_tentativa, ast)
-		"hash", "verificar":
-			return VeredictoComando.semantico(_CODIGO_VERBO_NAO_IMPLEMENTADO,
-				"'%s' chega no Marco 3." % verbo)
+		"hash":
+			return _resolver_hash(ast)
+		"verificar":
+			return _resolver_verificar(configuracao, desafio, numero_tentativa, ast)
 
 	return VeredictoComando.semantico(_CODIGO_VERBO_NAO_PERMITIDO, "comando desconhecido.")
 
@@ -134,3 +136,67 @@ static func _chaves_equivalentes(chave_digitada: String, chave_esperada: String)
 	if chave_digitada.is_valid_int() and chave_esperada.is_valid_int():
 		return int(chave_digitada) == int(chave_esperada)
 	return chave_digitada == chave_esperada
+
+
+## "hash <palavra>" e um utilitario, nao depende de desafio (como "status") --
+## e a ferramenta que o jogador usa para CALCULAR o digest antes de decidir o
+## que digitar em "verificar". Calcula de verdade (scripts/cripto/sha256.gd
+## sobre HashingContext), nao mostra um valor pre-fabricado: a licao da fase 3
+## e que o jogador pode conferir o hash de qualquer coisa a qualquer momento,
+## e o resultado e sempre reproduzivel.
+static func _resolver_hash(ast: NoAst) -> VeredictoComando:
+	var soltos: Array[String] = ast.argumentos_soltos()
+	if soltos.is_empty():
+		return VeredictoComando.semantico(_CODIGO_ARGUMENTO_AUSENTE, "digite 'hash <palavra>'.")
+
+	var palavra: String = soltos[0]
+	return VeredictoComando.sucesso("sha256(%s) = %s" % [palavra, Sha256.digest_hex(palavra)])
+
+
+## "verificar <palavra> <prefixo_hash>" resolve o desafio da fase 3: o pacote
+## chega com um digest anexado, e o jogador precisa confirmar que bate antes
+## de entregar. O primeiro argumento (<palavra>) e decorativo, do mesmo jeito
+## que "pacote" e decorativo em "cifrar pacote chave=3" -- nenhum dos dois
+## verbos de cifra valida esse argumento contra o desafio, entao verificar nao
+## seria consistente se validasse.
+##
+## DesafioConfig.resposta_esperada guarda o prefixo correto (nao recalculado
+## na hora): o mesmo padrao de comparacao fixa que chave_esperada usa para
+## Cesar/Vigenere, para o resolvedor nao precisar saber de hash nenhum alem
+## de chamar Sha256 no verbo "hash". Quem autora o desafio e responsavel por
+## manter resposta_esperada = prefixo real de sha256(texto_claro) -- e o
+## tools/gerar_fase_03.gd faz isso calculando de verdade, nao inventando.
+##
+## SUCESSO ativa "protecao" do mesmo jeito que cifrar/decifrar (FaseConfig.
+## duracao_cifra_s) -- reinterpretada aqui como "pacote com integridade
+## confirmada, liberado para entrega" em vez de "texto ilegivel para o
+## cachorro". A mecanica de fase_base.gd (captura so acontece sem protecao
+## ativa) nao muda uma linha; so o SIGNIFICADO pedagogico da protecao muda
+## entre fases, o que e exatamente o ponto do requisito de "baixo esforco de
+## codificacao" (ver docs/decisoes/0009).
+static func _resolver_verificar(
+		configuracao: FaseConfig, desafio: DesafioConfig, numero_tentativa: int, ast: NoAst) -> VeredictoComando:
+	if desafio == null:
+		return VeredictoComando.semantico(_CODIGO_SEM_DESAFIO_ATIVO, "nao ha pacote ativo para verificar.")
+
+	if ast.verbo != desafio.verbo_esperado:
+		return VeredictoComando.semantico(_CODIGO_VERBO_NAO_ESPERADO,
+			"este desafio espera '%s', nao 'verificar'." % desafio.verbo_esperado)
+
+	var soltos: Array[String] = ast.argumentos_soltos()
+	if soltos.size() < 2:
+		return VeredictoComando.semantico(_CODIGO_ARGUMENTO_AUSENTE,
+			"digite 'verificar <palavra> <prefixo_hash>'.")
+
+	var prefixo_digitado: String = soltos[1]
+	if prefixo_digitado != desafio.resposta_esperada:
+		return VeredictoComando.semantico(_CODIGO_DIGEST_INCORRETO,
+			"esse prefixo nao bate com o digest do pacote. o conteudo pode ter sido adulterado.")
+
+	var veredicto: VeredictoComando = VeredictoComando.sucesso(
+		"integridade confirmada. o pacote pode ser entregue.")
+	veredicto.resolveu_desafio = true
+	veredicto.duracao_protecao_s = configuracao.duracao_cifra_s
+	veredicto.delta_pontos = desafio.pontos_acerto_de_primeira if numero_tentativa <= 1 \
+		else desafio.pontos_acerto
+	return veredicto

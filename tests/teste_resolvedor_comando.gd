@@ -150,13 +150,73 @@ func teste_sucesso_em_segunda_tentativa_nao_ganha_bonus() -> void:
 	afirmar_igual(veredicto.delta_pontos, 100, "pontuacao normal, sem bonus, na segunda tentativa")
 
 
-func teste_hash_e_verificar_ainda_nao_implementados() -> void:
-	var config: FaseConfig = _configuracao()
-	config.verbos_permitidos = ["hash", "verificar"]
+# ---------------------------------------------------------------------------
+# SHA-256 (Marco 3): "hash" calcula (utilitario, sem desafio), "verificar"
+# resolve o desafio -- mesmo pipeline, resolvedor generico de novo.
+# ---------------------------------------------------------------------------
+
+func _configuracao_sha256() -> FaseConfig:
+	var config := FaseConfig.new()
+	config.numero = 3
+	config.titulo = "o labirinto de SHA-256"
+	config.algoritmo = "SHA256"
+	config.verbos_permitidos = ["hash", "verificar", "dica", "status"]
+	config.duracao_cifra_s = 12.0
+	return config
+
+
+func _desafio_sha256() -> DesafioConfig:
+	var desafio := DesafioConfig.new()
+	desafio.identificador = "sha256-01"
+	desafio.enunciado = "confira a integridade do pacote 'pacote' antes de entregar."
+	desafio.texto_claro = "pacote"
+	desafio.chave_esperada = ""  # hash nao tem chave
+	desafio.resposta_esperada = Sha256.digest_hex("pacote").substr(0, 8)
+	desafio.verbo_esperado = "verificar"
+	desafio.dica = "use 'hash pacote' para calcular o digest voce mesmo."
+	desafio.pontos_acerto = 100
+	desafio.pontos_acerto_de_primeira = 150
+	desafio.custo_da_dica = 25
+	return desafio
+
+
+func teste_hash_calcula_o_digest_real_sem_precisar_de_desafio() -> void:
 	var veredicto: VeredictoComando = ResolvedorComando.resolver(
-		config, _desafio(), 1, _resultado("hash pacote"))
-	afirmar_igual(veredicto.resultado, CatalogoResultados.ERRO_SEMANTICO, "SHA-256 chega no Marco 3")
-	afirmar_igual(veredicto.codigo_erro, "verbo_nao_implementado_nesta_fase", "codigo fixo")
+		_configuracao_sha256(), null, 1, _resultado("hash pacote"))
+	afirmar_igual(veredicto.resultado, CatalogoResultados.SUCESSO, "hash e um utilitario, nao um desafio")
+	afirmar_contem(veredicto.texto_para_terminal, Sha256.digest_hex("pacote"),
+		"mostra o digest de verdade, calculado na hora")
+
+
+func teste_hash_sem_argumento_e_erro_semantico() -> void:
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_sha256(), null, 1, _resultado("hash"))
+	afirmar_igual(veredicto.codigo_erro, "argumento_ausente", "'hash' sozinho nao tem o que calcular")
+
+
+func teste_verificar_sem_desafio_ativo() -> void:
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_sha256(), null, 1, _resultado("verificar pacote a1b2c3d4"))
+	afirmar_igual(veredicto.codigo_erro, "sem_desafio_ativo", "nao ha pacote para conferir")
+
+
+func teste_verificar_prefixo_incorreto() -> void:
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_sha256(), _desafio_sha256(), 1, _resultado("verificar pacote abcdef00"))
+	afirmar_igual(veredicto.resultado, CatalogoResultados.ERRO_SEMANTICO,
+		"prefixo errado -- pacote pode ter sido adulterado")
+	afirmar_igual(veredicto.codigo_erro, "digest_incorreto", "codigo fixo")
+
+
+func teste_verificar_prefixo_correto_confirma_integridade() -> void:
+	var prefixo_correto: String = Sha256.digest_hex("pacote").substr(0, 8)
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_sha256(), _desafio_sha256(), 1,
+		_resultado("verificar pacote %s" % prefixo_correto))
+	afirmar_igual(veredicto.resultado, CatalogoResultados.SUCESSO, "prefixo bate com o digest real")
+	afirmar_verdadeiro(veredicto.resolveu_desafio, "integridade confirmada resolve o desafio")
+	afirmar_igual(veredicto.duracao_protecao_s, 12.0,
+		"verificar tambem libera o pacote para entrega, como cifrar/decifrar liberam protecao")
 
 
 # ---------------------------------------------------------------------------
