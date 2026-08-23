@@ -102,7 +102,7 @@ static func _resolver_cifra(
 		return VeredictoComando.semantico(_CODIGO_CHAVE_AUSENTE,
 			"faltou 'chave=<valor>'.")
 
-	var cifra: Cifra = _cifra_para_algoritmo(configuracao.algoritmo)
+	var cifra: Cifra = FabricaCifra.para_algoritmo(configuracao.algoritmo)
 	if cifra == null:
 		return VeredictoComando.semantico(_CODIGO_ALGORITMO_NAO_SUPORTADO,
 			"algoritmo '%s' nao esta disponivel nesta fase." % configuracao.algoritmo)
@@ -112,7 +112,7 @@ static func _resolver_cifra(
 		return VeredictoComando.semantico(_CODIGO_CHAVE_INVALIDA,
 			"'%s' nao e uma chave valida para %s." % [chave, configuracao.algoritmo])
 
-	if not _chave_dentro_da_faixa(chave, configuracao):
+	if not cifra.dentro_da_faixa(chave, configuracao.faixa_chave_minima, configuracao.faixa_chave_maxima):
 		return VeredictoComando.semantico(_CODIGO_CHAVE_FORA_DA_FAIXA,
 			"a chave precisa estar entre %d e %d." % [
 				configuracao.faixa_chave_minima, configuracao.faixa_chave_maxima])
@@ -128,20 +128,6 @@ static func _resolver_cifra(
 	veredicto.delta_pontos = desafio.pontos_acerto_de_primeira if numero_tentativa <= 1 \
 		else desafio.pontos_acerto
 	return veredicto
-
-
-static func _cifra_para_algoritmo(algoritmo: String) -> Cifra:
-	if algoritmo == "CESAR":
-		return CifraCesar.new()
-	return null  # VIGENERE (Marco 2), SHA256/AES (Marco 3+): ainda nao ha Cifra para eles
-
-
-## Comparacao numerica, nao textual: "03" e "3" sao a mesma chave para Cesar.
-## Algoritmos com chave alfabetica (Vigenere) sobrescrevem esta nocao de
-## "faixa" -- por ora so Cesar existe, entao int() e suficiente.
-static func _chave_dentro_da_faixa(chave: String, configuracao: FaseConfig) -> bool:
-	var valor: int = int(chave)
-	return valor >= configuracao.faixa_chave_minima and valor <= configuracao.faixa_chave_maxima
 
 
 static func _chaves_equivalentes(chave_digitada: String, chave_esperada: String) -> bool:

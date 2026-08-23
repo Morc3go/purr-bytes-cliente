@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="FaseConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="1_b1so4"]
+[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="2_gu0vq"]
+
+[sub_resource type="Resource" id="Resource_eqfl0"]
+script = ExtResource("1_b1so4")
+identificador = "vigenere-01"
+enunciado = "o pacote 'pacote' precisa de protecao. tente: cifrar pacote chave=gato"
+texto_claro = "pacote"
+chave_esperada = "gato"
+dica = "a chave e um bicho de estimacao comum, 4 letras."
+pontos_acerto_de_primeira = 150
+
+[sub_resource type="Resource" id="Resource_qu21c"]
+script = ExtResource("1_b1so4")
+identificador = "vigenere-02"
+enunciado = "novo pacote 'servidor' atravessando, com outra chave: cifrar servidor chave=rede"
+texto_claro = "servidor"
+chave_esperada = "rede"
+dica = "a chave e a propria palavra que representa a topologia que voce esta atravessando."
+pontos_acerto_de_primeira = 150
+
+[resource]
+script = ExtResource("2_gu0vq")
+numero = 2
+titulo = "o labirinto de Vigenere"
+algoritmo = "VIGENERE"
+verbos_permitidos = PackedStringArray("cifrar", "decifrar", "dica", "status")
+desafios = Array[ExtResource("1_b1so4")]([SubResource("Resource_eqfl0"), SubResource("Resource_qu21c")])
+velocidade_cachorro = 42.0
+briefing_pedagogico = "o pacote precisa atravessar o labirinto ate a saida, do outro lado do mapa.
+a chave desta vez e uma palavra, nao um numero: 'cifrar <pacote> chave=<palavra>'.
+o cachorro nao sabe onde voce esta -- mas errar no terminal ou ser visto de perto entrega pistas de qual regiao do mapa voce esta."
+texto_exemplo_demonstracao = "mensagem"
+chave_exemplo_demonstracao = "chave"
+faixa_chave_minima = 3
+faixa_chave_maxima = 8

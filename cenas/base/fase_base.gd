@@ -30,8 +30,10 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 @onready var marcadores: Node2D = $Marcadores
 @onready var ponto_de_entrada: Marker2D = $Marcadores/PontoDeEntrada
 @onready var ponto_de_saida: Area2D = $Marcadores/PontoDeSaida
+@onready var regioes_no: Node2D = $Marcadores/Regioes
 @onready var hud: Hud = $Hud
 @onready var terminal: Terminal = $Terminal
+@onready var painel_cifra: PainelCifra = $PainelCifra
 @onready var tela_captura: TelaCaptura = $TelaCaptura
 @onready var aviso: CanvasLayer = $AvisoDeConfiguracao
 @onready var _rotulo_do_aviso: Label = $AvisoDeConfiguracao/Fundo/Texto
@@ -46,6 +48,15 @@ var _navegacao: Navegacao = Navegacao.new()
 var _temporizador_replanejamento: Timer = null
 var _cachorro_com_linha_de_visao: bool = false
 var _depuracao_astar_visivel: bool = false
+
+## Diretor de IA (Marco 2, scripts/ia/diretor.gd). Null quando a fase nao tem
+## nenhuma regiao em Marcadores/Regioes (caso do Marco 1: fase_01.tscn) -- sem
+## Diretor, o cachorro continua perseguindo a posicao real sempre, exatamente
+## o comportamento original do Marco 1 (docs/decisoes/0007, decisao 1).
+var _diretor: Diretor = null
+var _temporizador_diretor: Timer = null
+var _regiao_atual_do_jogador: Area2D = null
+var _indice_varredura: int = 0
 
 ## Progresso do terminal. Marco 1 nao tem "escolher desafio": os desafios de
 ## FaseConfig.desafios sao resolvidos em ordem -- e a decisao mais simples que
@@ -72,6 +83,7 @@ func _ready() -> void:
 
 	_navegacao.configurar(labirinto)
 	_configurar_temporizador_replanejamento()
+	_configurar_diretor()
 	_replanejar_caminho_do_cachorro()
 
 	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais)
@@ -131,6 +143,11 @@ func _unhandled_input(evento: InputEvent) -> void:
 	if evento.is_action_pressed("alternar_depuracao"):
 		_depuracao_astar_visivel = not _depuracao_astar_visivel
 		queue_redraw()
+		get_viewport().set_input_as_handled()
+		return
+
+	if evento.is_action_pressed("mostrar_demonstracao"):
+		_alternar_painel_de_demonstracao()
 		get_viewport().set_input_as_handled()
 		return
 
@@ -221,6 +238,9 @@ func _ao_encostar_no_jogador(_corpo: Node2D) -> void:
 		"captura_numero": _capturas,
 	}, configuracao.numero)
 
+	if _diretor != null:
+		_diretor.pista_captura(_regiao_atual_do_jogador)
+
 	Sessao.perder_vida()
 	Sessao.somar_pontos(-configuracao.penalidade_captura)
 	jogador.definir_entrada_habilitada(false)
@@ -258,12 +278,16 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 		terminal.escrever("erro lexico: caractere nao reconhecido no comando.")
 		Telemetria.registrar_evento(CatalogoEventos.ERRO_LEXICO, {}, configuracao.numero)
 		_registrar_tentativa(resultado, resultado.resultado, resultado.codigo_erro, tempo_resposta_ms)
+		if _diretor != null:
+			_diretor.pista_comando_errado(_regiao_atual_do_jogador)
 		return
 
 	if resultado.resultado == CatalogoResultados.ERRO_SINTATICO:
 		terminal.escrever("erro sintatico: comando mal formado. digite 'status' para ver o desafio atual.")
 		Telemetria.registrar_evento(CatalogoEventos.ERRO_SINTATICO, {}, configuracao.numero)
 		_registrar_tentativa(resultado, resultado.resultado, resultado.codigo_erro, tempo_resposta_ms)
+		if _diretor != null:
+			_diretor.pista_comando_errado(_regiao_atual_do_jogador)
 		return
 
 	var desafio_atual: DesafioConfig = _desafio_atual()
@@ -272,6 +296,9 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 
 	terminal.escrever(veredicto.texto_para_terminal)
 	_registrar_tentativa(resultado, veredicto.resultado, veredicto.codigo_erro, tempo_resposta_ms)
+
+	if veredicto.resultado != CatalogoResultados.SUCESSO and _diretor != null:
+		_diretor.pista_comando_errado(_regiao_atual_do_jogador)
 
 	if veredicto.delta_pontos != 0:
 		Sessao.somar_pontos(veredicto.delta_pontos)
@@ -346,7 +373,7 @@ func _replanejar_caminho_do_cachorro() -> void:
 	if _encerrada:
 		return
 	var caminho: PackedVector2Array = _navegacao.calcular_caminho(
-		cachorro.global_position, jogador.global_position)
+		cachorro.global_position, _alvo_de_perseguicao())
 	cachorro.definir_caminho(caminho)
 	if _depuracao_astar_visivel:
 		queue_redraw()
@@ -355,9 +382,6 @@ func _replanejar_caminho_do_cachorro() -> void:
 ## CACHORRO_DETECTOU/CACHORRO_PERDEU sao emitidos na borda de subida/descida da
 ## linha de visao, checada a cada quadro (a deteccao tem que ser tao responsiva
 ## quanto o jogo, mesmo com o replanejamento do A* rodando so por intervalo).
-## No Marco 1 o cachorro ja persegue a posicao real do jogador sempre -- nao ha
-## Diretor ainda (Marco 2); a linha de visao aqui so controla estes dois
-## eventos, preparando o terreno para quando ela tambem decidir o alvo.
 func _atualizar_deteccao_do_cachorro() -> void:
 	var visivel: bool = cachorro.tem_linha_de_visao(jogador.global_position)
 	if visivel and not _cachorro_com_linha_de_visao:
@@ -366,6 +390,132 @@ func _atualizar_deteccao_do_cachorro() -> void:
 	elif not visivel and _cachorro_com_linha_de_visao:
 		Telemetria.registrar_evento(CatalogoEventos.CACHORRO_PERDEU, {}, configuracao.numero)
 	_cachorro_com_linha_de_visao = visivel
+
+
+## O alvo que o A* persegue. Linha de visao direta sempre vence (o cachorro
+## "viu" o jogador de verdade -- nao ha razao para fingir que nao sabe onde ele
+## esta). Sem linha de visao: se ha Diretor (Marco 2, fase com regioes), o alvo
+## e a crenca dele; sem Diretor (Marco 1, fase_01), o cachorro continua
+## perseguindo a posicao real sempre -- o mesmo comportamento original do
+## Marco 1, preservado de proposito (docs/decisoes/0007, decisao 1).
+func _alvo_de_perseguicao() -> Vector2:
+	if cachorro.tem_linha_de_visao(jogador.global_position):
+		return jogador.global_position
+	if _diretor == null:
+		return jogador.global_position
+	var regiao: Area2D = _diretor.regiao_mais_provavel()
+	return _alvo_de_varredura(regiao) if regiao != null else cachorro.global_position
+
+
+## Comportamento de caca local (secao 7 do CLAUDE.md): ao chegar perto do
+## centro da regiao-alvo do Diretor, o cachorro varre alguns pontos ao redor
+## em vez de ficar parado em cima do centro -- ate ganhar contato visual ou o
+## Diretor mudar de alvo (o que reseta a varredura via alvo_alterado).
+const _OFFSETS_DE_VARREDURA: Array[Vector2] = [
+	Vector2.ZERO, Vector2(16, 0), Vector2(0, 16), Vector2(-16, 0), Vector2(0, -16),
+]
+
+
+func _alvo_de_varredura(regiao: Area2D) -> Vector2:
+	var centro: Vector2 = regiao.global_position
+	var ponto: Vector2 = centro + _OFFSETS_DE_VARREDURA[_indice_varredura % _OFFSETS_DE_VARREDURA.size()]
+	if cachorro.global_position.distance_to(ponto) <= cachorro.tolerancia_de_chegada:
+		_indice_varredura += 1
+		ponto = centro + _OFFSETS_DE_VARREDURA[_indice_varredura % _OFFSETS_DE_VARREDURA.size()]
+	return ponto
+
+
+# ---------------------------------------------------------------------------
+# Diretor de IA (Marco 2): regioes, pistas e decaimento
+# ---------------------------------------------------------------------------
+
+## Regioes sao dado de cena (Area2D colocados pelo editor em Marcadores/Regioes
+## de cada fase_0N.tscn), nunca hardcoded aqui -- e a mesma logica de
+## "matriz de dados" do FaseConfig. Fase sem nenhuma regiao (fase_01.tscn) fica
+## sem Diretor de proposito: ver _alvo_de_perseguicao.
+func _configurar_diretor() -> void:
+	var regioes: Array[Area2D] = []
+	for filho: Node in regioes_no.get_children():
+		if filho is Area2D:
+			regioes.append(filho as Area2D)
+			(filho as Area2D).body_entered.connect(_ao_jogador_entrar_na_regiao.bind(filho))
+			(filho as Area2D).body_exited.connect(_ao_jogador_sair_da_regiao.bind(filho))
+
+	if regioes.is_empty():
+		return
+
+	_diretor = Diretor.new(
+		regioes,
+		configuracao.peso_pista_comando_errado,
+		configuracao.peso_pista_movimento,
+		configuracao.peso_pista_captura,
+		configuracao.decaimento_crenca_por_s)
+	_diretor.alvo_alterado.connect(func(_r: Area2D) -> void: _indice_varredura = 0)
+
+	_temporizador_diretor = Timer.new()
+	_temporizador_diretor.name = "TemporizadorDoDiretor"
+	_temporizador_diretor.wait_time = maxf(0.05, configuracao.intervalo_decisao_diretor_s)
+	_temporizador_diretor.autostart = true
+	_temporizador_diretor.timeout.connect(_ao_vencer_temporizador_do_diretor)
+	add_child(_temporizador_diretor)
+
+
+func _ao_vencer_temporizador_do_diretor() -> void:
+	if _encerrada or _diretor == null:
+		return
+	_diretor.decair(_temporizador_diretor.wait_time)
+
+
+## Pista fraca, disparada uma vez por entrada na regiao (nao a cada quadro
+## parado dentro dela) -- reforcar continuamente equivaleria a entregar a
+## posicao quase exata ao Diretor, o que contradiria a propria premissa da
+## informacao imperfeita.
+func _ao_jogador_entrar_na_regiao(corpo: Node2D, regiao: Area2D) -> void:
+	if not (corpo is Jogador):
+		return
+	_regiao_atual_do_jogador = regiao
+	if _diretor != null:
+		_diretor.pista_movimento(regiao)
+
+
+func _ao_jogador_sair_da_regiao(corpo: Node2D, regiao: Area2D) -> void:
+	if not (corpo is Jogador):
+		return
+	if _regiao_atual_do_jogador == regiao:
+		_regiao_atual_do_jogador = null
+
+
+# ---------------------------------------------------------------------------
+# Painel de demonstracao da cifra (Marco 2)
+# ---------------------------------------------------------------------------
+
+## Mostra um exemplo FIXO (FaseConfig.texto/chave_exemplo_demonstracao), nunca
+## o desafio corrente -- o painel ensina o MECANISMO da cifra, nao e um jeito
+## de espiar a chave que resolve o desafio ativo (isso ja existe, com custo:
+## o verbo "dica"). Ver docs/decisoes/0008-vigenere-e-painel-de-demonstracao.md.
+func _alternar_painel_de_demonstracao() -> void:
+	if painel_cifra.esta_aberto():
+		painel_cifra.fechar()
+		return
+
+	if configuracao.texto_exemplo_demonstracao.is_empty() \
+			or configuracao.chave_exemplo_demonstracao.is_empty():
+		terminal.escrever("esta fase nao tem exemplo de demonstracao configurado.")
+		return
+
+	var cifra: Cifra = FabricaCifra.para_algoritmo(configuracao.algoritmo)
+	if cifra == null:
+		terminal.escrever("nao ha demonstracao disponivel para o algoritmo '%s'." % configuracao.algoritmo)
+		return
+
+	painel_cifra.abrir(
+		"como o %s desloca cada letra" % configuracao.algoritmo,
+		configuracao.texto_exemplo_demonstracao,
+		configuracao.chave_exemplo_demonstracao,
+		cifra)
+	Telemetria.registrar_evento(CatalogoEventos.CIFRA_DEMONSTRADA, {
+		"algoritmo": configuracao.algoritmo,
+	}, configuracao.numero)
 
 
 # ---------------------------------------------------------------------------

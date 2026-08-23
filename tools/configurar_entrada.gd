@@ -29,6 +29,10 @@ const ACOES: Dictionary = {
 	# demonstracao da IA para a banca (apontamento 7), entao tem tecla propria
 	# desde o Marco 0.
 	"alternar_depuracao": [KEY_F3],
+	# Alterna o painel de demonstracao da cifra (CIFRA_DEMONSTRADA, Marco 2).
+	# Mostra um exemplo FIXO (FaseConfig.texto/chave_exemplo_demonstracao), nao
+	# o desafio corrente -- ver docs/decisoes/0008-vigenere-e-painel-de-demonstracao.md.
+	"mostrar_demonstracao": [KEY_F4],
 }
 
 

@@ -31,6 +31,32 @@ func _desafio() -> DesafioConfig:
 	return desafio
 
 
+func _configuracao_vigenere() -> FaseConfig:
+	var config := FaseConfig.new()
+	config.numero = 2
+	config.titulo = "labirinto de Vigenere"
+	config.algoritmo = "VIGENERE"
+	config.verbos_permitidos = ["cifrar", "decifrar", "dica", "status"]
+	config.faixa_chave_minima = 3
+	config.faixa_chave_maxima = 8
+	config.duracao_cifra_s = 12.0
+	return config
+
+
+func _desafio_vigenere() -> DesafioConfig:
+	var desafio := DesafioConfig.new()
+	desafio.identificador = "vigenere-01"
+	desafio.enunciado = "proteja o pacote com uma chave alfabetica."
+	desafio.texto_claro = "pacote"
+	desafio.chave_esperada = "gato"
+	desafio.verbo_esperado = "cifrar"
+	desafio.dica = "a chave e um bicho de estimacao."
+	desafio.pontos_acerto = 100
+	desafio.pontos_acerto_de_primeira = 150
+	desafio.custo_da_dica = 25
+	return desafio
+
+
 func _resultado(texto: String) -> ResultadoComando:
 	var resultado: ResultadoComando = AnalisadorComando.analisar(texto)
 	assert(resultado.passou_lexico_e_sintatico(), "teste mal escrito: '%s' deveria ser valido" % texto)
@@ -131,3 +157,36 @@ func teste_hash_e_verificar_ainda_nao_implementados() -> void:
 		config, _desafio(), 1, _resultado("hash pacote"))
 	afirmar_igual(veredicto.resultado, CatalogoResultados.ERRO_SEMANTICO, "SHA-256 chega no Marco 3")
 	afirmar_igual(veredicto.codigo_erro, "verbo_nao_implementado_nesta_fase", "codigo fixo")
+
+
+# ---------------------------------------------------------------------------
+# Vigenere (Marco 2) -- o MESMO resolvedor, sem alterar uma linha alem do
+# dispatch de algoritmo (ResolvedorComando._cifra_para_algoritmo). Se isto nao
+# fosse verdade, a generalizacao do Marco 1 teria falhado.
+# ---------------------------------------------------------------------------
+
+func teste_vigenere_chave_numerica_e_sintaticamente_invalida() -> void:
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_vigenere(), _desafio_vigenere(), 1, _resultado("cifrar pacote chave=3"))
+	afirmar_igual(veredicto.codigo_erro, "chave_invalida", "Vigenere exige chave alfabetica, nao numerica")
+
+
+func teste_vigenere_faixa_e_comprimento_nao_valor() -> void:
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_vigenere(), _desafio_vigenere(), 1, _resultado("cifrar pacote chave=ab"))
+	afirmar_igual(veredicto.resultado, CatalogoResultados.ERRO_SEMANTICO, "'ab' tem 2 letras, faixa e 3..8")
+	afirmar_igual(veredicto.codigo_erro, "chave_fora_da_faixa", "codigo fixo, mesmo criterio de Cesar")
+
+
+func teste_vigenere_chave_incorreta() -> void:
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_vigenere(), _desafio_vigenere(), 1, _resultado("cifrar pacote chave=cao"))
+	afirmar_igual(veredicto.codigo_erro, "chave_incorreta", "'cao' nao e a chave esperada ('gato')")
+
+
+func teste_vigenere_sucesso_ativa_protecao() -> void:
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_vigenere(), _desafio_vigenere(), 1, _resultado("cifrar pacote chave=gato"))
+	afirmar_igual(veredicto.resultado, CatalogoResultados.SUCESSO, "chave correta")
+	afirmar_verdadeiro(veredicto.resolveu_desafio, "desafio resolvido")
+	afirmar_igual(veredicto.delta_pontos, 150, "bonus de primeira tentativa")

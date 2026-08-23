@@ -30,6 +30,22 @@ func chave_sintaticamente_valida(chave: String) -> bool:
 	return chave.is_valid_int()
 
 
+## Para Cesar, "faixa" e o VALOR da chave -- ver Cifra.dentro_da_faixa.
+func dentro_da_faixa(chave: String, minimo: int, maximo: int) -> bool:
+	var valor: int = int(chave)
+	return valor >= minimo and valor <= maximo
+
+
+## O mesmo deslocamento se repete em toda letra -- e a propria licao da fase
+## (deslocamento FIXO, ao contrario de Vigenere).
+func simbolos_de_chave(texto_claro: String, chave: String) -> Array[String]:
+	var simbolos: Array[String] = []
+	for i: int in texto_claro.length():
+		var caractere: String = texto_claro[i]
+		simbolos.append(chave if (caractere >= "a" and caractere <= "z") else "")
+	return simbolos
+
+
 func _chave_para_inteiro(chave: String) -> int:
 	return int(chave)
 

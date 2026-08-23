@@ -47,7 +47,7 @@ func teste_arvore_da_cena_pai() -> void:
 	for caminho: String in [
 		"Labirinto", "Marcadores", "Marcadores/PontoDeEntrada", "Marcadores/PontoDeSaida",
 		"Marcadores/Regioes", "Jogador", "Cachorro", "CameraJogador", "Hud", "Terminal",
-		"TelaCaptura", "AvisoDeConfiguracao", "AvisoDeConfiguracao/Fundo/Texto",
+		"PainelCifra", "TelaCaptura", "AvisoDeConfiguracao", "AvisoDeConfiguracao/Fundo/Texto",
 	]:
 		afirmar_nao_nulo(fase.get_node_or_null(caminho), "fase_base tem o no %s" % caminho)
 

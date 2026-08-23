@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://cenas/base/fase_base.gd" id="1_fase"]
 [ext_resource type="TileSet" path="res://recursos/tilesets/labirinto.tres" id="2_tileset"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://cenas/base/terminal.tscn" id="5_terminal"]
 [ext_resource type="PackedScene" path="res://cenas/ui/hud.tscn" id="6_hud"]
 [ext_resource type="PackedScene" path="res://cenas/ui/tela_captura.tscn" id="7_captura"]
+[ext_resource type="PackedScene" path="res://cenas/base/painel_cifra.tscn" id="8_painel_cifra"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_saida"]
 size = Vector2(14, 14)
@@ -45,6 +46,8 @@ position_smoothing_speed = 8.0
 [node name="Hud" parent="." instance=ExtResource("6_hud")]
 
 [node name="Terminal" parent="." instance=ExtResource("5_terminal")]
+
+[node name="PainelCifra" parent="." instance=ExtResource("8_painel_cifra")]
 
 [node name="TelaCaptura" parent="." instance=ExtResource("7_captura")]
 

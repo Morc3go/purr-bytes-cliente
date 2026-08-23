@@ -47,6 +47,14 @@ extends Resource
 
 @export_multiline var briefing_pedagogico: String = ""
 
+## Exemplo FIXO usado pelo painel de demonstração (CIFRA_DEMONSTRADA, Marco 2)
+## -- de propósito independente do desafio corrente: o painel ensina o
+## MECANISMO da cifra, não é um jeito de espiar a chave que resolve o desafio
+## ativo (isso já existe, e custa pontos: o verbo "dica"). Vazio nesta fase
+## (Marco 1) porque o painel não é usado até o Marco 2 -- ver ADR 0008.
+@export var texto_exemplo_demonstracao: String = ""
+@export var chave_exemplo_demonstracao: String = ""
+
 @export_group("Economia de erro")
 ## Duracao da protecao apos um comando correto. Limitada de proposito: o jogador
 ## tem que reaplicar a cifra, e e isso que produz repeticao com intencao.
@@ -60,6 +68,10 @@ extends Resource
 ## CLAUDE.md exige que todo parametro do Diretor seja ajustavel no Inspector.
 @export_range(0.0, 5.0, 0.05) var peso_pista_comando_errado: float = 1.0
 @export_range(0.0, 5.0, 0.05) var peso_pista_movimento: float = 0.25
+## Reforço de crença na região onde a captura acabou de acontecer -- posição
+## real e conhecida no instante da captura (é um evento físico, não uma
+## suposição), então é uma pista muito mais forte que um comando errado.
+@export_range(0.0, 5.0, 0.05) var peso_pista_captura: float = 2.0
 @export_range(0.0, 1.0, 0.01) var decaimento_crenca_por_s: float = 0.1
 @export_range(0.0, 30.0, 0.1) var intervalo_decisao_diretor_s: float = 2.0
 

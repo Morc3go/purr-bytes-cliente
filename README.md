@@ -99,8 +99,22 @@ sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
 |---|---|
 | 0 — Fundação | ✅ concluído |
 | 1 — Fase 1: César, labirinto e A\* | ✅ concluído |
-| 2 — Fase 2: Vigenère e Diretor de IA | ⏳ próximo |
-| 3 — Fase 3: SHA-256 e telemetria HTTP | 🔜 |
+| 2 — Fase 2: Vigenère e Diretor de IA | ✅ concluído |
+| 3 — Fase 3: SHA-256 e telemetria HTTP | ⏳ próximo |
+
+### Pendências conhecidas do Marco 2
+
+- O labirinto de `fase_02.tscn` foi pintado por código
+  (`tools/gerar_fase_02.gd`), mesma técnica da fase 1 -- vale abrir no editor
+  para conferir visualmente e trocar a arte placeholder quando ela existir.
+- As 4 regiões do Diretor (`Marcadores/Regioes` em `fase_02.tscn`) cobrem os
+  quadrantes do mapa por retângulo, sem alinhar pixel a pixel com as paredes
+  do labirinto -- funcional (é só o que decide "o jogador está nesta região"
+  para o Diretor, não um limite físico), mas pode valer a pena ajustar no
+  editor depois que a arte definitiva mostrar a topologia real do mapa.
+- Detalhe completo das decisões do Diretor e de Vigenère em
+  [ADR 0002](docs/decisoes/0002-diretor-ia.md) e
+  [ADR 0008](docs/decisoes/0008-vigenere-e-painel-de-demonstracao.md).
 
 ### Pendências conhecidas do Marco 1
 
