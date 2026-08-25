@@ -253,6 +253,35 @@ Garantias do cliente, todas cobertas por teste:
 Nota: `tentativa_comando` **não tem** coluna `sequencia`. Ordem e detecção de
 perda vivem em `evento_telemetria`.
 
+### Tentativas vindas da caixa de puzzle do pacote
+
+Desde o ADR 0010, a escolha feita na caixa de puzzle de um pacote também entra
+por esta rota — **não** há tipo de evento novo (o catálogo é fechado pelo banco).
+Elas se distinguem pelo prefixo `pacote-` em `desafio`, e por `tokens` vazio
+(a resposta é um clique, não uma linha de comando):
+
+```json
+{
+  "id_tentativa": "6d1cb1a0-2b17-4b1a-9f0d-2b2f2b5aa771",
+  "id_sessao": "ebc7847c-3345-4a19-bd83-852b01fe6a46",
+  "fase": 1,
+  "desafio": "pacote-cesar-ne",
+  "entrada_normalizada": "VIGENERE",
+  "tokens": [],
+  "resultado": "ERRO_SEMANTICO",
+  "codigo_erro": "opcao_incorreta",
+  "tempo_resposta_ms": 5120,
+  "numero_tentativa": 1,
+  "ocorrido_em": "2026-08-25T19:41:02.311Z"
+}
+```
+
+`entrada_normalizada` é o código do algoritmo escolhido (`CESAR`, `VIGENERE`,
+`SHA256`, `AES`); acerto sai como `SUCESSO` com `codigo_erro` nulo. A distinção
+importa para a análise: `pacote-*` mede **escolher a ferramenta certa**, as
+demais linhas medem **operar a cifra certa** — são competências diferentes e o
+pré/pós-teste mede as duas.
+
 ---
 
 ## 5. `POST /v1/sessoes/{id}/encerrar`
