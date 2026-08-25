@@ -104,15 +104,20 @@ static func _resolver_cifra(
 		return VeredictoComando.semantico(_CODIGO_CHAVE_AUSENTE,
 			"faltou 'chave=<valor>'.")
 
-	var cifra: Cifra = FabricaCifra.para_algoritmo(configuracao.algoritmo)
+	# O algoritmo vem do DESAFIO (que por padrao herda o da fase), e nao da fase
+	# direto: uma fase pode oferecer mais de uma cifra para o jogador ter como
+	# se proteger de cachorros de cores diferentes -- ver DesafioConfig.algoritmo.
+	var algoritmo: String = desafio.algoritmo_efetivo(configuracao.algoritmo)
+
+	var cifra: Cifra = FabricaCifra.para_algoritmo(algoritmo)
 	if cifra == null:
 		return VeredictoComando.semantico(_CODIGO_ALGORITMO_NAO_SUPORTADO,
-			"algoritmo '%s' nao esta disponivel nesta fase." % configuracao.algoritmo)
+			"algoritmo '%s' nao esta disponivel nesta fase." % algoritmo)
 
 	var chave: String = ast.par_chave("chave")
 	if not cifra.chave_sintaticamente_valida(chave):
 		return VeredictoComando.semantico(_CODIGO_CHAVE_INVALIDA,
-			"'%s' nao e uma chave valida para %s." % [chave, configuracao.algoritmo])
+			"'%s' nao e uma chave valida para %s." % [chave, algoritmo])
 
 	if not cifra.dentro_da_faixa(chave, configuracao.faixa_chave_minima, configuracao.faixa_chave_maxima):
 		return VeredictoComando.semantico(_CODIGO_CHAVE_FORA_DA_FAIXA,
@@ -124,9 +129,11 @@ static func _resolver_cifra(
 			"essa chave nao protege o pacote deste desafio.")
 
 	var veredicto: VeredictoComando = VeredictoComando.sucesso(
-		"pacote protegido. o cachorro nao reconhece mais o conteudo.")
+		"pacote protegido em %s. os cachorros %s nao reconhecem mais o conteudo -- os das outras cores, sim."
+		% [LegendaCores.nome(algoritmo), LegendaCores.nome_da_cor(algoritmo)])
 	veredicto.resolveu_desafio = true
 	veredicto.duracao_protecao_s = configuracao.duracao_cifra_s
+	veredicto.algoritmo_protecao = algoritmo
 	veredicto.delta_pontos = desafio.pontos_acerto_de_primeira if numero_tentativa <= 1 \
 		else desafio.pontos_acerto
 	return veredicto
@@ -197,6 +204,7 @@ static func _resolver_verificar(
 		"integridade confirmada. o pacote pode ser entregue.")
 	veredicto.resolveu_desafio = true
 	veredicto.duracao_protecao_s = configuracao.duracao_cifra_s
+	veredicto.algoritmo_protecao = desafio.algoritmo_efetivo(configuracao.algoritmo)
 	veredicto.delta_pontos = desafio.pontos_acerto_de_primeira if numero_tentativa <= 1 \
 		else desafio.pontos_acerto
 	return veredicto

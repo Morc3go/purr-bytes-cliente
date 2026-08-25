@@ -22,6 +22,7 @@ const MODO_HTTP: String = "HTTP"
 const _SECAO_TELEMETRIA: String = "telemetria"
 const _SECAO_PESQUISA: String = "pesquisa"
 const _SECAO_DIAGNOSTICO: String = "diagnostico"
+const _SECAO_JOGO: String = "jogo"
 
 ## MOCK grava em disco local, HTTP fala com a API. A troca entre os dois e uma
 ## linha do config.cfg -- nunca uma alteracao de codigo (secao 1 do CLAUDE.md).
@@ -36,6 +37,18 @@ var versao_jogo: String = ""
 var tamanho_lote: int = 50
 var intervalo_envio_s: float = 5.0
 var nivel_log: String = "INFO"
+
+## Modo de treino de agente (aprendizado por reforco): desliga as mecanicas que
+## existem para o JOGADOR HUMANO e nao para um agente -- a caixa de puzzle do
+## pacote (que exige leitura e clique) e a exigencia de que a cifra ativa case
+## com a cor do cachorro. Com modo_treino ligado o pacote e coletado ao encostar
+## e qualquer cifra ativa protege, que e o contrato antigo do ambiente.
+##
+## Fica aqui, e nao numa constante de fase_base.gd, porque trocar de modo tem
+## que ser uma linha do config.cfg -- pelo mesmo motivo de modo_telemetria:
+## quem treina o agente nao deveria precisar reexportar o jogo. E false por
+## padrao: o jogo distribuido ao participante da pesquisa e sempre o humano.
+var modo_treino: bool = false
 
 ## Derivado, nao configuravel: alimenta sessao_jogo.plataforma (VARCHAR(30)).
 ## OS.get_name() devolve "Windows", "Linux", "macOS", "Android", "iOS" ou "Web"
@@ -77,6 +90,7 @@ func carregar(caminho: String) -> void:
 	id_sujeito = String(arquivo.get_value(_SECAO_PESQUISA, "id_sujeito", id_sujeito))
 	nivel_log = String(arquivo.get_value(
 		_SECAO_DIAGNOSTICO, "nivel_log", nivel_log)).to_upper()
+	modo_treino = bool(arquivo.get_value(_SECAO_JOGO, "modo_treino", modo_treino))
 
 	_validar()
 	_aplicar_nivel_de_log()
@@ -93,6 +107,7 @@ func salvar(caminho: String = "") -> Error:
 	arquivo.set_value(_SECAO_TELEMETRIA, "intervalo_envio_s", intervalo_envio_s)
 	arquivo.set_value(_SECAO_PESQUISA, "id_sujeito", id_sujeito)
 	arquivo.set_value(_SECAO_DIAGNOSTICO, "nivel_log", nivel_log)
+	arquivo.set_value(_SECAO_JOGO, "modo_treino", modo_treino)
 
 	var erro: Error = arquivo.save(destino)
 	if erro != OK:
@@ -117,6 +132,7 @@ func resumo_seguro() -> Dictionary:
 		"tamanho_lote": tamanho_lote,
 		"intervalo_envio_s": intervalo_envio_s,
 		"nivel_log": nivel_log,
+		"modo_treino": modo_treino,
 	}
 
 

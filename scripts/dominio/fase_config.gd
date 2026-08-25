@@ -27,6 +27,18 @@ extends Resource
 
 @export var desafios: Array[DesafioConfig] = []
 
+## Cachorros da fase, um por cor/algoritmo exigido. Vazia = a fase usa apenas o
+## cachorro que ja existe em fase_base.tscn, exigindo o algoritmo da propria
+## fase -- e o comportamento anterior a esta lista, preservado de proposito para
+## nenhuma fase quebrar por falta de dado novo.
+@export var cachorros: Array[CachorroConfig] = []
+
+## Pacotes de dados espalhados pelo labirinto. Cada um abre uma pergunta curta
+## (cenas/base/caixa_puzzle.tscn) e so e coletado com a resposta certa; a porta
+## de saida fica trancada ate todos serem coletados. Lista vazia = porta
+## destrancada desde o inicio, que e o comportamento anterior a esta mecanica.
+@export var pacotes: Array[PacoteConfig] = []
+
 @export_range(1, 10) var vidas_iniciais: int = 3
 
 @export_range(0.0, 200.0, 1.0) var velocidade_cachorro: float = 45.0
@@ -113,6 +125,55 @@ func problemas() -> PackedStringArray:
 			lista.append("desafio '%s' espera o verbo '%s', que nao esta em verbos_permitidos"
 				% [desafio.identificador, desafio.verbo_esperado])
 
+	var identificadores_de_cachorro: Dictionary = {}
+	var algoritmos_disponiveis: PackedStringArray = algoritmos_dos_desafios()
+	for i: int in cachorros.size():
+		var cachorro: CachorroConfig = cachorros[i]
+		if cachorro == null:
+			lista.append("cachorro %d nulo" % i)
+			continue
+		for problema: String in cachorro.problemas():
+			lista.append(problema)
+		if identificadores_de_cachorro.has(cachorro.identificador):
+			lista.append("identificador de cachorro repetido: %s" % cachorro.identificador)
+		identificadores_de_cachorro[cachorro.identificador] = true
+
+		# A regra de justica da mecanica de cores: so entra na fase o cachorro
+		# cuja cifra o jogador consegue produzir AQUI. Um cachorro azul numa
+		# fase que so ensina Cesar seria uma captura inevitavel -- e um erro de
+		# configuracao, nao de habilidade, entao ele reprova a fase inteira em
+		# vez de virar frustracao no laboratorio da escola.
+		if not algoritmos_disponiveis.has(cachorro.algoritmo_exigido):
+			lista.append(("cachorro '%s' exige %s, mas nenhum desafio desta fase produz "
+				+ "essa cifra (disponiveis: %s)") % [
+					cachorro.identificador, cachorro.algoritmo_exigido,
+					", ".join(algoritmos_disponiveis)])
+
+	var identificadores_de_pacote: Dictionary = {}
+	for i: int in pacotes.size():
+		var pacote: PacoteConfig = pacotes[i]
+		if pacote == null:
+			lista.append("pacote %d nulo" % i)
+			continue
+		for problema: String in pacote.problemas():
+			lista.append(problema)
+		if identificadores_de_pacote.has(pacote.identificador):
+			lista.append("identificador de pacote repetido: %s" % pacote.identificador)
+		identificadores_de_pacote[pacote.identificador] = true
+
+	return lista
+
+
+## Algoritmos que o jogador consegue ativar nesta fase, um por desafio (cada
+## desafio herda o algoritmo da fase quando nao declara o proprio).
+func algoritmos_dos_desafios() -> PackedStringArray:
+	var lista := PackedStringArray()
+	for desafio: DesafioConfig in desafios:
+		if desafio == null:
+			continue
+		var algoritmo_do_desafio: String = desafio.algoritmo_efetivo(algoritmo)
+		if not lista.has(algoritmo_do_desafio):
+			lista.append(algoritmo_do_desafio)
 	return lista
 
 

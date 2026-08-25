@@ -42,7 +42,7 @@ func teste_fase_02_carrega_configurada_com_diretor_e_4_regioes() -> void:
 
 	afirmar_falso(_fase.aviso.visible, "FaseConfig gerado por gerar_fase_02.gd e valido")
 	afirmar_igual(_fase.configuracao.algoritmo, "VIGENERE", "fase 2 e Vigenere")
-	afirmar_igual(_fase.configuracao.desafios.size(), 2, "dois desafios")
+	afirmar_igual(_fase.configuracao.desafios.size(), 3, "tres desafios: dois de Vigenere mais a revisao de Cesar do cachorro verde")
 	afirmar_igual(_fase.regioes_no.get_child_count(), 4, "4 regioes definidas na cena")
 	afirmar_nao_nulo(_fase._diretor, "Diretor criado porque a fase tem regioes")
 
@@ -142,7 +142,7 @@ func teste_diretor_nao_converge_para_posicao_real_sem_pista_nem_visao() -> void:
 	_fase.cachorro.parar()
 	_fase.cachorro.global_position = Vector2(3000, 3000)
 
-	var alvo: Vector2 = _fase._alvo_de_perseguicao()
+	var alvo: Vector2 = _fase._alvo_de_perseguicao(_fase.cachorro)
 	afirmar_igual(alvo, _fase._diretor.alvo_atual(), "alvo vem do Diretor, nao do jogador")
 	afirmar_diferente(alvo, _fase.jogador.global_position,
 		"sem pista nem visao, o alvo nao e a posicao exata do jogador")
@@ -151,7 +151,7 @@ func teste_diretor_nao_converge_para_posicao_real_sem_pista_nem_visao() -> void:
 	# nem visao do cachorro -- o alvo tem que continuar parado no mesmo lugar.
 	for deslocamento: Vector2 in [Vector2(4, 0), Vector2(0, 6), Vector2(-3, 2)]:
 		_fase.jogador.global_position += deslocamento
-		var novo_alvo: Vector2 = _fase._alvo_de_perseguicao()
+		var novo_alvo: Vector2 = _fase._alvo_de_perseguicao(_fase.cachorro)
 		afirmar_igual(novo_alvo, alvo,
 			"o jogador se moveu dentro da mesma regiao, mas o alvo do cachorro nao mudou")
 
@@ -189,7 +189,7 @@ func teste_linha_de_visao_sobrepoe_o_alvo_do_diretor() -> void:
 	# "ver o jogador de verdade" sempre vence a crenca.
 	_fase.cachorro.parar()
 	_fase.cachorro.global_position = _fase.jogador.global_position + Vector2(16, 0)
-	afirmar_igual(_fase._alvo_de_perseguicao(), _fase.jogador.global_position,
+	afirmar_igual(_fase._alvo_de_perseguicao(_fase.cachorro), _fase.jogador.global_position,
 		"linha de visao direta sobrepoe o alvo do Diretor")
 
 

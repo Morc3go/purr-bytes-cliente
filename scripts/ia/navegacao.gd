@@ -54,13 +54,19 @@ func calcular_caminho(origem_mundo: Vector2, destino_mundo: Vector2) -> PackedVe
 	if _grade.is_point_solid(celula_destino):
 		return PackedVector2Array()
 
-	var caminho_local: PackedVector2Array = _grade.get_point_path(celula_origem, celula_destino)
+	# get_id_path (celulas), e nao get_point_path (pontos): AStarGrid2D coloca o
+	# ponto de uma celula no CANTO dela (celula * cell_size + offset, com offset
+	# zero por padrao), enquanto TileMapLayer.map_to_local devolve o CENTRO
+	# (celula * tile_size + tile_size/2). A diferenca e meia celula na diagonal,
+	# o que punha cada waypoint em cima do canto de uma parede: o corpo do
+	# cachorro (10x10 num tile de 16) colidia, move_and_slide deslizava e ele
+	# nunca chegava a tolerancia_de_chegada -- o cachorro travava no primeiro
+	# waypoint. Converter celula por celula com map_to_local elimina a classe
+	# inteira do problema, sem depender de acertar o offset da grade.
+	var caminho_em_celulas: Array[Vector2i] = _grade.get_id_path(celula_origem, celula_destino)
 	var caminho_mundo := PackedVector2Array()
-	for ponto: Vector2 in caminho_local:
-		# Os pontos do AStarGrid2D ja estao no espaco local da TileMapLayer
-		# (mesma formula de map_to_local para grade ortogonal): so falta o
-		# transform da propria fase para virar coordenada de mundo.
-		caminho_mundo.append(_labirinto.to_global(ponto))
+	for celula: Vector2i in caminho_em_celulas:
+		caminho_mundo.append(_labirinto.to_global(_labirinto.map_to_local(celula)))
 	return caminho_mundo
 
 

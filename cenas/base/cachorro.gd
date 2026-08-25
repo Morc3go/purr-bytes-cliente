@@ -24,16 +24,42 @@ signal destino_alcancado()
 ## fase (ex: cena de teste isolada).
 @export_range(8.0, 400.0, 1.0) var alcance_deteccao: float = 90.0
 
+## Algoritmo que protege contra ESTE cachorro, e nada mais. A cor que ele veste
+## e LegendaCores.cor(algoritmo_exigido) -- cor e regra sao o mesmo dado, e e
+## por isso que olhar o cachorro basta para saber qual comando digitar.
+## Preenchido por fase_base.gd a partir do CachorroConfig da fase.
+@export_enum("CESAR", "VIGENERE", "SHA256", "AES") var algoritmo_exigido: String = "CESAR"
+
+## Vai para o payload de CACHORRO_DETECTOU/CACHORRO_PERDEU/JOGADOR_CAPTURADO:
+## com varios cachorros em cena, "o cachorro detectou" sem dizer qual nao
+## responde mais nenhuma pergunta de analise.
+var identificador: String = "cachorro"
+
 var _caminho: PackedVector2Array = PackedVector2Array()
 var _indice: int = 0
 
 @onready var _area_de_contato: Area2D = $AreaDeContato
 @onready var _linha_de_visao: RayCast2D = $LinhaDeVisao
+@onready var _sprite: Sprite2D = $Sprite
 
 
 func _ready() -> void:
 	_area_de_contato.body_entered.connect(_ao_encostar)
 	_linha_de_visao.enabled = false  # forcamos o update manualmente em tem_linha_de_visao()
+	definir_algoritmo(algoritmo_exigido)
+
+
+## modulate sobre o mesmo sprite placeholder, e nao uma textura por cor: quando
+## a arte definitiva entrar, um cachorro colorido continua sendo o mesmo desenho
+## tingido -- nao quatro arquivos de imagem para manter em sincronia.
+func definir_algoritmo(algoritmo: String) -> void:
+	algoritmo_exigido = algoritmo
+	if _sprite != null:
+		_sprite.modulate = LegendaCores.cor(algoritmo)
+
+
+func cor() -> Color:
+	return LegendaCores.cor(algoritmo_exigido)
 
 
 func _physics_process(_delta: float) -> void:
@@ -46,9 +72,16 @@ func _physics_process(_delta: float) -> void:
 	if global_position.distance_to(alvo) <= tolerancia_de_chegada:
 		_indice += 1
 		if _indice >= _caminho.size():
+			velocity = Vector2.ZERO
+			move_and_slide()
 			destino_alcancado.emit()
-		return
+			return
+		alvo = _caminho[_indice]
 
+	# Sem o move_and_slide abaixo em TODO quadro, o quadro em que o waypoint e
+	# alcancado ficava sem simulacao de fisica nenhuma -- o corpo "piscava"
+	# parado a cada ponto do caminho, o que num labirinto de tile 16 e um
+	# soluco visivel a cada 16 pixels percorridos.
 	velocity = global_position.direction_to(alvo) * velocidade
 	move_and_slide()
 

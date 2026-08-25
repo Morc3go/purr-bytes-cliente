@@ -49,6 +49,10 @@ const CELULA_SAIDA: Vector2i = Vector2i(17, 11)
 func _initialize() -> void:
 	var desafios: Array[DesafioConfig] = _gerar_desafios()
 	for desafio: DesafioConfig in desafios:
+		# So os desafios de 'verificar' tem prefixo de digest; os de revisao
+		# (cifrar, Cesar e Vigenere) sao resolvidos por chave e nao por prefixo.
+		if desafio.verbo_esperado != "verificar":
+			continue
 		if desafio.resposta_esperada.is_empty() or _e_digito(desafio.resposta_esperada[0]):
 			printerr("desafio '%s': prefixo '%s' comeca com digito -- escolha outro texto_claro"
 				% [desafio.identificador, desafio.resposta_esperada])
@@ -91,7 +95,38 @@ func _gerar_desafios() -> Array[DesafioConfig]:
 	desafio2.pontos_acerto_de_primeira = 150
 	desafio2.custo_da_dica = 25
 
-	return [desafio1, desafio2]
+	# Revisoes das duas fases anteriores. Nao sao enfeite: sao o que permite a
+	# fase final ter os TRES cachorros (verde, azul e roxo) sem nenhum deles ser
+	# impossivel de enganar -- e, de quebra, e a unica fase em que o jogador
+	# precisa escolher entre tres cifras olhando a cor de quem esta vindo, que e
+	# o exercicio final da mecanica.
+	var desafio3 := DesafioConfig.new()
+	desafio3.identificador = "vigenere-revisao"
+	desafio3.enunciado = ("pacote em Vigenere no meio do caminho: cifrar rede chave=gato. "
+		+ "e a cifra que engana o cachorro azul.")
+	desafio3.texto_claro = "rede"
+	desafio3.chave_esperada = "gato"
+	desafio3.verbo_esperado = "cifrar"
+	desafio3.algoritmo = "VIGENERE"
+	desafio3.dica = "Vigenere usa chave-palavra: o deslocamento muda a cada letra."
+	desafio3.pontos_acerto = 80
+	desafio3.pontos_acerto_de_primeira = 120
+	desafio3.custo_da_dica = 25
+
+	var desafio4 := DesafioConfig.new()
+	desafio4.identificador = "cesar-revisao"
+	desafio4.enunciado = ("pacote antigo em Cesar: cifrar chave chave=7. "
+		+ "e a cifra que engana o cachorro verde.")
+	desafio4.texto_claro = "chave"
+	desafio4.chave_esperada = "7"
+	desafio4.verbo_esperado = "cifrar"
+	desafio4.algoritmo = "CESAR"
+	desafio4.dica = "Cesar e deslocamento fixo: a chave e um numero."
+	desafio4.pontos_acerto = 80
+	desafio4.pontos_acerto_de_primeira = 120
+	desafio4.custo_da_dica = 25
+
+	return [desafio1, desafio2, desafio3, desafio4]
 
 
 func _gerar_config(desafios: Array[DesafioConfig]) -> void:
@@ -99,7 +134,9 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	config.numero = 3
 	config.titulo = "o labirinto de SHA-256"
 	config.algoritmo = "SHA256"
-	config.verbos_permitidos = PackedStringArray(["hash", "verificar", "dica", "status"])
+	# "cifrar" volta a lista porque a fase final tem cachorro verde e azul, e as
+	# revisoes de Cesar e Vigenere sao resolvidas com ele.
+	config.verbos_permitidos = PackedStringArray(["hash", "verificar", "cifrar", "dica", "status"])
 	config.vidas_iniciais = 3
 	config.velocidade_cachorro = 44.0
 	config.intervalo_replanejamento_s = 1.0
@@ -113,6 +150,62 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	config.penalidade_captura = 50
 	config.texto_exemplo_demonstracao = "exemplo"
 	config.desafios = desafios
+
+	# Fase final: as tres cores em cena ao mesmo tempo. Cada uma so e enganada
+	# pela cifra correspondente, e as tres estao disponiveis nos desafios acima.
+	var cachorro_roxo := CachorroConfig.new()
+	cachorro_roxo.identificador = "roxo-norte"
+	cachorro_roxo.algoritmo_exigido = "SHA256"
+	cachorro_roxo.celula_inicial = Vector2i(5, 1)
+	cachorro_roxo.ancoras = [Vector2i(1, 1), Vector2i(15, 1), Vector2i(15, 3), Vector2i(3, 3)]
+
+	var cachorro_azul := CachorroConfig.new()
+	cachorro_azul.identificador = "azul-centro"
+	cachorro_azul.algoritmo_exigido = "VIGENERE"
+	cachorro_azul.celula_inicial = Vector2i(9, 5)
+	cachorro_azul.ancoras = [Vector2i(1, 5), Vector2i(17, 5), Vector2i(17, 7), Vector2i(3, 7)]
+
+	var cachorro_verde := CachorroConfig.new()
+	cachorro_verde.identificador = "verde-sul"
+	cachorro_verde.algoritmo_exigido = "CESAR"
+	cachorro_verde.celula_inicial = Vector2i(9, 9)
+	cachorro_verde.ancoras = [Vector2i(1, 9), Vector2i(15, 9), Vector2i(15, 11), Vector2i(3, 11)]
+	cachorro_verde.velocidade = 36.0
+
+	config.cachorros = [cachorro_roxo, cachorro_azul, cachorro_verde]
+
+	# Fase final: as perguntas separam cifra de hash, que e a confusao que a
+	# fase 3 existe para desfazer.
+	var pacote_norte := PacoteConfig.new()
+	pacote_norte.identificador = "sha-norte"
+	pacote_norte.celula = Vector2i(15, 1)
+	pacote_norte.enunciado = ("o pacote chegou com um resumo anexado e voce precisa saber se o "
+		+ "conteudo foi adulterado. que ferramenta responde isso?")
+	pacote_norte.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
+	pacote_norte.resposta_correta = "SHA256"
+	pacote_norte.explicacao_correta = ("SHA-256 e de mao unica: nao esconde o conteudo, prova que "
+		+ "ele nao mudou. e integridade, nao sigilo.")
+
+	var pacote_centro := PacoteConfig.new()
+	pacote_centro.identificador = "sha-centro"
+	pacote_centro.celula = Vector2i(9, 5)
+	pacote_centro.enunciado = ("qual destas NAO da para desfazer para recuperar o texto "
+		+ "original, nem com a chave certa?")
+	pacote_centro.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
+	pacote_centro.resposta_correta = "SHA256"
+	pacote_centro.explicacao_correta = ("nao existe 'dehash'. cifra se desfaz com a chave; hash, nunca.")
+
+	var pacote_sul := PacoteConfig.new()
+	pacote_sul.identificador = "vigenere-sul"
+	pacote_sul.celula = Vector2i(3, 11)
+	pacote_sul.enunciado = ("um cachorro AZUL apareceu no corredor de baixo. qual das tres "
+		+ "protege o pacote dele?")
+	pacote_sul.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
+	pacote_sul.resposta_correta = "VIGENERE"
+	pacote_sul.explicacao_correta = ("azul = Vigenere. e repare: hash nao serve para se esconder "
+		+ "de cachorro nenhum, so o roxo se deixa enganar por ele.")
+
+	config.pacotes = [pacote_norte, pacote_centro, pacote_sul]
 
 	var problemas: PackedStringArray = config.problemas()
 	if not problemas.is_empty():

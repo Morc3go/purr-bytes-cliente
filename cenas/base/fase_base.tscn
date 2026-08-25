@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://cenas/base/fase_base.gd" id="1_fase"]
 [ext_resource type="TileSet" path="res://recursos/tilesets/labirinto.tres" id="2_tileset"]
@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" path="res://cenas/ui/hud.tscn" id="6_hud"]
 [ext_resource type="PackedScene" path="res://cenas/ui/tela_captura.tscn" id="7_captura"]
 [ext_resource type="PackedScene" path="res://cenas/base/painel_cifra.tscn" id="8_painel_cifra"]
+[ext_resource type="PackedScene" path="res://cenas/base/caixa_puzzle.tscn" id="9_caixa"]
+[ext_resource type="Script" path="res://cenas/base/porta.gd" id="10_porta"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_saida"]
 size = Vector2(14, 14)
@@ -27,9 +29,12 @@ position = Vector2(24, 24)
 position = Vector2(120, 88)
 collision_layer = 0
 collision_mask = 2
+script = ExtResource("10_porta")
 
 [node name="Colisao" type="CollisionShape2D" parent="Marcadores/PontoDeSaida"]
 shape = SubResource("RectangleShape2D_saida")
+
+[node name="Pacotes" type="Node2D" parent="Marcadores"]
 
 [node name="Regioes" type="Node2D" parent="Marcadores"]
 
@@ -48,6 +53,8 @@ position_smoothing_speed = 8.0
 [node name="Terminal" parent="." instance=ExtResource("5_terminal")]
 
 [node name="PainelCifra" parent="." instance=ExtResource("8_painel_cifra")]
+
+[node name="CaixaPuzzle" parent="." instance=ExtResource("9_caixa")]
 
 [node name="TelaCaptura" parent="." instance=ExtResource("7_captura")]
 

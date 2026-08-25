@@ -16,18 +16,24 @@ const CENA_DA_FASE_1: String = "res://cenas/fases/fase_01.tscn"
 @onready var _menu: VBoxContainer = $Coluna
 @onready var _painel: PanelContainer = $PainelTelemetria
 @onready var _diagnostico: RichTextLabel = $PainelTelemetria/Margem/Coluna/Diagnostico
+@onready var _painel_tutorial: PanelContainer = $PainelTutorial
+@onready var _legenda: RichTextLabel = $PainelTutorial/Margem/Coluna/Legenda
 @onready var _relogio: Timer = $RelogioDeAtualizacao
 
 
 func _ready() -> void:
 	$Coluna/Botoes/Jogar.pressed.connect(_ao_jogar)
 	$Coluna/Botoes/Telemetria.pressed.connect(_ao_abrir_telemetria)
+	$Coluna/Botoes/Tutorial.pressed.connect(_ao_abrir_tutorial)
 	$Coluna/Botoes/Sair.pressed.connect(_ao_sair)
 	$PainelTelemetria/Margem/Coluna/Acoes/Descarregar.pressed.connect(_ao_descarregar)
 	$PainelTelemetria/Margem/Coluna/Acoes/Fechar.pressed.connect(_ao_fechar_telemetria)
+	$PainelTutorial/Margem/Coluna/Fechar.pressed.connect(_ao_fechar_tutorial)
 	_relogio.timeout.connect(_atualizar_diagnostico)
 
 	_painel.visible = false
+	_painel_tutorial.visible = false
+	_montar_tutorial()
 	$Coluna/Botoes/Jogar.grab_focus()
 
 
@@ -47,6 +53,47 @@ func _ao_fechar_telemetria() -> void:
 	_painel.visible = false
 	_relogio.stop()
 	$Coluna/Botoes/Telemetria.grab_focus()
+
+
+func _ao_abrir_tutorial() -> void:
+	_painel_tutorial.visible = true
+	$PainelTutorial/Margem/Coluna/Fechar.grab_focus()
+
+
+func _ao_fechar_tutorial() -> void:
+	_painel_tutorial.visible = false
+	$Coluna/Botoes/Tutorial.grab_focus()
+
+
+## A tabela e montada de LegendaCores, nunca escrita a mao aqui: o tutorial e a
+## "cola" que o jogador consulta antes de encarar os cachorros, e uma cola que
+## discorda do jogo e pior do que nenhuma. Mudar uma cor em LegendaCores muda o
+## cachorro, o botao da caixa de puzzle, a HUD e esta tela de uma vez so.
+##
+## AES aparece marcado como fase 4 porque a fase existe no vocabulario do banco
+## e ja tem cor reservada, mas nao esta implementada (secao 11 do CLAUDE.md).
+func _montar_tutorial() -> void:
+	var linhas: PackedStringArray = PackedStringArray([
+		"a cor do cachorro diz qual cifra protege o pacote dele.",
+		"cifrar na cor errada nao protege -- e o mesmo que atravessar em texto claro.",
+		"",
+	])
+
+	for entrada: Dictionary in LegendaCores.entradas():
+		var cor: Color = entrada["cor"]
+		var rotulo: String = "%s = %s" % [String(entrada["nome_da_cor"]), String(entrada["nome"])]
+		if String(entrada["algoritmo"]) == "AES":
+			rotulo += "  (fase 4, ainda nao jogavel)"
+		linhas.append("[color=#%s][b]%s[/b][/color]" % [cor.to_html(false), rotulo])
+		linhas.append("    %s" % String(entrada["explicacao"]))
+		linhas.append("")
+
+	linhas.append("[b]no labirinto[/b]")
+	linhas.append("T abre o terminal - F3 mostra o caminho da IA - ESC sai da fase")
+	linhas.append("pacotes trancam a porta de saida: colete os tres para ela abrir.")
+
+	_legenda.clear()
+	_legenda.append_text("\n".join(linhas))
 
 
 func _ao_descarregar() -> void:

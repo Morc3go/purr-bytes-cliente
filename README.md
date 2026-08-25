@@ -97,6 +97,9 @@ id_sujeito=""                 ; UUID do participante; sem ele a sessão fica ór
 
 [diagnostico]
 nivel_log="INFO"              ; SILENCIO | ERRO | AVISO | INFO | DEPURACAO
+
+[jogo]
+modo_treino=false             ; true desliga as mecânicas de jogador humano (ver abaixo)
 ```
 
 **Antes de cada coleta**, preencher `id_sujeito` com o UUID daquele participante. Se o campo
@@ -108,6 +111,46 @@ sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
 
 ---
 
+## Como se joga
+
+O labirinto é a topologia da rede e o pacote de dados é o que você transporta.
+
+**Cores.** Cada cachorro farejador lê **uma** cifra, e a cor dele diz qual:
+🟢 verde = César · 🔵 azul = Vigenère · 🟣 roxo = SHA-256. Cifrar na cor errada **não
+protege** — é o mesmo que atravessar em texto claro. A tabela completa está no menu, em
+**tutorial de cores**, e sai de `scripts/dominio/legenda_cores.gd`, que é a fonte única
+usada também pelos cachorros, pela HUD e pelos botões do puzzle.
+
+**Terminal** (`T`). É onde a cifra é aplicada: `cifrar <pacote> chave=<valor>`,
+`hash <palavra>`, `verificar <palavra> <prefixo>`, mais `dica` e `status`. Resolver um
+desafio ativa a proteção **na cifra daquele desafio**, por alguns segundos. Os desafios de
+uma fase ciclam, então sempre dá para reaplicar a cifra que a cor exige.
+
+**Pacotes.** Três por fase, espalhados em pontas distantes. Encostar num pacote abre uma
+pergunta curta com botões (qual ferramenta serve para aquele caso). Acertar coleta;
+errar custa pontos e deixa tentar de novo. `ESC` fecha sem responder.
+
+**Porta.** A saída fica trancada até os três pacotes serem coletados — o cadeado é
+visível do outro lado do labirinto. Aberta, ela leva direto à fase seguinte.
+
+**Teclas.** `WASD`/setas movem · `T` terminal · `F3` mostra o caminho do A\* de cada
+cachorro, na cor dele · `ESC` sai da fase (ou fecha o terminal/puzzle).
+
+### Modo de treino (agente de RL)
+
+`modo_treino=true` no `config.cfg` desliga as duas mecânicas que pressupõem um humano —
+e **só** essas duas:
+
+| | `modo_treino=false` (padrão) | `modo_treino=true` |
+|---|---|---|
+| Pacote | abre a caixa de puzzle | coletado ao encostar |
+| Proteção | só a cifra da cor do cachorro | qualquer cifra ativa |
+
+Labirinto, A\*, Diretor, terminal, porta e telemetria são idênticos nos dois modos.
+Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
+
+---
+
 ## Estado
 
 | Marco | Situação |
@@ -116,6 +159,20 @@ sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
 | 1 — Fase 1: César, labirinto e A\* | ✅ concluído |
 | 2 — Fase 2: Vigenère e Diretor de IA | ✅ concluído |
 | 3 — Fase 3: SHA-256 e telemetria HTTP | ✅ concluído |
+| Evolução de gameplay (modo humano) | ✅ concluído — [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md), [relatório](RELATORIO_CLAUDE_CODE.md) |
+
+### Pendências conhecidas da evolução de gameplay
+
+- O labirinto novo (25×19) e o posicionamento de pacotes, cachorros e porta foram
+  conferidos por código (conectividade por inundação e testes de integração), mas
+  **não** foram vistos em tela: vale abrir `fase_01.tscn` no editor e jogar uma
+  partida para avaliar ritmo, distância entre pacotes e agressividade das patrulhas.
+- Fases 2 e 3 ganharam cachorros coloridos e pacotes, mas continuam com o traçado de
+  labirinto antigo (19×13, e o mesmo nas duas) — o remodelamento equivalente ao da
+  fase 1 não foi pedido e não foi feito.
+- Com Diretor (fases 2 e 3), todos os cachorros perseguem a mesma região de crença.
+  Eles se espalham na varredura, mas andam em matilha; se isso ficar pesado em tela,
+  o caminho é dar uma crença por cachorro (não foi feito para não mexer no ADR 0002).
 
 ### Pendências conhecidas do Marco 3
 
