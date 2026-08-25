@@ -38,7 +38,7 @@ func teste_fase_03_carrega_configurada() -> void:
 
 	afirmar_falso(_fase.aviso.visible, "FaseConfig gerado por gerar_fase_03.gd e valido")
 	afirmar_igual(_fase.configuracao.algoritmo, "SHA256", "fase 3 e SHA-256")
-	afirmar_igual(_fase.configuracao.desafios.size(), 2, "dois desafios")
+	afirmar_igual(_fase.configuracao.desafios.size(), 4, "quatro desafios: dois de SHA-256 mais as revisoes de Vigenere e Cesar")
 	afirmar_nao_nulo(_fase._diretor, "fase 3 tambem tem regioes -- mesmo Diretor generico do Marco 2")
 
 

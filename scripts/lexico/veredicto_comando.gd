@@ -14,6 +14,10 @@ var texto_para_terminal: String = ""
 var resolveu_desafio: bool = false
 var delta_pontos: int = 0
 var duracao_protecao_s: float = 0.0
+## QUAL cifra a protecao concedida usa -- e ela que decide de quais cachorros o
+## jogador esta protegido (cada cor exige a sua). Vazio quando o veredito nao
+## concede protecao nenhuma.
+var algoritmo_protecao: String = ""
 var dica_solicitada: bool = false
 
 

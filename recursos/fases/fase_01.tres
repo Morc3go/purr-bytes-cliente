@@ -1,10 +1,25 @@
 [gd_resource type="Resource" script_class="FaseConfig" format=3]
 
-[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="1_nusyi"]
-[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="2_xhulk"]
+[ext_resource type="Script" path="res://scripts/dominio/cachorro_config.gd" id="1_4v4o1"]
+[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="2_a3w8w"]
+[ext_resource type="Script" path="res://scripts/dominio/pacote_config.gd" id="3_llbwm"]
+[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="4_lw3ls"]
 
-[sub_resource type="Resource" id="Resource_4v4o1"]
-script = ExtResource("1_nusyi")
+[sub_resource type="Resource" id="Resource_36ouy"]
+script = ExtResource("1_4v4o1")
+identificador = "verde-norte"
+celula_inicial = Vector2i(13, 5)
+ancoras = Array[Vector2i]([Vector2i(9, 5), Vector2i(20, 5), Vector2i(19, 3), Vector2i(11, 3)])
+
+[sub_resource type="Resource" id="Resource_3ppbp"]
+script = ExtResource("1_4v4o1")
+identificador = "verde-sul"
+celula_inicial = Vector2i(11, 15)
+ancoras = Array[Vector2i]([Vector2i(3, 15), Vector2i(11, 17), Vector2i(19, 15), Vector2i(11, 13)])
+velocidade = 34.0
+
+[sub_resource type="Resource" id="Resource_hcn5s"]
+script = ExtResource("2_a3w8w")
 identificador = "cesar-01"
 enunciado = "o pacote 'pacote' precisa de protecao. desloque 3 posicoes: cifrar pacote chave=3"
 texto_claro = "pacote"
@@ -12,8 +27,8 @@ chave_esperada = "3"
 dica = "conte 3 letras a frente de cada letra: 'p'->'s', 'a'->'d' ..."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_a3w8w"]
-script = ExtResource("1_nusyi")
+[sub_resource type="Resource" id="Resource_tf0sd"]
+script = ExtResource("2_a3w8w")
 identificador = "cesar-02"
 enunciado = "novo pacote 'rede' atravessando. desta vez o deslocamento e outro: cifrar rede chave=5"
 texto_claro = "rede"
@@ -21,11 +36,37 @@ chave_esperada = "5"
 dica = "desloque 5 posicoes desta vez, nao 3 -- cada pacote pode usar uma chave diferente."
 pontos_acerto_de_primeira = 150
 
+[sub_resource type="Resource" id="Resource_yxpfl"]
+script = ExtResource("3_llbwm")
+identificador = "cesar-ne"
+celula = Vector2i(21, 2)
+enunciado = "este pacote precisa atravessar o corredor onde ronda um cachorro VERDE. qual cifra o protege ali?"
+opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
+explicacao_correta = "isso. verde = Cesar: cada cor de cachorro le uma cifra so, e cifrar na cor errada nao protege."
+
+[sub_resource type="Resource" id="Resource_jesxa"]
+script = ExtResource("3_llbwm")
+identificador = "cesar-centro"
+celula = Vector2i(11, 8)
+enunciado = "na cifra de Cesar, o que exatamente e a chave que voce digita no terminal?"
+opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
+explicacao_correta = "a chave de Cesar e um NUMERO: quantas casas cada letra anda no alfabeto. as outras cifras usam outra coisa."
+
+[sub_resource type="Resource" id="Resource_ow3gu"]
+script = ExtResource("3_llbwm")
+identificador = "cesar-so"
+celula = Vector2i(2, 15)
+enunciado = "um pacote em texto claro foi interceptado no caminho. que ferramenta teria impedido a leitura do conteudo?"
+opcoes = PackedStringArray("CESAR", "SHA256")
+explicacao_correta = "cifra esconde o conteudo; hash nao esconde nada, so prova que o conteudo nao mudou. voce vai usar hash na fase 3."
+
 [resource]
-script = ExtResource("2_xhulk")
+script = ExtResource("4_lw3ls")
 titulo = "o labirinto de Cesar"
 verbos_permitidos = PackedStringArray("cifrar", "decifrar", "dica", "status")
-desafios = Array[ExtResource("1_nusyi")]([SubResource("Resource_4v4o1"), SubResource("Resource_a3w8w")])
+desafios = Array[ExtResource("2_a3w8w")]([SubResource("Resource_hcn5s"), SubResource("Resource_tf0sd")])
+cachorros = Array[ExtResource("1_4v4o1")]([SubResource("Resource_36ouy"), SubResource("Resource_3ppbp")])
+pacotes = Array[ExtResource("3_llbwm")]([SubResource("Resource_yxpfl"), SubResource("Resource_jesxa"), SubResource("Resource_ow3gu")])
 velocidade_cachorro = 40.0
 briefing_pedagogico = "o pacote precisa atravessar o labirinto ate a saida.
 em texto claro, o cachorro fareja e intercepta -- use 'cifrar <pacote> chave=<numero>' para proteger, 'dica' se travar, 'status' para reler o desafio atual."

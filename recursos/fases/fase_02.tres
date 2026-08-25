@@ -1,10 +1,25 @@
 [gd_resource type="Resource" script_class="FaseConfig" format=3]
 
-[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="1_b1so4"]
-[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="2_gu0vq"]
+[ext_resource type="Script" path="res://scripts/dominio/cachorro_config.gd" id="1_eqfl0"]
+[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="2_qu21c"]
+[ext_resource type="Script" path="res://scripts/dominio/pacote_config.gd" id="3_5oi4k"]
+[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="4_y6c6o"]
 
-[sub_resource type="Resource" id="Resource_eqfl0"]
-script = ExtResource("1_b1so4")
+[sub_resource type="Resource" id="Resource_opoan"]
+script = ExtResource("1_eqfl0")
+identificador = "verde-norte"
+celula_inicial = Vector2i(5, 1)
+ancoras = Array[Vector2i]([Vector2i(1, 1), Vector2i(15, 1), Vector2i(15, 3), Vector2i(3, 3)])
+
+[sub_resource type="Resource" id="Resource_ri1oo"]
+script = ExtResource("1_eqfl0")
+identificador = "azul-sul"
+algoritmo_exigido = "VIGENERE"
+celula_inicial = Vector2i(9, 9)
+ancoras = Array[Vector2i]([Vector2i(1, 9), Vector2i(15, 9), Vector2i(15, 11), Vector2i(3, 11)])
+
+[sub_resource type="Resource" id="Resource_rb0xv"]
+script = ExtResource("2_qu21c")
 identificador = "vigenere-01"
 enunciado = "o pacote 'pacote' precisa de protecao. tente: cifrar pacote chave=gato"
 texto_claro = "pacote"
@@ -12,8 +27,8 @@ chave_esperada = "gato"
 dica = "a chave e um bicho de estimacao comum, 4 letras."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_qu21c"]
-script = ExtResource("1_b1so4")
+[sub_resource type="Resource" id="Resource_y6cny"]
+script = ExtResource("2_qu21c")
 identificador = "vigenere-02"
 enunciado = "novo pacote 'servidor' atravessando, com outra chave: cifrar servidor chave=rede"
 texto_claro = "servidor"
@@ -21,13 +36,52 @@ chave_esperada = "rede"
 dica = "a chave e a propria palavra que representa a topologia que voce esta atravessando."
 pontos_acerto_de_primeira = 150
 
+[sub_resource type="Resource" id="Resource_asqx5"]
+script = ExtResource("2_qu21c")
+identificador = "cesar-revisao"
+enunciado = "um pacote antigo, em Cesar, ainda circula: cifrar chave chave=5. e essa cifra que engana o cachorro verde."
+texto_claro = "chave"
+chave_esperada = "5"
+algoritmo = "CESAR"
+dica = "Cesar e deslocamento fixo: a chave e um numero, nao uma palavra."
+pontos_acerto = 80
+pontos_acerto_de_primeira = 120
+
+[sub_resource type="Resource" id="Resource_kyf4m"]
+script = ExtResource("3_5oi4k")
+identificador = "vigenere-norte"
+celula = Vector2i(15, 1)
+enunciado = "um cachorro AZUL bloqueia a saida deste corredor. qual cifra o engana?"
+opcoes = PackedStringArray("CESAR", "VIGENERE")
+resposta_correta = "VIGENERE"
+explicacao_correta = "azul = Vigenere. a cifra verde de Cesar nao adianta contra ele."
+
+[sub_resource type="Resource" id="Resource_t3mgo"]
+script = ExtResource("3_5oi4k")
+identificador = "vigenere-centro"
+celula = Vector2i(9, 5)
+enunciado = "qual das duas resiste a analise de frequencia, por trocar o deslocamento a cada letra?"
+opcoes = PackedStringArray("CESAR", "VIGENERE")
+resposta_correta = "VIGENERE"
+explicacao_correta = "Vigenere: a chave-palavra muda o deslocamento posicao a posicao, entao contar letras repetidas nao entrega mais a cifra."
+
+[sub_resource type="Resource" id="Resource_wpv2t"]
+script = ExtResource("3_5oi4k")
+identificador = "cesar-sul"
+celula = Vector2i(3, 11)
+enunciado = "e contra o cachorro VERDE que patrulha aqui embaixo, qual delas serve?"
+opcoes = PackedStringArray("CESAR", "VIGENERE")
+explicacao_correta = "verde continua sendo Cesar, mesmo numa fase de Vigenere: a cor manda, nao a fase."
+
 [resource]
-script = ExtResource("2_gu0vq")
+script = ExtResource("4_y6c6o")
 numero = 2
 titulo = "o labirinto de Vigenere"
 algoritmo = "VIGENERE"
 verbos_permitidos = PackedStringArray("cifrar", "decifrar", "dica", "status")
-desafios = Array[ExtResource("1_b1so4")]([SubResource("Resource_eqfl0"), SubResource("Resource_qu21c")])
+desafios = Array[ExtResource("2_qu21c")]([SubResource("Resource_rb0xv"), SubResource("Resource_y6cny"), SubResource("Resource_asqx5")])
+cachorros = Array[ExtResource("1_eqfl0")]([SubResource("Resource_opoan"), SubResource("Resource_ri1oo")])
+pacotes = Array[ExtResource("3_5oi4k")]([SubResource("Resource_kyf4m"), SubResource("Resource_t3mgo"), SubResource("Resource_wpv2t")])
 velocidade_cachorro = 42.0
 briefing_pedagogico = "o pacote precisa atravessar o labirinto ate a saida, do outro lado do mapa.
 a chave desta vez e uma palavra, nao um numero: 'cifrar <pacote> chave=<palavra>'.

@@ -30,6 +30,10 @@ text = "vidas 0"
 theme_override_font_sizes/font_size = 8
 text = "pontos 0"
 
+[node name="Pacotes" type="Label" parent="Raiz/Linha"]
+theme_override_font_sizes/font_size = 8
+text = "pacotes 0/0"
+
 [node name="Titulo" type="Label" parent="Raiz/Linha"]
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 8

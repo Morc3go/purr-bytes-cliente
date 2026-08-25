@@ -11,7 +11,7 @@ extends CharacterBody2D
 ## Este no nao conhece a fase. Ele emite sinais e expoe estado; quem decide
 ## consequencia e fase_base.gd (secao 9: sinal de baixo para cima).
 
-signal protecao_alterada(ativa: bool, restante_s: float)
+signal protecao_alterada(ativa: bool, restante_s: float, algoritmo: String)
 signal protecao_expirou()
 
 @export_range(10.0, 200.0, 1.0) var velocidade: float = 70.0
@@ -22,6 +22,12 @@ signal protecao_expirou()
 
 var protecao_ativa: bool = false
 
+## QUAL cifra esta ativa, nao apenas "esta cifrado". E o que permite a regra da
+## fase decidir se ela engana ou nao um cachorro de determinada cor: cifrar com
+## Cesar nao protege de um interceptador que le Vigenere, e essa distincao e a
+## licao inteira da mecanica de cores.
+var algoritmo_protegido: String = ""
+
 var _restante_de_protecao_s: float = 0.0
 var _entrada_habilitada: bool = true
 
@@ -29,10 +35,11 @@ var _entrada_habilitada: bool = true
 func _physics_process(delta: float) -> void:
 	if _restante_de_protecao_s > 0.0:
 		_restante_de_protecao_s = maxf(0.0, _restante_de_protecao_s - delta)
-		protecao_alterada.emit(true, _restante_de_protecao_s)
+		protecao_alterada.emit(true, _restante_de_protecao_s, algoritmo_protegido)
 		if is_zero_approx(_restante_de_protecao_s):
 			protecao_ativa = false
-			protecao_alterada.emit(false, 0.0)
+			algoritmo_protegido = ""
+			protecao_alterada.emit(false, 0.0, "")
 			protecao_expirou.emit()
 
 	var direcao: Vector2 = Vector2.ZERO
@@ -48,16 +55,18 @@ func _physics_process(delta: float) -> void:
 ## Chamado pela fase quando um comando de cifra e aceito. A duracao vem do
 ## FaseConfig: e ela que forca o jogador a reaplicar a cifra, e a repeticao com
 ## intencao e o ponto pedagogico da mecanica.
-func ativar_protecao(duracao_s: float) -> void:
+func ativar_protecao(duracao_s: float, algoritmo: String = "") -> void:
 	protecao_ativa = duracao_s > 0.0
+	algoritmo_protegido = algoritmo if protecao_ativa else ""
 	_restante_de_protecao_s = maxf(0.0, duracao_s)
-	protecao_alterada.emit(protecao_ativa, _restante_de_protecao_s)
+	protecao_alterada.emit(protecao_ativa, _restante_de_protecao_s, algoritmo_protegido)
 
 
 func cancelar_protecao() -> void:
 	protecao_ativa = false
+	algoritmo_protegido = ""
 	_restante_de_protecao_s = 0.0
-	protecao_alterada.emit(false, 0.0)
+	protecao_alterada.emit(false, 0.0, "")
 
 
 ## Usado enquanto o terminal esta aberto e na tela de captura: o jogador nao

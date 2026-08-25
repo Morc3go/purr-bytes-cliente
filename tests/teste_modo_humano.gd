@@ -1,0 +1,347 @@
+extends CasoDeTeste
+
+## Mecanicas do MODO HUMANO: cachorros coloridos, cifra certa x cifra errada,
+## caixa de puzzle do pacote e porta trancada.
+##
+## Todas elas sao desligadas por ConfigJogo.modo_treino -- o ultimo teste deste
+## arquivo e exatamente essa garantia, porque e ela que mantem o ambiente de
+## treino de agente funcionando com o contrato antigo (coleta ao encostar,
+## qualquer cifra protege).
+##
+## Monta cenas/fases/fase_01.tscn de verdade, como os demais testes de fase.
+
+var _mock: TransporteMock
+var _fase: FaseBase
+var _modo_treino_original: bool = false
+
+
+func antes() -> void:
+	_modo_treino_original = ConfigJogo.modo_treino
+	ConfigJogo.modo_treino = false
+
+
+func depois() -> void:
+	ConfigJogo.modo_treino = _modo_treino_original
+	# Puzzle aberto pausa a arvore inteira: deixar a pausa vazar levaria a suite
+	# seguinte a rodar com o jogo congelado.
+	get_tree().paused = false
+	if _fase != null and is_instance_valid(_fase):
+		_fase.queue_free()
+	_fase = null
+	if Sessao.ativa:
+		Sessao.encerrar()
+
+
+func _preparar_mock(sufixo: String) -> TransporteMock:
+	var mock := TransporteMock.new(caminho_temporario("humano_mock_%s.jsonl" % sufixo))
+	Telemetria.reiniciar(mock, caminho_temporario("humano_fila_%s.json" % sufixo))
+	return mock
+
+
+func _montar_fase() -> FaseBase:
+	Sessao.iniciar()
+	var cena: PackedScene = load("res://cenas/fases/fase_01.tscn") as PackedScene
+	var fase: FaseBase = cena.instantiate() as FaseBase
+	add_child(fase)
+	return fase
+
+
+# ---------------------------------------------------------------------------
+# Cachorros coloridos
+# ---------------------------------------------------------------------------
+
+func teste_fase_01_tem_dois_cachorros_com_cor_da_legenda() -> void:
+	_preparar_mock("cores")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	afirmar_tamanho(_fase.cachorros, 2, "fase 1 tem dois cachorros")
+	afirmar_igual(_fase.cachorros[0], _fase.cachorro,
+		"o cachorro da cena pai continua sendo o numero 1")
+
+	for cachorro: Cachorro in _fase.cachorros:
+		afirmar_igual(cachorro.algoritmo_exigido, "CESAR",
+			"na fase 1 so ha cachorro de Cesar: o jogador ainda nao tem outra cifra")
+		afirmar_igual(cachorro.cor(), LegendaCores.cor("CESAR"),
+			"a cor do cachorro vem de LegendaCores, nao de uma tabela paralela")
+		afirmar_igual(cachorro.get_node("Sprite").modulate, LegendaCores.cor("CESAR"),
+			"a cor esta pintada no sprite, e nao so guardada numa variavel")
+
+	afirmar_diferente(_fase.cachorros[0].global_position, _fase.cachorros[1].global_position,
+		"cada cachorro nasce na celula que o CachorroConfig manda")
+
+
+func teste_cachorro_sem_visao_patrulha_e_nao_persegue_o_jogador() -> void:
+	_preparar_mock("patrulha")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	var cachorro: Cachorro = _fase.cachorros[0]
+	cachorro.parar()
+	cachorro.global_position = Vector2(4000, 4000)  # longe: sem linha de visao
+
+	var alvo: Vector2 = _fase._alvo_de_perseguicao(cachorro)
+	afirmar_diferente(alvo, _fase.jogador.global_position,
+		"com ancoras e sem visao, o alvo e a rota de patrulha -- nao a posicao do jogador")
+
+	var ancoras: Array[Vector2i] = _fase._ancoras_de(cachorro)
+	afirmar_verdadeiro(ancoras.size() >= 2, "o cachorro tem rota de patrulha configurada")
+	afirmar_igual(alvo, _fase._mundo_da_celula(ancoras[0]),
+		"o alvo e a primeira ancora da rota")
+
+
+# ---------------------------------------------------------------------------
+# Cifra certa x cifra errada
+# ---------------------------------------------------------------------------
+
+func teste_cifra_da_cor_errada_nao_protege() -> void:
+	_preparar_mock("cifra_errada")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	var cachorro: Cachorro = _fase.cachorros[0]  # exige CESAR
+
+	_fase.jogador.ativar_protecao(30.0, "VIGENERE")
+	afirmar_verdadeiro(_fase.jogador.protecao_ativa, "ha cifra ativa")
+	afirmar_falso(_fase._protegido_contra(cachorro),
+		"cifra de Vigenere nao engana um cachorro que le Cesar")
+
+	_fase.jogador.ativar_protecao(30.0, "CESAR")
+	afirmar_verdadeiro(_fase._protegido_contra(cachorro),
+		"a cifra da cor certa protege")
+
+	_fase.jogador.cancelar_protecao()
+	afirmar_falso(_fase._protegido_contra(cachorro), "texto claro nunca protege")
+
+
+func teste_captura_com_cifra_errada_perde_vida_e_registra_o_cachorro() -> void:
+	_mock = _preparar_mock("captura_errada")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	var cachorro: Cachorro = _fase.cachorros[0]
+	_fase.jogador.ativar_protecao(30.0, "VIGENERE")
+
+	var vidas_antes: int = Sessao.vidas
+	cachorro.parar()
+	cachorro.global_position = _fase.jogador.global_position
+
+	var capturado: bool = false
+	for _tentativa: int in 10:
+		await get_tree().physics_frame
+		if Sessao.vidas < vidas_antes:
+			capturado = true
+			break
+	afirmar_verdadeiro(capturado, "cifra da cor errada nao impede a interceptacao")
+
+	cachorro.global_position = Vector2(4000, 4000)
+	await Telemetria.descarregar()
+
+	var capturas: Array[Dictionary] = _eventos_do_tipo(CatalogoEventos.JOGADOR_CAPTURADO)
+	if not afirmar_verdadeiro(capturas.size() >= 1, "JOGADOR_CAPTURADO emitido"):
+		return
+	var payload: Dictionary = capturas[0]["payload"] as Dictionary
+	afirmar_igual(String(payload["algoritmo_exigido"]), "CESAR",
+		"o evento diz qual cifra teria protegido")
+	afirmar_igual(String(payload["algoritmo_protegido"]), "VIGENERE",
+		"e qual o jogador tinha ativa -- e a diferenca entre as duas que vira dado de analise")
+
+
+func teste_resolver_desafio_protege_na_cifra_do_desafio() -> void:
+	_preparar_mock("protecao_do_desafio")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	_fase.terminal.comando_submetido.emit("cifrar pacote chave=3", 900)
+
+	afirmar_verdadeiro(_fase.jogador.protecao_ativa, "o acerto ativa a protecao")
+	afirmar_igual(_fase.jogador.algoritmo_protegido, "CESAR",
+		"a protecao carrega o algoritmo do desafio resolvido")
+	afirmar_verdadeiro(_fase._protegido_contra(_fase.cachorros[0]),
+		"e por isso protege do cachorro verde")
+
+
+# ---------------------------------------------------------------------------
+# Caixa de puzzle do pacote
+# ---------------------------------------------------------------------------
+
+func teste_pacote_abre_a_caixa_e_so_coleta_com_a_resposta_certa() -> void:
+	_mock = _preparar_mock("puzzle")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	afirmar_tamanho(_fase.pacotes, 3, "fase 1 tem tres pacotes")
+	var pacote: Pacote = _fase.pacotes[0]
+
+	_fase._ao_alcancar_pacote(pacote)
+	afirmar_verdadeiro(_fase.caixa_puzzle.esta_aberta(), "encostar no pacote abre a caixa")
+	afirmar_verdadeiro(get_tree().paused, "a caixa pausa o jogo: ninguem e capturado lendo enunciado")
+	afirmar_falso(pacote.coletado, "o pacote ainda nao foi coletado")
+
+	# Resposta errada: nao coleta, nao fecha, custa pontos. O placar comeca em
+	# zero e Sessao.somar_pontos nunca deixa ficar negativo (secao 7: o erro e
+	# custo pedagogico, nao humilhacao), entao o teste precisa de saldo para a
+	# penalidade ter onde aparecer.
+	Sessao.somar_pontos(200)
+	var pontos_antes: int = Sessao.pontuacao
+	_fase.caixa_puzzle.escolher(_opcao_errada(pacote.configuracao))
+	afirmar_falso(pacote.coletado, "resposta errada nao coleta o pacote")
+	afirmar_verdadeiro(_fase.caixa_puzzle.esta_aberta(), "a caixa continua aberta para nova tentativa")
+	afirmar_verdadeiro(Sessao.pontuacao < pontos_antes, "errar custa pontos")
+
+	# Resposta certa: coleta, fecha, despausa.
+	_fase.caixa_puzzle.escolher(pacote.configuracao.resposta_correta)
+	afirmar_verdadeiro(pacote.coletado, "resposta certa coleta o pacote")
+	afirmar_falso(_fase.caixa_puzzle.esta_aberta(), "a caixa fecha")
+	afirmar_falso(get_tree().paused, "o jogo volta a rodar")
+
+	await Telemetria.descarregar()
+	var tentativas: Array[Dictionary] = _tentativas_do_desafio(
+		"pacote-%s" % pacote.configuracao.identificador)
+	afirmar_tamanho(tentativas, 2, "erro e acerto viram uma tentativa_comando cada")
+	afirmar_igual(String(tentativas[0]["resultado"]), CatalogoResultados.ERRO_SEMANTICO,
+		"escolher a ferramenta errada e erro semantico: estrutura valida, significado invalido")
+	afirmar_igual(String(tentativas[1]["resultado"]), CatalogoResultados.SUCESSO, "depois, acerto")
+	afirmar_igual(int(tentativas[1]["numero_tentativa"]), 2,
+		"a segunda tentativa do mesmo pacote e numerada como tal")
+
+
+func teste_cancelar_a_caixa_despausa_sem_coletar() -> void:
+	_preparar_mock("puzzle_cancelado")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	var pacote: Pacote = _fase.pacotes[0]
+	_fase._ao_alcancar_pacote(pacote)
+	_fase.caixa_puzzle.cancelada.emit()
+
+	afirmar_falso(get_tree().paused, "sair da caixa despausa o jogo")
+	afirmar_falso(pacote.coletado, "sair sem responder nao coleta -- a porta continua trancada")
+
+
+# ---------------------------------------------------------------------------
+# Porta
+# ---------------------------------------------------------------------------
+
+func teste_porta_so_abre_com_todos_os_pacotes() -> void:
+	_preparar_mock("porta")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	afirmar_verdadeiro(_fase.ponto_de_saida.trancada, "a porta nasce trancada")
+
+	# Chegar na porta sem os pacotes nao conclui a fase.
+	_fase._ao_chegar_na_saida(_fase.jogador)
+	afirmar_falso(_fase._encerrada, "porta trancada nao encerra a fase")
+
+	for pacote: Pacote in _fase.pacotes:
+		_fase._coletar_pacote(pacote)
+
+	afirmar_falso(_fase.ponto_de_saida.trancada, "com todos os pacotes, a porta abre")
+	afirmar_falso(_fase._porta_trancada(), "e o estado interno concorda com o visual")
+
+
+# ---------------------------------------------------------------------------
+# Modo de treino: as mecanicas humanas saem de cena
+# ---------------------------------------------------------------------------
+
+func teste_modo_treino_coleta_direto_e_aceita_qualquer_cifra() -> void:
+	ConfigJogo.modo_treino = true
+	_preparar_mock("treino")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	var pacote: Pacote = _fase.pacotes[0]
+	_fase._ao_alcancar_pacote(pacote)
+
+	afirmar_falso(_fase.caixa_puzzle.esta_aberta(), "em treino a caixa nao abre")
+	afirmar_falso(get_tree().paused, "e o jogo nao pausa")
+	afirmar_verdadeiro(pacote.coletado, "o pacote e coletado ao encostar, como no contrato antigo")
+
+	_fase.jogador.ativar_protecao(30.0, "VIGENERE")
+	afirmar_verdadeiro(_fase._protegido_contra(_fase.cachorros[0]),
+		"em treino qualquer cifra ativa protege: a regra de cores e do modo humano")
+
+
+# ---------------------------------------------------------------------------
+# Configuracao: cachorro impossivel de enganar e erro de fase
+# ---------------------------------------------------------------------------
+
+func teste_fase_recusa_cachorro_de_cifra_indisponivel() -> void:
+	var config := FaseConfig.new()
+	config.numero = 1
+	config.titulo = "fase de teste"
+	config.algoritmo = "CESAR"
+	config.verbos_permitidos = PackedStringArray(["cifrar", "dica", "status"])
+
+	var desafio := DesafioConfig.new()
+	desafio.identificador = "cesar-01"
+	desafio.verbo_esperado = "cifrar"
+	desafio.chave_esperada = "3"
+	config.desafios = [desafio]
+
+	var impossivel := CachorroConfig.new()
+	impossivel.identificador = "azul-injusto"
+	impossivel.algoritmo_exigido = "VIGENERE"
+	config.cachorros = [impossivel]
+
+	var problemas: PackedStringArray = config.problemas()
+	afirmar_verdadeiro(problemas.size() >= 1,
+		"um cachorro que exige cifra que a fase nao ensina reprova a configuracao")
+	afirmar_contem(" ".join(problemas), "azul-injusto",
+		"a mensagem diz qual cachorro esta injusto")
+
+	var justo := CachorroConfig.new()
+	justo.identificador = "verde-justo"
+	justo.algoritmo_exigido = "CESAR"
+	config.cachorros = [justo]
+	afirmar_igual(config.problemas().size(), 0, "com a cifra disponivel, a fase e valida")
+
+
+# ---------------------------------------------------------------------------
+# Apoio
+# ---------------------------------------------------------------------------
+
+func _opcao_errada(config: PacoteConfig) -> String:
+	for opcao: String in config.opcoes:
+		if opcao != config.resposta_correta:
+			return opcao
+	return ""
+
+
+func _registros() -> Array[Dictionary]:
+	var saida: Array[Dictionary] = []
+	if _mock == null or not FileAccess.file_exists(_mock.caminho()):
+		return saida
+	var arquivo: FileAccess = FileAccess.open(_mock.caminho(), FileAccess.READ)
+	while not arquivo.eof_reached():
+		var linha: String = arquivo.get_line().strip_edges()
+		if linha.is_empty():
+			continue
+		var lido: Variant = JSON.parse_string(linha)
+		if typeof(lido) == TYPE_DICTIONARY:
+			saida.append(lido as Dictionary)
+	arquivo.close()
+	return saida
+
+
+func _eventos_do_tipo(tipo: String) -> Array[Dictionary]:
+	var saida: Array[Dictionary] = []
+	for registro: Dictionary in _registros():
+		if String(registro.get("tipo_registro", "")) != "evento":
+			continue
+		var dados: Dictionary = registro["dados"] as Dictionary
+		if String(dados.get("tipo_evento", "")) == tipo:
+			saida.append(dados)
+	return saida
+
+
+func _tentativas_do_desafio(identificador: String) -> Array[Dictionary]:
+	var saida: Array[Dictionary] = []
+	for registro: Dictionary in _registros():
+		if String(registro.get("tipo_registro", "")) != "tentativa":
+			continue
+		var dados: Dictionary = registro["dados"] as Dictionary
+		if String(dados.get("desafio", "")) == identificador:
+			saida.append(dados)
+	return saida

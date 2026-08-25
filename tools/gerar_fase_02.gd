@@ -96,7 +96,80 @@ func _gerar_config() -> void:
 	desafio2.pontos_acerto_de_primeira = 150
 	desafio2.custo_da_dica = 25
 
-	config.desafios = [desafio1, desafio2]
+	# Desafio de revisao em CESAR: e ele que da ao jogador a cifra verde dentro
+	# de uma fase de Vigenere, e portanto o que torna o cachorro verde
+	# enganavel aqui (FaseConfig.problemas() recusa a fase se faltar). Vem por
+	# ultimo porque a fase ensina Vigenere primeiro; o ciclo de desafios de
+	# fase_base.gd deixa o jogador voltar a ele sempre que precisar.
+	var desafio3 := DesafioConfig.new()
+	desafio3.identificador = "cesar-revisao"
+	desafio3.enunciado = ("um pacote antigo, em Cesar, ainda circula: cifrar chave chave=5. "
+		+ "e essa cifra que engana o cachorro verde.")
+	desafio3.texto_claro = "chave"
+	desafio3.chave_esperada = "5"
+	desafio3.verbo_esperado = "cifrar"
+	desafio3.algoritmo = "CESAR"
+	desafio3.dica = "Cesar e deslocamento fixo: a chave e um numero, nao uma palavra."
+	desafio3.pontos_acerto = 80
+	desafio3.pontos_acerto_de_primeira = 120
+	desafio3.custo_da_dica = 25
+
+	config.desafios = [desafio1, desafio2, desafio3]
+
+	# Aqui a cor comeca a valer de verdade: o jogador chega a fase 2 sabendo
+	# Cesar (fase 1) e aprendendo Vigenere, entao os dois cachorros exigem
+	# cifras que ele consegue produzir -- e a cifra de Cesar que o salvou na
+	# fase 1 NAO funciona contra o azul. E a primeira vez que "cifrei" e
+	# "cifrei certo" deixam de ser a mesma coisa.
+	#
+	# Esta fase tem Diretor (Marcadores/Regioes), entao as ancoras so entram em
+	# cena se as regioes forem removidas: com Diretor, o alvo dos dois vem da
+	# crenca. Ficam declaradas mesmo assim para a fase continuar coerente se
+	# alguem editar as regioes no editor.
+	var cachorro_verde := CachorroConfig.new()
+	cachorro_verde.identificador = "verde-norte"
+	cachorro_verde.algoritmo_exigido = "CESAR"
+	cachorro_verde.celula_inicial = Vector2i(5, 1)
+	cachorro_verde.ancoras = [Vector2i(1, 1), Vector2i(15, 1), Vector2i(15, 3), Vector2i(3, 3)]
+
+	var cachorro_azul := CachorroConfig.new()
+	cachorro_azul.identificador = "azul-sul"
+	cachorro_azul.algoritmo_exigido = "VIGENERE"
+	cachorro_azul.celula_inicial = Vector2i(9, 9)
+	cachorro_azul.ancoras = [Vector2i(1, 9), Vector2i(15, 9), Vector2i(15, 11), Vector2i(3, 11)]
+
+	config.cachorros = [cachorro_verde, cachorro_azul]
+
+	# Na fase 2 as perguntas ja cobram ESCOLHA entre duas cifras que o jogador
+	# tem na mao, que e a competencia que a fase inteira treina.
+	var pacote_norte := PacoteConfig.new()
+	pacote_norte.identificador = "vigenere-norte"
+	pacote_norte.celula = Vector2i(15, 1)
+	pacote_norte.enunciado = "um cachorro AZUL bloqueia a saida deste corredor. qual cifra o engana?"
+	pacote_norte.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
+	pacote_norte.resposta_correta = "VIGENERE"
+	pacote_norte.explicacao_correta = "azul = Vigenere. a cifra verde de Cesar nao adianta contra ele."
+
+	var pacote_centro := PacoteConfig.new()
+	pacote_centro.identificador = "vigenere-centro"
+	pacote_centro.celula = Vector2i(9, 5)
+	pacote_centro.enunciado = ("qual das duas resiste a analise de frequencia, por trocar o "
+		+ "deslocamento a cada letra?")
+	pacote_centro.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
+	pacote_centro.resposta_correta = "VIGENERE"
+	pacote_centro.explicacao_correta = ("Vigenere: a chave-palavra muda o deslocamento posicao a "
+		+ "posicao, entao contar letras repetidas nao entrega mais a cifra.")
+
+	var pacote_sul := PacoteConfig.new()
+	pacote_sul.identificador = "cesar-sul"
+	pacote_sul.celula = Vector2i(3, 11)
+	pacote_sul.enunciado = "e contra o cachorro VERDE que patrulha aqui embaixo, qual delas serve?"
+	pacote_sul.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
+	pacote_sul.resposta_correta = "CESAR"
+	pacote_sul.explicacao_correta = ("verde continua sendo Cesar, mesmo numa fase de Vigenere: "
+		+ "a cor manda, nao a fase.")
+
+	config.pacotes = [pacote_norte, pacote_centro, pacote_sul]
 
 	var problemas: PackedStringArray = config.problemas()
 	if not problemas.is_empty():

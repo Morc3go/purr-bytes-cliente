@@ -34,15 +34,21 @@ const _PROXIMA_CENA_POR_FASE: Dictionary = {
 
 @onready var labirinto: TileMapLayer = $Labirinto
 @onready var jogador: Jogador = $Jogador
+## Cachorro que ja vem na cena pai. Continua sendo o cachorro numero 1 da fase
+## (as fases nao precisam instanciar o primeiro); os demais nascem de
+## FaseConfig.cachorros em _configurar_cachorros(). Use `cachorros` para
+## qualquer logica que valha para todos.
 @onready var cachorro: Cachorro = $Cachorro
 @onready var camera: Camera2D = $CameraJogador
 @onready var marcadores: Node2D = $Marcadores
 @onready var ponto_de_entrada: Marker2D = $Marcadores/PontoDeEntrada
-@onready var ponto_de_saida: Area2D = $Marcadores/PontoDeSaida
+@onready var ponto_de_saida: Porta = $Marcadores/PontoDeSaida
+@onready var pacotes_no: Node2D = $Marcadores/Pacotes
 @onready var regioes_no: Node2D = $Marcadores/Regioes
 @onready var hud: Hud = $Hud
 @onready var terminal: Terminal = $Terminal
 @onready var painel_cifra: PainelCifra = $PainelCifra
+@onready var caixa_puzzle: CaixaPuzzle = $CaixaPuzzle
 @onready var tela_captura: TelaCaptura = $TelaCaptura
 @onready var aviso: CanvasLayer = $AvisoDeConfiguracao
 @onready var _rotulo_do_aviso: Label = $AvisoDeConfiguracao/Fundo/Texto
@@ -50,13 +56,31 @@ const _PROXIMA_CENA_POR_FASE: Dictionary = {
 var _configurada: bool = false
 var _encerrada: bool = false
 var _capturas: int = 0
+var _camera_segue_jogador: bool = true
 
 ## IA de perseguicao (scripts/ia/navegacao.gd, wrapper de AStarGrid2D). Uma
 ## instancia por fase porque a grade depende do labirinto desta cena.
 var _navegacao: Navegacao = Navegacao.new()
 var _temporizador_replanejamento: Timer = null
+## Verdadeiro quando ALGUM cachorro tem linha de visao. A deteccao por cachorro
+## (que e a que vai para a telemetria) mora em _visao_por_cachorro.
 var _cachorro_com_linha_de_visao: bool = false
 var _depuracao_astar_visivel: bool = false
+
+## Todos os cachorros da fase, incluindo o da cena pai na posicao 0.
+var cachorros: Array[Cachorro] = []
+var _config_por_cachorro: Dictionary = {}   # Cachorro -> CachorroConfig
+var _visao_por_cachorro: Dictionary = {}    # Cachorro -> bool
+var _ancora_por_cachorro: Dictionary = {}   # Cachorro -> int (indice da patrulha)
+
+const _CENA_DO_CACHORRO: String = "res://cenas/base/cachorro.tscn"
+const _CENA_DO_PACOTE: String = "res://cenas/base/pacote.tscn"
+
+## Pacotes da fase e progresso da coleta. A porta so abre com todos coletados.
+var pacotes: Array[Pacote] = []
+var _pacotes_coletados: int = 0
+var _pacote_em_puzzle: Pacote = null
+var _tentativas_por_pacote: Dictionary = {}   # identificador -> int
 
 ## Diretor de IA (Marco 2, scripts/ia/diretor.gd). Null quando a fase nao tem
 ## nenhuma regiao em Marcadores/Regioes (caso do Marco 1: fase_01.tscn) -- sem
@@ -72,6 +96,9 @@ var _indice_varredura: int = 0
 ## atende Cesar e Vigenere sem mudar (docs/decisoes/0007-marco1-cachorro-e-desafios.md).
 var _indice_desafio: int = 0
 var _numero_tentativa_do_desafio: int = 1
+## Identificadores ja resolvidos ao menos uma vez -- o que separa "resolveu" de
+## "reaplicou a cifra para atravessar" na hora de pontuar.
+var _desafios_resolvidos: Dictionary = {}
 
 ## Instrumentacao de desempenho (Marco 3, Eixo 7): acumula desde a ultima
 ## AMOSTRA_DESEMPENHO para reportar a MEDIA do tempo de replanejamento, nao
@@ -96,10 +123,11 @@ func _ready() -> void:
 
 	jogador.reposicionar(ponto_de_entrada.global_position)
 	jogador.velocidade = maxf(jogador.velocidade, 1.0)
-	cachorro.velocidade = configuracao.velocidade_cachorro
-	cachorro.alcance_deteccao = configuracao.alcance_deteccao_cachorro
+	_configurar_cachorros()
+	_configurar_pacotes()
 
 	_navegacao.configurar(labirinto)
+	_configurar_camera()
 	_configurar_temporizador_replanejamento()
 	_configurar_diretor()
 	_configurar_temporizador_desempenho()
@@ -124,10 +152,12 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	if not _configurada:
 		return
-	# A camera segue o jogador por posicao, e nao por parentesco, para o Marco 1
-	# poder aplicar limites (limit_left/right) vindos do tamanho do labirinto sem
-	# mexer na cena do jogador.
-	camera.global_position = jogador.global_position
+	# A camera segue o jogador por posicao, e nao por parentesco, para poder
+	# aplicar limites (limit_left/right) vindos do tamanho do labirinto sem
+	# mexer na cena do jogador. Quando o labirinto inteiro cabe na tela,
+	# _configurar_camera desliga o seguimento e fixa a camera no centro do mapa.
+	if _camera_segue_jogador:
+		camera.global_position = jogador.global_position
 	_atualizar_deteccao_do_cachorro()
 
 
@@ -141,18 +171,23 @@ func _draw() -> void:
 	if not _depuracao_astar_visivel:
 		return
 
-	var caminho: PackedVector2Array = cachorro.caminho_atual()
-	if caminho.size() < 2:
-		return
+	# Cada caminho sai na cor do cachorro que o segue: com varios cachorros em
+	# cena, um unico vermelho para todos transformaria a demo da IA num
+	# emaranhado ilegivel justamente na hora de explica-la para a banca.
+	for alvo: Cachorro in cachorros:
+		var caminho: PackedVector2Array = alvo.caminho_atual()
+		if caminho.size() < 2:
+			continue
 
-	var pontos_locais := PackedVector2Array()
-	for ponto: Vector2 in caminho:
-		pontos_locais.append(to_local(ponto))
+		var pontos_locais := PackedVector2Array()
+		for ponto: Vector2 in caminho:
+			pontos_locais.append(to_local(ponto))
 
-	const COR_CAMINHO: Color = Color(1.0, 0.3, 0.3, 0.9)
-	draw_polyline(pontos_locais, COR_CAMINHO, 1.5)
-	for ponto_local: Vector2 in pontos_locais:
-		draw_circle(ponto_local, 2.0, COR_CAMINHO)
+		var cor_do_caminho: Color = alvo.cor()
+		cor_do_caminho.a = 0.9
+		draw_polyline(pontos_locais, cor_do_caminho, 1.5)
+		for ponto_local: Vector2 in pontos_locais:
+			draw_circle(ponto_local, 2.0, cor_do_caminho)
 
 
 func _unhandled_input(evento: InputEvent) -> void:
@@ -194,6 +229,7 @@ func concluir() -> void:
 	if _encerrada or not _configurada:
 		return
 	_encerrada = true
+	_garantir_jogo_despausado()
 	Telemetria.registrar_evento(CatalogoEventos.FASE_CONCLUIDA, {
 		"capturas": _capturas,
 		"pontuacao": Sessao.pontuacao,
@@ -213,6 +249,7 @@ func abandonar() -> void:
 	if _encerrada or not _configurada:
 		return
 	_encerrada = true
+	_garantir_jogo_despausado()
 
 	# Desafio deixado pra tras sem solucao: registra ABANDONO nessa tentativa
 	# em vez de simplesmente nao gerar nenhuma linha. E o unico gatilho de
@@ -236,29 +273,50 @@ func abandonar() -> void:
 
 func _conectar_sinais() -> void:
 	jogador.protecao_alterada.connect(hud.mostrar_protecao)
-	cachorro.contato_com_jogador.connect(_ao_encostar_no_jogador)
+	# O contato de cada cachorro e conectado em _preparar_cachorro, com o
+	# proprio cachorro em bind() -- a fase precisa saber QUAL encostou para
+	# decidir se a cifra ativa protege contra aquela cor.
 	terminal.comando_submetido.connect(_ao_submeter_comando)
 	terminal.aberto.connect(func() -> void: jogador.definir_entrada_habilitada(false))
 	terminal.fechado.connect(func() -> void: jogador.definir_entrada_habilitada(true))
 	tela_captura.encerrada.connect(_ao_terminar_captura)
+	caixa_puzzle.respondido.connect(_ao_responder_puzzle)
+	caixa_puzzle.cancelada.connect(_fechar_puzzle)
 	ponto_de_saida.body_entered.connect(_ao_chegar_na_saida)
 	Sessao.vidas_esgotadas.connect(_ao_esgotar_vidas)
 
 
+## A porta so deixa passar com todos os pacotes na mao. Chegar nela sem eles nao
+## e falha nem punicao: e a propria porta dizendo o que falta.
 func _ao_chegar_na_saida(corpo: Node2D) -> void:
-	if corpo is Jogador:
-		concluir()
+	if not (corpo is Jogador):
+		return
+	if _porta_trancada():
+		terminal.escrever("a porta esta trancada: faltam %d pacote(s) de dados."
+			% (pacotes.size() - _pacotes_coletados))
+		return
+	concluir()
 
 
-## Contato so intercepta se o pacote estiver em texto claro. Com a cifra ativa o
-## cachorro passa por cima sem entender nada -- que e exatamente a licao da fase.
-func _ao_encostar_no_jogador(_corpo: Node2D) -> void:
-	if _encerrada or jogador.protecao_ativa:
+func _porta_trancada() -> bool:
+	return _pacotes_coletados < pacotes.size()
+
+
+## Contato so intercepta se a cifra ativa NAO for a que engana este cachorro.
+## Em texto claro qualquer cachorro intercepta; com a cifra certa ele passa por
+## cima sem entender nada -- que e a licao da fase. Com a cifra ERRADA (cifrou
+## em Cesar e quem veio le Vigenere) tambem intercepta, e essa e a licao nova:
+## proteger nao e um interruptor, e escolher o algoritmo certo.
+func _ao_encostar_no_jogador(_corpo: Node2D, cachorro_que_encostou: Cachorro) -> void:
+	if _encerrada or _protegido_contra(cachorro_que_encostou):
 		return
 
 	_capturas += 1
 	Telemetria.registrar_evento(CatalogoEventos.JOGADOR_CAPTURADO, {
-		"protecao_ativa": false,
+		"protecao_ativa": jogador.protecao_ativa,
+		"algoritmo_protegido": jogador.algoritmo_protegido,
+		"cachorro": cachorro_que_encostou.identificador,
+		"algoritmo_exigido": cachorro_que_encostou.algoritmo_exigido,
 		"captura_numero": _capturas,
 	}, configuracao.numero)
 
@@ -268,10 +326,39 @@ func _ao_encostar_no_jogador(_corpo: Node2D) -> void:
 	Sessao.perder_vida()
 	Sessao.somar_pontos(-configuracao.penalidade_captura)
 	jogador.definir_entrada_habilitada(false)
-	cachorro.parar()
-	tela_captura.mostrar(
-		"pacote interceptado",
-		"o pacote viajava em texto claro. use o terminal para cifrar antes de atravessar.")
+	for outro: Cachorro in cachorros:
+		outro.parar()
+	tela_captura.mostrar("pacote interceptado", _explicacao_da_captura(cachorro_que_encostou))
+
+
+## A cifra ativa engana este cachorro?
+##
+## Em modo de treino (ConfigJogo.modo_treino, usado pelo agente de aprendizado
+## por reforco) qualquer cifra ativa protege: a mecanica de cores existe para o
+## jogador humano ler a cor na tela, e um agente treinado no contrato antigo
+## nao deve ser quebrado por ela.
+func _protegido_contra(cachorro_alvo: Cachorro) -> bool:
+	if not jogador.protecao_ativa:
+		return false
+	if ConfigJogo.modo_treino:
+		return true
+	return jogador.algoritmo_protegido == cachorro_alvo.algoritmo_exigido
+
+
+## A tela de captura e o momento em que o jogador mais quer saber o porque --
+## por isso a explicacao distingue os tres casos em vez de repetir "voce foi
+## pego" (secao 7 do CLAUDE.md: enquadramento pedagogico, nao punitivo).
+func _explicacao_da_captura(cachorro_alvo: Cachorro) -> String:
+	var exigido: String = LegendaCores.nome(cachorro_alvo.algoritmo_exigido)
+	var cor_do_cachorro: String = LegendaCores.nome_da_cor(cachorro_alvo.algoritmo_exigido)
+
+	if not jogador.protecao_ativa:
+		return ("o pacote viajava em texto claro. o cachorro %s le %s: "
+			+ "use o terminal para cifrar antes de atravessar.") % [cor_do_cachorro, exigido]
+
+	return ("a cifra ativa era %s, mas o cachorro %s so e enganado por %s. "
+		+ "cifrar nao basta: tem que ser a cifra certa para o interceptador certo.") % [
+			LegendaCores.nome(jogador.algoritmo_protegido), cor_do_cachorro, exigido]
 
 
 func _ao_terminar_captura() -> void:
@@ -324,7 +411,13 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 	if veredicto.resultado != CatalogoResultados.SUCESSO and _diretor != null:
 		_diretor.pista_comando_errado(_regiao_atual_do_jogador)
 
-	if veredicto.delta_pontos != 0:
+	# Desafio ja resolvido antes nao pontua de novo: com o ciclo de desafios
+	# (ver _avancar_desafio) o jogador pode reaplicar a mesma cifra quantas
+	# vezes precisar para atravessar o labirinto, e pontuar a cada repeticao
+	# transformaria o placar num contador de digitacao, nao de aprendizado.
+	var ja_resolvido: bool = desafio_atual != null \
+		and _desafios_resolvidos.has(desafio_atual.identificador)
+	if veredicto.delta_pontos != 0 and not (ja_resolvido and veredicto.resolveu_desafio):
 		Sessao.somar_pontos(veredicto.delta_pontos)
 
 	if veredicto.dica_solicitada and desafio_atual != null:
@@ -332,7 +425,7 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 			{"desafio": desafio_atual.identificador}, configuracao.numero)
 
 	if veredicto.resolveu_desafio:
-		jogador.ativar_protecao(veredicto.duracao_protecao_s)
+		jogador.ativar_protecao(veredicto.duracao_protecao_s, veredicto.algoritmo_protecao)
 		_avancar_desafio()
 	elif _e_tentativa_do_desafio_corrente(desafio_atual, resultado.ast.verbo):
 		# So conta como nova tentativa do MESMO desafio quando o verbo bate com
@@ -366,14 +459,251 @@ func _desafio_atual() -> DesafioConfig:
 	return configuracao.desafios[_indice_desafio]
 
 
+## Os desafios sao percorridos em ciclo, e nao ate acabar.
+##
+## O motivo e a mecanica de cores: a protecao dura poucos segundos e cada
+## desafio concede a cifra DELE, entao um jogador que ja resolveu tudo precisaria
+## atravessar o resto do labirinto em texto claro, sem nenhum comando disponivel
+## para se defender de um cachorro que apareca no caminho. Voltando ao primeiro
+## desafio, o terminal continua sendo uma ferramenta ate o fim da fase -- e como
+## resolver de novo nao pontua (ver _ao_submeter_comando), o placar continua
+## medindo aprendizado e nao repeticao.
 func _avancar_desafio() -> void:
+	var resolvido: DesafioConfig = _desafio_atual()
+	if resolvido != null:
+		_desafios_resolvidos[resolvido.identificador] = true
+
 	_indice_desafio += 1
 	_numero_tentativa_do_desafio = 1
+
+	if _indice_desafio >= configuracao.desafios.size():
+		_indice_desafio = 0
+		if _desafios_resolvidos.size() >= configuracao.desafios.size():
+			terminal.escrever("todos os pacotes desta fase ja foram resolvidos -- "
+				+ "va ate a porta. os comandos continuam valendo para se proteger no caminho.")
+
 	var proximo: DesafioConfig = _desafio_atual()
 	if proximo != null:
-		terminal.escrever("proximo desafio: %s" % proximo.enunciado)
-	else:
-		terminal.escrever("todos os desafios resolvidos. va ate a saida.")
+		terminal.escrever("proximo desafio (%s): %s"
+			% [LegendaCores.nome(proximo.algoritmo_efetivo(configuracao.algoritmo)), proximo.enunciado])
+
+
+# ---------------------------------------------------------------------------
+# Camera
+# ---------------------------------------------------------------------------
+
+## Os limites saem de TileMapLayer.get_used_rect(), e nao de constante nenhuma:
+## trocar o desenho do labirinto reajusta a camera sozinho.
+##
+## Duas situacoes, decididas por medida e nao por fase: se o labirinto inteiro
+## cabe na viewport (o caso das tres fases atuais -- 25x19 tiles de 16 = 400x304
+## numa viewport de 640x360), a camera fica FIXA no centro do mapa e o jogador
+## enxerga o labirinto todo, que e o enquadramento certo para um jogo de rota e
+## perseguicao: esconder metade do mapa so tornaria o cachorro injusto. Se um
+## mapa futuro passar do tamanho da tela, a camera volta a seguir o jogador,
+## agora presa aos limites -- sem nunca mostrar o vazio fora do labirinto.
+func _configurar_camera() -> void:
+	var regiao: Rect2i = labirinto.get_used_rect()
+	if regiao.size == Vector2i.ZERO or labirinto.tile_set == null:
+		return
+
+	var tamanho_tile: Vector2i = labirinto.tile_set.tile_size
+	var canto: Vector2 = labirinto.to_global(Vector2(regiao.position * tamanho_tile))
+	var tamanho_mundo: Vector2 = Vector2(regiao.size * tamanho_tile)
+	var tamanho_visivel: Vector2 = get_viewport_rect().size / camera.zoom
+
+	camera.limit_left = int(canto.x)
+	camera.limit_top = int(canto.y)
+	camera.limit_right = int(canto.x + tamanho_mundo.x)
+	camera.limit_bottom = int(canto.y + tamanho_mundo.y)
+
+	_camera_segue_jogador = (tamanho_mundo.x > tamanho_visivel.x
+		or tamanho_mundo.y > tamanho_visivel.y)
+	if not _camera_segue_jogador:
+		camera.position_smoothing_enabled = false
+		camera.global_position = canto + tamanho_mundo * 0.5
+
+
+# ---------------------------------------------------------------------------
+# Cachorros: criacao a partir do dado da fase
+# ---------------------------------------------------------------------------
+
+## Um cachorro por item de FaseConfig.cachorros. O primeiro reaproveita o no que
+## ja existe em fase_base.tscn (por isso nenhuma fase precisa instanciar o
+## cachorro numero 1); os demais sao instancias da mesma cena, o que mantem
+## colisao, area de contato e raio de visao identicos entre eles.
+##
+## Lista vazia = a fase usa so o cachorro da cena, exigindo o algoritmo da
+## propria fase. E o comportamento que existia antes de a lista existir, e ele
+## continua valendo para nao obrigar nenhuma fase a declarar dado novo.
+func _configurar_cachorros() -> void:
+	cachorros.clear()
+	_config_por_cachorro.clear()
+	_visao_por_cachorro.clear()
+	_ancora_por_cachorro.clear()
+
+	if configuracao.cachorros.is_empty():
+		_preparar_cachorro(cachorro, null)
+		return
+
+	var cena: PackedScene = load(_CENA_DO_CACHORRO) as PackedScene
+	for i: int in configuracao.cachorros.size():
+		var alvo: Cachorro = cachorro
+		if i > 0:
+			alvo = cena.instantiate() as Cachorro
+			alvo.name = "Cachorro%d" % (i + 1)
+			add_child(alvo)
+		_preparar_cachorro(alvo, configuracao.cachorros[i])
+
+
+func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig) -> void:
+	var algoritmo: String = configuracao.algoritmo
+	var velocidade: float = configuracao.velocidade_cachorro
+	var alcance: float = configuracao.alcance_deteccao_cachorro
+
+	if config_do_cachorro != null:
+		algoritmo = config_do_cachorro.algoritmo_exigido
+		alvo.identificador = config_do_cachorro.identificador
+		if config_do_cachorro.velocidade > 0.0:
+			velocidade = config_do_cachorro.velocidade
+		if config_do_cachorro.alcance_deteccao > 0.0:
+			alcance = config_do_cachorro.alcance_deteccao
+		alvo.global_position = _mundo_da_celula(config_do_cachorro.celula_inicial)
+
+	alvo.velocidade = velocidade
+	alvo.alcance_deteccao = alcance
+	alvo.definir_algoritmo(algoritmo)
+	alvo.contato_com_jogador.connect(_ao_encostar_no_jogador.bind(alvo))
+
+	cachorros.append(alvo)
+	_config_por_cachorro[alvo] = config_do_cachorro
+	_visao_por_cachorro[alvo] = false
+	_ancora_por_cachorro[alvo] = 0
+
+
+func _mundo_da_celula(celula: Vector2i) -> Vector2:
+	return labirinto.to_global(labirinto.map_to_local(celula))
+
+
+# ---------------------------------------------------------------------------
+# Pacotes e caixa de puzzle (modo humano)
+# ---------------------------------------------------------------------------
+
+## Um Pacote por item de FaseConfig.pacotes, posicionado pela celula. Fase sem
+## pacotes tem a porta destrancada desde o inicio -- e o comportamento anterior
+## a esta mecanica, que continua valendo para qualquer fase que nao declare
+## pacote nenhum.
+func _configurar_pacotes() -> void:
+	pacotes.clear()
+	_pacotes_coletados = 0
+	_tentativas_por_pacote.clear()
+
+	var cena: PackedScene = load(_CENA_DO_PACOTE) as PackedScene
+	for config_do_pacote: PacoteConfig in configuracao.pacotes:
+		var pacote: Pacote = cena.instantiate() as Pacote
+		pacote.name = "Pacote_%s" % config_do_pacote.identificador
+		pacotes_no.add_child(pacote)
+		pacote.global_position = _mundo_da_celula(config_do_pacote.celula)
+		pacote.definir(config_do_pacote)
+		pacote.alcancado.connect(_ao_alcancar_pacote)
+		pacotes.append(pacote)
+
+	ponto_de_saida.definir_trancada(_porta_trancada())
+	hud.mostrar_pacotes(_pacotes_coletados, pacotes.size())
+
+
+## Encostar num pacote abre a pergunta -- exceto em modo de treino, onde o
+## pacote e coletado na hora. A caixa exige ler e clicar; um agente de
+## aprendizado por reforco nao faz nem uma coisa nem outra, e travar o episodio
+## numa tela modal quebraria o treino sem ensinar nada a ninguem.
+func _ao_alcancar_pacote(pacote: Pacote) -> void:
+	if _encerrada or pacote.coletado:
+		return
+
+	if ConfigJogo.modo_treino:
+		_coletar_pacote(pacote)
+		return
+
+	_pacote_em_puzzle = pacote
+	jogador.definir_entrada_habilitada(false)
+	# A caixa tem process_mode ALWAYS (cenas/base/caixa_puzzle.tscn), entao ela
+	# continua respondendo com a arvore pausada -- e a pausa e o que impede um
+	# cachorro de capturar o jogador enquanto ele le o enunciado.
+	get_tree().paused = true
+	caixa_puzzle.abrir(pacote.configuracao)
+
+
+## O puzzle entra na telemetria como tentativa_comando, e so.
+##
+## Nao ha evento novo porque o catalogo e fechado pelo banco (restricao 7 da
+## secao 4 do CLAUDE.md: FK para pesquisa.tipo_evento), e um codigo inventado
+## aqui viraria INSERT rejeitado la -- dado de pesquisa perdido. E nao ha
+## COMANDO_SUBMETIDO porque o terminal tambem nao emite: a convencao do projeto
+## e que cada comando submetido JA e uma linha de tentativa_comando, e duplicar
+## so o do puzzle desalinharia a contagem entre as duas origens.
+##
+## O desafio vai prefixado com "pacote-", que e o que permite a analise separar
+## "escolheu a ferramenta certa" (aqui) de "operou a cifra certa" (terminal) --
+## sao competencias diferentes e o pre/pos-teste mede as duas.
+func _ao_responder_puzzle(correto: bool, opcao: String, tempo_resposta_ms: int) -> void:
+	if _pacote_em_puzzle == null:
+		return
+
+	var config_do_pacote: PacoteConfig = _pacote_em_puzzle.configuracao
+	var identificador: String = "pacote-%s" % config_do_pacote.identificador
+	var tentativa: int = int(_tentativas_por_pacote.get(identificador, 1))
+
+	Telemetria.registrar_tentativa(
+		configuracao.numero,
+		identificador,
+		opcao,
+		[],
+		CatalogoResultados.SUCESSO if correto else CatalogoResultados.ERRO_SEMANTICO,
+		"" if correto else "opcao_incorreta",
+		tempo_resposta_ms,
+		tentativa)
+
+	if not correto:
+		_tentativas_por_pacote[identificador] = tentativa + 1
+		Sessao.somar_pontos(-config_do_pacote.penalidade_erro)
+		return
+
+	Sessao.somar_pontos(config_do_pacote.pontos_acerto)
+	var coletado: Pacote = _pacote_em_puzzle
+	_fechar_puzzle()
+	_coletar_pacote(coletado)
+
+
+func _fechar_puzzle() -> void:
+	_pacote_em_puzzle = null
+	caixa_puzzle.fechar()
+	get_tree().paused = false
+	if not _encerrada:
+		jogador.definir_entrada_habilitada(true)
+
+
+## A pausa e da ARVORE inteira, nao desta cena: sair da fase com a caixa aberta
+## (concluir, abandonar ou falhar) levaria a pausa junto para o menu, que
+## ficaria congelado. Isto e a rede de seguranca contra esse vazamento.
+func _garantir_jogo_despausado() -> void:
+	if caixa_puzzle != null and caixa_puzzle.esta_aberta():
+		caixa_puzzle.fechar()
+	_pacote_em_puzzle = null
+	get_tree().paused = false
+
+
+func _coletar_pacote(pacote: Pacote) -> void:
+	pacote.coletar()
+	_pacotes_coletados += 1
+	hud.mostrar_pacotes(_pacotes_coletados, pacotes.size())
+
+	if _porta_trancada():
+		terminal.escrever("pacote coletado (%d de %d). a porta ainda esta trancada."
+			% [_pacotes_coletados, pacotes.size()])
+		return
+
+	ponto_de_saida.definir_trancada(false)
+	terminal.escrever("todos os pacotes coletados. a porta se abriu -- siga para a saida.")
 
 
 # ---------------------------------------------------------------------------
@@ -393,16 +723,21 @@ func _configurar_temporizador_replanejamento() -> void:
 	add_child(_temporizador_replanejamento)
 
 
+## Um replanejamento por cachorro, todos no mesmo tique do temporizador. Cada
+## chamada de A* entra separada na media de AMOSTRA_DESEMPENHO: o numero que
+## interessa ao Eixo 7 e o custo de UMA busca, para a conta "n cachorros x custo
+## por busca" continuar valendo quando uma fase futura tiver mais cachorros.
 func _replanejar_caminho_do_cachorro() -> void:
 	if _encerrada:
 		return
-	var inicio_us: int = Time.get_ticks_usec()
-	var caminho: PackedVector2Array = _navegacao.calcular_caminho(
-		cachorro.global_position, _alvo_de_perseguicao())
-	_soma_replanejamento_us += Time.get_ticks_usec() - inicio_us
-	_contagem_replanejamento += 1
+	for alvo: Cachorro in cachorros:
+		var inicio_us: int = Time.get_ticks_usec()
+		var caminho: PackedVector2Array = _navegacao.calcular_caminho(
+			alvo.global_position, _alvo_de_perseguicao(alvo))
+		_soma_replanejamento_us += Time.get_ticks_usec() - inicio_us
+		_contagem_replanejamento += 1
+		alvo.definir_caminho(caminho)
 
-	cachorro.definir_caminho(caminho)
 	if _depuracao_astar_visivel:
 		queue_redraw()
 
@@ -411,28 +746,74 @@ func _replanejar_caminho_do_cachorro() -> void:
 ## linha de visao, checada a cada quadro (a deteccao tem que ser tao responsiva
 ## quanto o jogo, mesmo com o replanejamento do A* rodando so por intervalo).
 func _atualizar_deteccao_do_cachorro() -> void:
-	var visivel: bool = cachorro.tem_linha_de_visao(jogador.global_position)
-	if visivel and not _cachorro_com_linha_de_visao:
-		Telemetria.registrar_evento(CatalogoEventos.CACHORRO_DETECTOU,
-			{"posicao": jogador.global_position}, configuracao.numero)
-	elif not visivel and _cachorro_com_linha_de_visao:
-		Telemetria.registrar_evento(CatalogoEventos.CACHORRO_PERDEU, {}, configuracao.numero)
-	_cachorro_com_linha_de_visao = visivel
+	var algum_enxerga: bool = false
+	for alvo: Cachorro in cachorros:
+		var visivel: bool = alvo.tem_linha_de_visao(jogador.global_position)
+		var enxergava: bool = bool(_visao_por_cachorro.get(alvo, false))
+
+		if visivel and not enxergava:
+			Telemetria.registrar_evento(CatalogoEventos.CACHORRO_DETECTOU, {
+				"cachorro": alvo.identificador,
+				"algoritmo_exigido": alvo.algoritmo_exigido,
+				"posicao": jogador.global_position,
+			}, configuracao.numero)
+		elif not visivel and enxergava:
+			Telemetria.registrar_evento(CatalogoEventos.CACHORRO_PERDEU,
+				{"cachorro": alvo.identificador}, configuracao.numero)
+
+		_visao_por_cachorro[alvo] = visivel
+		algum_enxerga = algum_enxerga or visivel
+
+	_cachorro_com_linha_de_visao = algum_enxerga
 
 
-## O alvo que o A* persegue. Linha de visao direta sempre vence (o cachorro
-## "viu" o jogador de verdade -- nao ha razao para fingir que nao sabe onde ele
-## esta). Sem linha de visao: se ha Diretor (Marco 2, fase com regioes), o alvo
-## e a crenca dele; sem Diretor (Marco 1, fase_01), o cachorro continua
-## perseguindo a posicao real sempre -- o mesmo comportamento original do
-## Marco 1, preservado de proposito (docs/decisoes/0007, decisao 1).
-func _alvo_de_perseguicao() -> Vector2:
-	if cachorro.tem_linha_de_visao(jogador.global_position):
+## O alvo que o A* persegue, na ordem de prioridade:
+##
+## 1. linha de visao direta -- o cachorro viu o jogador de verdade, nao ha razao
+##    para fingir que nao sabe onde ele esta;
+## 2. alvo do Diretor (Marco 2, fase com regioes): a crenca, nunca a posicao;
+## 3. rota de patrulha (CachorroConfig.ancoras): o cachorro anda o circuito dele
+##    sem saber nada sobre o jogador -- e o que da vida ao mapa quando ninguem
+##    esta sendo perseguido;
+## 4. sem regioes e sem ancoras: persegue a posicao real, que e o comportamento
+##    original do Marco 1 preservado (docs/decisoes/0007, decisao 1).
+func _alvo_de_perseguicao(alvo: Cachorro) -> Vector2:
+	if alvo.tem_linha_de_visao(jogador.global_position):
 		return jogador.global_position
-	if _diretor == null:
-		return jogador.global_position
-	var regiao: Area2D = _diretor.regiao_mais_provavel()
-	return _alvo_de_varredura(regiao) if regiao != null else cachorro.global_position
+
+	if _diretor != null:
+		var regiao: Area2D = _diretor.regiao_mais_provavel()
+		return _alvo_de_varredura(alvo, regiao) if regiao != null else alvo.global_position
+
+	if not _ancoras_de(alvo).is_empty():
+		return _alvo_de_patrulha(alvo)
+
+	return jogador.global_position
+
+
+func _ancoras_de(alvo: Cachorro) -> Array[Vector2i]:
+	var config_do_cachorro: CachorroConfig = _config_por_cachorro.get(alvo) as CachorroConfig
+	return config_do_cachorro.ancoras if config_do_cachorro != null else [] as Array[Vector2i]
+
+
+## Patrulha em ciclo pelas ancoras da fase. O indice so avanca quando o cachorro
+## CHEGA na ancora -- avancar por tempo faria ele abandonar pontos que ainda nao
+## alcancou e trocar a rota por um passeio aleatorio.
+##
+## A tolerancia e o dobro da de chegada porque a ancora e o centro de uma celula
+## e o replanejamento roda por intervalo: exigir o pixel exato deixaria o
+## cachorro girando em torno do ponto ate o proximo tique.
+func _alvo_de_patrulha(alvo: Cachorro) -> Vector2:
+	var ancoras: Array[Vector2i] = _ancoras_de(alvo)
+	var indice: int = int(_ancora_por_cachorro.get(alvo, 0))
+	var destino: Vector2 = _mundo_da_celula(ancoras[indice % ancoras.size()])
+
+	if alvo.global_position.distance_to(destino) <= alvo.tolerancia_de_chegada * 2.0:
+		indice += 1
+		_ancora_por_cachorro[alvo] = indice
+		destino = _mundo_da_celula(ancoras[indice % ancoras.size()])
+
+	return destino
 
 
 ## Comportamento de caca local (secao 7 do CLAUDE.md): ao chegar perto do
@@ -444,12 +825,18 @@ const _OFFSETS_DE_VARREDURA: Array[Vector2] = [
 ]
 
 
-func _alvo_de_varredura(regiao: Area2D) -> Vector2:
+## O deslocamento inicial de cada cachorro na tabela de varredura e a posicao
+## dele na lista: com dois ou tres cachorros varrendo a MESMA regiao (o Diretor
+## publica um alvo so para todos), sem isso eles empilhariam no mesmo pixel e a
+## varredura cobriria um ponto em vez de uma area.
+func _alvo_de_varredura(alvo: Cachorro, regiao: Area2D) -> Vector2:
 	var centro: Vector2 = regiao.global_position
-	var ponto: Vector2 = centro + _OFFSETS_DE_VARREDURA[_indice_varredura % _OFFSETS_DE_VARREDURA.size()]
-	if cachorro.global_position.distance_to(ponto) <= cachorro.tolerancia_de_chegada:
+	var deslocamento: int = maxi(0, cachorros.find(alvo))
+	var total: int = _OFFSETS_DE_VARREDURA.size()
+	var ponto: Vector2 = centro + _OFFSETS_DE_VARREDURA[(_indice_varredura + deslocamento) % total]
+	if alvo.global_position.distance_to(ponto) <= alvo.tolerancia_de_chegada:
 		_indice_varredura += 1
-		ponto = centro + _OFFSETS_DE_VARREDURA[_indice_varredura % _OFFSETS_DE_VARREDURA.size()]
+		ponto = centro + _OFFSETS_DE_VARREDURA[(_indice_varredura + deslocamento) % total]
 	return ponto
 
 
@@ -619,6 +1006,8 @@ func _falhar(mensagem: String) -> void:
 	# Sem desligar os filhos, o jogador andaria por um labirinto sem regra
 	# nenhuma atras da mensagem de erro.
 	jogador.definir_entrada_habilitada(false)
+	# _falhar roda antes de _configurar_cachorros, entao `cachorros` ainda esta
+	# vazia: quem precisa parar aqui e o cachorro da propria cena.
 	cachorro.parar()
 
 
