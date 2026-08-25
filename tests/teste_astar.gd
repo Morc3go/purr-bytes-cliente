@@ -83,6 +83,43 @@ func teste_rota_desvia_de_parede_com_um_buraco() -> void:
 	afirmar_igual(caminho.size() - 1, 4, "o desvio pela linha do meio custa 4 passos, nao 2")
 
 
+## Regressao do bug "o cachorro fica parado": os waypoints precisam cair no
+## CENTRO da celula. AStarGrid2D.get_point_path devolvia o canto (celula *
+## cell_size), meia celula fora do centro em cada eixo -- o waypoint caia em
+## cima do canto de uma parede, o corpo do cachorro colidia e nunca chegava a
+## tolerancia_de_chegada. Um caminho em corredor livre e o caso mais simples
+## que expoe isso.
+func teste_waypoints_caem_no_centro_da_celula() -> void:
+	var solido: Array = [
+		[false, false, false],
+		[true, true, false],
+		[false, false, false],
+	]
+	var labirinto: TileMapLayer = _construir_tilemap(solido, 3, 3)
+	var navegacao := Navegacao.new()
+	navegacao.configurar(labirinto)
+
+	var caminho: PackedVector2Array = navegacao.calcular_caminho(
+		labirinto.map_to_local(Vector2i(0, 0)), labirinto.map_to_local(Vector2i(2, 2)))
+
+	if not afirmar_verdadeiro(caminho.size() > 0, "existe caminho pelo corredor livre"):
+		labirinto.queue_free()
+		return
+
+	var fora_do_centro: PackedStringArray = PackedStringArray()
+	for ponto: Vector2 in caminho:
+		var celula: Vector2i = labirinto.local_to_map(labirinto.to_local(ponto))
+		var centro: Vector2 = labirinto.to_global(labirinto.map_to_local(celula))
+		if not ponto.is_equal_approx(centro):
+			fora_do_centro.append("%s != centro %s" % [ponto, centro])
+		if bool(solido[celula.y][celula.x]):
+			fora_do_centro.append("waypoint %s cai em celula solida %s" % [ponto, celula])
+	labirinto.queue_free()
+
+	afirmar_igual(fora_do_centro.size(), 0,
+		"todo waypoint no centro de uma celula livre: %s" % str(fora_do_centro))
+
+
 func teste_destino_solido_nao_tem_caminho() -> void:
 	var solido: Array = [
 		[false, false],
