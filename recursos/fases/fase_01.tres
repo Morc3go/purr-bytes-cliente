@@ -38,27 +38,31 @@ pontos_acerto_de_primeira = 150
 
 [sub_resource type="Resource" id="Resource_yxpfl"]
 script = ExtResource("3_llbwm")
-identificador = "cesar-ne"
+identificador = "f1-aplicacao"
 celula = Vector2i(21, 2)
-enunciado = "este pacote precisa atravessar o corredor onde ronda um cachorro VERDE. qual cifra o protege ali?"
+enunciado = "um cachorro VERDE ronda o corredor por onde este pacote precisa passar. qual ferramenta protege o conteudo dele?"
 opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
-explicacao_correta = "isso. verde = Cesar: cada cor de cachorro le uma cifra so, e cifrar na cor errada nao protege."
+explicacao_correta = "isso. verde sempre pede essa ferramenta -- em qualquer fase, e nao so nesta."
 
 [sub_resource type="Resource" id="Resource_jesxa"]
 script = ExtResource("3_llbwm")
-identificador = "cesar-centro"
+identificador = "f1-conceito"
 celula = Vector2i(11, 8)
-enunciado = "na cifra de Cesar, o que exatamente e a chave que voce digita no terminal?"
-opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
-explicacao_correta = "a chave de Cesar e um NUMERO: quantas casas cada letra anda no alfabeto. as outras cifras usam outra coisa."
+enunciado = "no comando 'cifrar pacote chave=3', o que e o 3?"
+tipo = "CONCEITO"
+opcoes = PackedStringArray("quantas casas cada letra anda no alfabeto", "a cor do cachorro que esta perseguindo", "quantos pacotes ainda faltam coletar")
+resposta_correta = "quantas casas cada letra anda no alfabeto"
+explicacao_correta = "exato. a COR escolhe a ferramenta; a CHAVE e o segredo que faz a ferramenta funcionar. sao coisas diferentes."
 
 [sub_resource type="Resource" id="Resource_ow3gu"]
 script = ExtResource("3_llbwm")
-identificador = "cesar-so"
+identificador = "f1-discernimento"
 celula = Vector2i(2, 15)
-enunciado = "um pacote em texto claro foi interceptado no caminho. que ferramenta teria impedido a leitura do conteudo?"
-opcoes = PackedStringArray("CESAR", "SHA256")
-explicacao_correta = "cifra esconde o conteudo; hash nao esconde nada, so prova que o conteudo nao mudou. voce vai usar hash na fase 3."
+enunciado = "deslocar todas as letras o mesmo tanto e facil de quebrar. por que?"
+tipo = "DISCERNIMENTO"
+opcoes = PackedStringArray("so existem 25 deslocamentos: da para testar todos", "porque o pacote fica maior depois de cifrado", "porque o cachorro conhece a chave desde o inicio")
+resposta_correta = "so existem 25 deslocamentos: da para testar todos"
+explicacao_correta = "isso mesmo. poucas chaves possiveis = pouca protecao. e o problema que a proxima fase resolve."
 
 [resource]
 script = ExtResource("4_lw3ls")

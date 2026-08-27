@@ -49,29 +49,31 @@ pontos_acerto_de_primeira = 120
 
 [sub_resource type="Resource" id="Resource_kyf4m"]
 script = ExtResource("3_5oi4k")
-identificador = "vigenere-norte"
+identificador = "f2-aplicacao"
 celula = Vector2i(15, 1)
-enunciado = "um cachorro AZUL bloqueia a saida deste corredor. qual cifra o engana?"
+enunciado = "o cachorro que patrulha esta passagem e VERDE. qual ferramenta protege o pacote dele?"
 opcoes = PackedStringArray("CESAR", "VIGENERE")
-resposta_correta = "VIGENERE"
-explicacao_correta = "azul = Vigenere. a cifra verde de Cesar nao adianta contra ele."
+explicacao_correta = "verde continua pedindo a mesma ferramenta de sempre, mesmo numa fase nova: quem manda e a cor, nao a fase."
 
 [sub_resource type="Resource" id="Resource_t3mgo"]
 script = ExtResource("3_5oi4k")
-identificador = "vigenere-centro"
+identificador = "f2-conceito"
 celula = Vector2i(9, 5)
-enunciado = "qual das duas resiste a analise de frequencia, por trocar o deslocamento a cada letra?"
-opcoes = PackedStringArray("CESAR", "VIGENERE")
-resposta_correta = "VIGENERE"
-explicacao_correta = "Vigenere: a chave-palavra muda o deslocamento posicao a posicao, entao contar letras repetidas nao entrega mais a cifra."
+enunciado = "nesta fase a chave e uma palavra em vez de um numero. o que isso muda no embaralhamento?"
+tipo = "CONCEITO"
+opcoes = PackedStringArray("cada letra anda um tanto diferente, seguindo a palavra", "o texto cifrado fica com o mesmo tamanho da palavra", "a palavra e escondida dentro do proprio pacote")
+resposta_correta = "cada letra anda um tanto diferente, seguindo a palavra"
+explicacao_correta = "isso. um numero so move todas as letras igual; a palavra troca o deslocamento a cada posicao."
 
 [sub_resource type="Resource" id="Resource_wpv2t"]
 script = ExtResource("3_5oi4k")
-identificador = "cesar-sul"
+identificador = "f2-discernimento"
 celula = Vector2i(3, 11)
-enunciado = "e contra o cachorro VERDE que patrulha aqui embaixo, qual delas serve?"
-opcoes = PackedStringArray("CESAR", "VIGENERE")
-explicacao_correta = "verde continua sendo Cesar, mesmo numa fase de Vigenere: a cor manda, nao a fase."
+enunciado = "contar quais letras mais se repetem ajuda a quebrar um deslocamento fixo. por que isso para de funcionar aqui?"
+tipo = "DISCERNIMENTO"
+opcoes = PackedStringArray("a mesma letra vira letras diferentes em cada posicao", "o texto cifrado passa a nao ter letras repetidas", "a contagem so funciona em textos muito curtos")
+resposta_correta = "a mesma letra vira letras diferentes em cada posicao"
+explicacao_correta = "exato: sem repeticao previsivel, contar letras nao entrega mais nada."
 
 [resource]
 script = ExtResource("4_y6c6o")

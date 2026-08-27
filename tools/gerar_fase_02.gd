@@ -142,34 +142,53 @@ func _gerar_config() -> void:
 
 	# Na fase 2 as perguntas ja cobram ESCOLHA entre duas cifras que o jogador
 	# tem na mao, que e a competencia que a fase inteira treina.
-	var pacote_norte := PacoteConfig.new()
-	pacote_norte.identificador = "vigenere-norte"
-	pacote_norte.celula = Vector2i(15, 1)
-	pacote_norte.enunciado = "um cachorro AZUL bloqueia a saida deste corredor. qual cifra o engana?"
-	pacote_norte.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
-	pacote_norte.resposta_correta = "VIGENERE"
-	pacote_norte.explicacao_correta = "azul = Vigenere. a cifra verde de Cesar nao adianta contra ele."
+	# APLICACAO -- a pergunta que a fase 2 existe para fazer: a fase e de
+	# Vigenere, mas quem esta no corredor e VERDE. Resposta = Cesar. E a unica
+	# forma de o jogador descobrir que a cor manda, e nao a fase.
+	var pacote_aplicacao := PacoteConfig.new()
+	pacote_aplicacao.identificador = "f2-aplicacao"
+	pacote_aplicacao.celula = Vector2i(15, 1)
+	pacote_aplicacao.tipo = "APLICACAO"
+	pacote_aplicacao.enunciado = ("o cachorro que patrulha esta passagem e VERDE. qual "
+		+ "ferramenta protege o pacote dele?")
+	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
+	pacote_aplicacao.resposta_correta = "CESAR"
+	pacote_aplicacao.explicacao_correta = ("verde continua pedindo a mesma ferramenta de "
+		+ "sempre, mesmo numa fase nova: quem manda e a cor, nao a fase.")
 
-	var pacote_centro := PacoteConfig.new()
-	pacote_centro.identificador = "vigenere-centro"
-	pacote_centro.celula = Vector2i(9, 5)
-	pacote_centro.enunciado = ("qual das duas resiste a analise de frequencia, por trocar o "
-		+ "deslocamento a cada letra?")
-	pacote_centro.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
-	pacote_centro.resposta_correta = "VIGENERE"
-	pacote_centro.explicacao_correta = ("Vigenere: a chave-palavra muda o deslocamento posicao a "
-		+ "posicao, entao contar letras repetidas nao entrega mais a cifra.")
+	# CONCEITO -- o que a palavra-chave muda em relacao a um numero fixo.
+	var pacote_conceito := PacoteConfig.new()
+	pacote_conceito.identificador = "f2-conceito"
+	pacote_conceito.celula = Vector2i(9, 5)
+	pacote_conceito.tipo = "CONCEITO"
+	pacote_conceito.enunciado = ("nesta fase a chave e uma palavra em vez de um numero. o que "
+		+ "isso muda no embaralhamento?")
+	pacote_conceito.opcoes = PackedStringArray([
+		"cada letra anda um tanto diferente, seguindo a palavra",
+		"o texto cifrado fica com o mesmo tamanho da palavra",
+		"a palavra e escondida dentro do proprio pacote",
+	])
+	pacote_conceito.resposta_correta = "cada letra anda um tanto diferente, seguindo a palavra"
+	pacote_conceito.explicacao_correta = ("isso. um numero so move todas as letras igual; a "
+		+ "palavra troca o deslocamento a cada posicao.")
 
-	var pacote_sul := PacoteConfig.new()
-	pacote_sul.identificador = "cesar-sul"
-	pacote_sul.celula = Vector2i(3, 11)
-	pacote_sul.enunciado = "e contra o cachorro VERDE que patrulha aqui embaixo, qual delas serve?"
-	pacote_sul.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
-	pacote_sul.resposta_correta = "CESAR"
-	pacote_sul.explicacao_correta = ("verde continua sendo Cesar, mesmo numa fase de Vigenere: "
-		+ "a cor manda, nao a fase.")
+	# DISCERNIMENTO -- por que isso derruba a analise de frequencia.
+	var pacote_discernimento := PacoteConfig.new()
+	pacote_discernimento.identificador = "f2-discernimento"
+	pacote_discernimento.celula = Vector2i(3, 11)
+	pacote_discernimento.tipo = "DISCERNIMENTO"
+	pacote_discernimento.enunciado = ("contar quais letras mais se repetem ajuda a quebrar um "
+		+ "deslocamento fixo. por que isso para de funcionar aqui?")
+	pacote_discernimento.opcoes = PackedStringArray([
+		"a mesma letra vira letras diferentes em cada posicao",
+		"o texto cifrado passa a nao ter letras repetidas",
+		"a contagem so funciona em textos muito curtos",
+	])
+	pacote_discernimento.resposta_correta = "a mesma letra vira letras diferentes em cada posicao"
+	pacote_discernimento.explicacao_correta = ("exato: sem repeticao previsivel, contar letras "
+		+ "nao entrega mais nada.")
 
-	config.pacotes = [pacote_norte, pacote_centro, pacote_sul]
+	config.pacotes = [pacote_aplicacao, pacote_conceito, pacote_discernimento]
 
 	var problemas: PackedStringArray = config.problemas()
 	if not problemas.is_empty():

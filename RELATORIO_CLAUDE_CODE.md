@@ -181,3 +181,117 @@ antes de fechar a validação.
   no ADR 0002 e não estava no escopo.
 - **Tela de "fase concluída"** entre fases: as três fases existem e encadeiam direto, então
   a tela de "fase 2 em breve" prevista no pedido não tem quando aparecer.
+
+---
+---
+
+# Refinamento — tutorial e banco de perguntas
+
+**Data:** 2026-08-25 · **Escopo:** conteúdo educativo e clareza conceitual. Nenhuma mudança
+estrutural: `FaseConfig`/`PacoteConfig` continuam sendo o dado, `fase_base.gd` a lógica,
+`LegendaCores` a fonte única.
+
+## 1. A ambiguidade "chave × ferramenta"
+
+O jogo pede **duas decisões diferentes** e o tutorial as embaralhava numa frase só. A correção
+foi separá-las em dois blocos, com títulos explícitos:
+
+| | antes | agora |
+|---|---|---|
+| Texto da legenda | "cifra de deslocamento: cada letra anda um número fixo de casas. **a chave é esse número.** comando: cifrar (pacote) chave=(numero)" — cor e chave na mesma frase, logo abaixo da tabela de cores | `LegendaCores._EXPLICACOES` descreve **só o mecanismo**; a palavra "chave" foi removida dali |
+| Onde a chave aparece | espalhada, como sinônimo vago de "resposta" | dicionário novo `LegendaCores._CHAVES` + `chave(algoritmo)`, consumido por um bloco separado do tutorial |
+| Tutorial | uma lista única | **bloco 1: "a COR do cachorro escolhe a FERRAMENTA"** (+ "cada cor pede sempre a mesma ferramenta, em qualquer fase: um cachorro verde na fase 3 continua pedindo César") · **bloco 2: "a CHAVE é o segredo que faz a ferramenta funcionar"** (César pede um número, Vigenère uma palavra, SHA-256 **nenhuma**) |
+
+A frase que fecha a ambiguidade está no bloco 2: *"a cor não é a chave."*
+
+## 2. Perguntas: antes × agora
+
+`PacoteConfig` ganhou o campo `tipo` (`APLICACAO` | `CONCEITO` | `DISCERNIMENTO`). Em
+`APLICACAO` as opções são códigos de algoritmo (botão colorido, nome vindo da legenda); nos
+outros dois são frases exibidas como estão. Cada fase passou a ter **um de cada arquétipo**.
+
+### Fase 1 — antes: três perguntas, três respostas `CESAR`
+
+| antes | problema | agora |
+|---|---|---|
+| "este pacote precisa atravessar o corredor onde ronda um cachorro VERDE. qual cifra o protege ali?" → `CESAR` | ok — virou o arquétipo Aplicação | **Aplicação:** "um cachorro VERDE ronda o corredor por onde este pacote precisa passar. qual ferramenta protege o conteúdo dele?" → `CESAR` |
+| "na cifra de **César**, o que exatamente é a chave que você digita?" → opções `[CESAR, VIGENERE, SHA256]`, resposta `CESAR` | o enunciado cita a resposta **e** as opções não respondem à pergunta feita | **Conceito:** "no comando `cifrar pacote chave=3`, o que é o 3?" → opções conceituais: *"quantas casas cada letra anda no alfabeto"* (correta) · "a cor do cachorro que está perseguindo" · "quantos pacotes ainda faltam coletar" |
+| "um pacote em texto claro foi interceptado. que ferramenta teria impedido a leitura?" → `CESAR` | terceira resposta `CESAR` seguida: ensina a repetir, não a pensar | **Discernimento:** "deslocar todas as letras o mesmo tanto é fácil de quebrar. por quê?" → *"só existem 25 deslocamentos: dá para testar todos"* |
+
+A opção distratora *"a cor do cachorro"* na pergunta de conceito é proposital: é exatamente o
+erro que o tutorial antigo induzia.
+
+### Fase 2 — antes: duas de três respostas iguais, uma com a resposta no enunciado
+
+| antes | problema | agora |
+|---|---|---|
+| "um cachorro AZUL bloqueia a saída. qual cifra o engana?" → `VIGENERE` | ok | **Aplicação:** "o cachorro que patrulha esta passagem é VERDE. qual ferramenta protege o pacote dele?" → `CESAR` — numa fase de Vigenère. É a pergunta que ensina que **a cor manda, não a fase** |
+| "qual das duas resiste à análise de frequência, por trocar o deslocamento a cada letra?" → `VIGENERE` | o enunciado descreve o mecanismo do Vigenère e pede o nome dele: resposta embutida | **Conceito:** "nesta fase a chave é uma palavra em vez de um número. o que isso muda no embaralhamento?" → *"cada letra anda um tanto diferente, seguindo a palavra"* |
+| "e contra o cachorro VERDE aqui embaixo, qual delas serve?" → `CESAR` | ok, mas repetia o formato da primeira | **Discernimento:** "contar quais letras mais se repetem ajuda a quebrar um deslocamento fixo. por que isso para de funcionar aqui?" → *"a mesma letra vira letras diferentes em cada posição"* |
+
+### Fase 3 — antes: duas respostas `SHA256`, uma delas com o mecanismo no enunciado
+
+| antes | problema | agora |
+|---|---|---|
+| "o pacote chegou com um resumo anexado e você precisa saber se foi adulterado. que ferramenta responde isso?" → `SHA256` | redundante com a de discernimento | **Aplicação:** "um cachorro AZUL apareceu no corredor de baixo. qual das três ferramentas protege o pacote dele?" → `VIGENERE` |
+| "qual destas NÃO dá para desfazer, nem com a chave certa?" → `SHA256` | ok — virou o arquétipo Discernimento, reescrito | **Discernimento:** "qual destas NÃO serve para esconder um conteúdo que precisa ser lido de volta depois?" → `SHA256` |
+| "um cachorro AZUL apareceu. qual das três protege?" → `VIGENERE` | ok — virou o arquétipo Aplicação | **Conceito:** "você mudou UMA letra do pacote e o resumo saiu completamente diferente. o que isso mostra?" → *"qualquer alteração no conteúdo aparece na hora"* |
+
+## 3. Aleatoriedade
+
+Duas camadas, ambas **dentro da mesma fase** — o participante sempre recebe as mesmas
+perguntas, então o instrumento é idêntico para todos e não se introduz confundidor
+metodológico (ADR 0002: regras fixas e iguais para todos):
+
+- **Ordem das opções** sorteada a cada abertura da caixa (`CaixaPuzzle._embaralhar`). Sem isso
+  a resposta certa fica sempre no mesmo botão e o jogador aprende a posição, não o conteúdo.
+- **Perguntas embaralhadas entre si** pelas posições do mapa (`FaseBase._configurar_pacotes`):
+  as células continuam sendo as declaradas — escolhidas para ficarem espalhadas —, mas qual
+  pergunta cai em qual posição muda a cada partida. Ninguém decora "no canto nordeste a
+  resposta é César".
+
+Nenhuma semente fixa foi necessária: os testes verificam **valores** (a opção escolhida, o
+conjunto de opções), nunca posições, então o sorteio não os torna instáveis. Qual pergunta o
+jogador respondeu continua na telemetria pelo identificador do pacote (`pacote-f1-conceito`),
+não pela posição.
+
+## 4. Duas regras viraram validação, não disciplina
+
+`PacoteConfig.problemas()` agora **reprova a fase** se:
+
+- um enunciado de `APLICACAO` citar o nome do algoritmo que é a própria resposta (era o bug da
+  fase 1, que a revisão manual já tinha deixado passar uma vez);
+- as opções não combinarem com o tipo da pergunta (nome de algoritmo em pergunta conceitual,
+  ou frase em pergunta de aplicação).
+
+`tests/teste_modo_humano.gd` carrega os três `.tres` reais e exige, além disso, que cada fase
+tenha **ao menos duas respostas corretas distintas** e **ao menos dois arquétipos** — o
+"três vezes CESAR" da fase 1 não pode voltar sem quebrar a suíte.
+
+## 5. Testes
+
+`teste_modo_humano.gd` foi de 10 para **13 testes / 109 verificações**, com os três novos:
+enunciado que não entrega a resposta, embaralhamento das opções (24 aberturas, sem perder nem
+inventar opção) e troca de posição das perguntas entre partidas.
+
+Suíte após a mudança: `fase` 23 · `cenas` 6 · `menu` 1 · `resolvedor` 21 · `diretor` 7 ·
+`astar` 4 · `telemetria` 14 · `catalogos` 4 · `modo_humano` 13 — **todos verdes**. Os dois
+arquivos de HTTP continuam sem rodar (dependem de `python`, ausente nesta máquina) e não são
+tocados por esta mudança.
+
+## 6. Como testar à mão
+
+1. **Menu → tutorial de cores.** Devem aparecer dois blocos numerados. O bloco 1 associa cor →
+   ferramenta e diz que a regra vale em qualquer fase; o bloco 2 diz qual segredo cada
+   ferramenta pede e afirma que "a cor não é a chave". A palavra "chave" não deve aparecer no
+   bloco 1.
+2. **Jogar a fase 1 duas vezes.** As três perguntas devem aparecer em **posições diferentes**
+   entre as partidas, e as respostas certas são diferentes entre si (uma é `CESAR`, as outras
+   são frases).
+3. **Abrir a mesma caixa de puzzle algumas vezes** (erre de propósito, ou saia com `ESC` e
+   volte): a ordem dos botões deve mudar.
+4. **Ler os enunciados** procurando o nome da ferramenta que é a resposta — não deve haver
+   nenhum. Se houver, o jogo nem carrega a fase: a validação reprova.
+5. **Fases 2 e 3:** confirmar que a pergunta de aplicação da fase 2 responde `César` (numa
+   fase de Vigenère) e a da fase 3 responde `Vigenère` (numa fase de SHA-256) — é assim que se
+   vê que a fase nova não cancela a regra antiga.
