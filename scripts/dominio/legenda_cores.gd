@@ -41,16 +41,33 @@ const _NOMES_DAS_CORES: Dictionary = {
 	"AES": "laranja",
 }
 
-## Uma frase por algoritmo, no vocabulario do jogador e nao no do criptografo.
-## E o texto que o tutorial do menu exibe antes da partida.
+## O que cada ferramenta FAZ -- so o mecanismo, no vocabulario do jogador.
+##
+## A palavra "chave" nao aparece aqui de proposito. O jogo pede duas decisoes
+## diferentes e o texto antigo misturava as duas: a COR do cachorro escolhe a
+## FERRAMENTA (isto e o que esta neste dicionario), e a CHAVE e o segredo que
+## faz a ferramenta escolhida funcionar (isso esta em _CHAVES, separado). Quem
+## le "a chave e esse numero" logo abaixo de uma tabela de cores acaba achando
+## que a cor e a chave -- foi o que aconteceu.
 const _EXPLICACOES: Dictionary = {
-	"CESAR": "cifra de deslocamento: cada letra anda um numero fixo de casas no alfabeto. "
-		+ "a chave e esse numero. comando: cifrar <pacote> chave=<numero>",
-	"VIGENERE": "cifra de substituicao com chave-palavra: o deslocamento muda a cada letra, "
-		+ "seguindo a palavra-chave repetida. comando: cifrar <pacote> chave=<palavra>",
-	"SHA256": "funcao de hash, de mao unica: nao esconde para depois recuperar, "
-		+ "prova que o conteudo nao foi adulterado. comandos: hash <palavra>, verificar <palavra> <prefixo>",
-	"AES": "cifra simetrica moderna, em blocos. entra na fase 4.",
+	"CESAR": "embaralha o texto deslocando cada letra um numero fixo de casas no alfabeto. "
+		+ "da para desfazer e ler de novo.",
+	"VIGENERE": "embaralha o texto trocando o deslocamento a cada letra, seguindo uma palavra "
+		+ "secreta repetida. tambem da para desfazer.",
+	"SHA256": "nao embaralha nem esconde: gera um resumo curto do conteudo, que muda inteiro "
+		+ "se alguem mexer numa letra. serve para conferir, nunca para recuperar o texto.",
+	"AES": "embaralha o texto em blocos; e a cifra usada de verdade hoje em dia.",
+}
+
+## O SEGREDO que faz cada ferramenta funcionar -- a outra metade da confusao.
+## Deliberadamente separado de _EXPLICACOES: sao dois campos no tutorial, com
+## titulos diferentes, para o jogador nunca ler cor e chave na mesma frase.
+const _CHAVES: Dictionary = {
+	"CESAR": "um numero (quantas casas andar). ex.: cifrar pacote chave=3",
+	"VIGENERE": "uma palavra. ex.: cifrar pacote chave=gato",
+	"SHA256": "nenhuma -- o resumo nao esconde nada, entao nao ha o que destrancar. "
+		+ "ex.: hash pacote / verificar pacote <resumo>",
+	"AES": "uma chave secreta; entra na fase 4.",
 }
 
 
@@ -70,6 +87,11 @@ static func explicacao(algoritmo: String) -> String:
 	return String(_EXPLICACOES.get(algoritmo, ""))
 
 
+## O segredo que a ferramenta pede -- numero, palavra, ou nenhum.
+static func chave(algoritmo: String) -> String:
+	return String(_CHAVES.get(algoritmo, ""))
+
+
 static func conhece(algoritmo: String) -> bool:
 	return _CORES.has(algoritmo)
 
@@ -85,5 +107,6 @@ static func entradas() -> Array[Dictionary]:
 			"cor": cor(algoritmo),
 			"nome_da_cor": nome_da_cor(algoritmo),
 			"explicacao": explicacao(algoritmo),
+			"chave": chave(algoritmo),
 		})
 	return lista

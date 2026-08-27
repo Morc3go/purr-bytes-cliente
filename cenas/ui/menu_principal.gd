@@ -73,11 +73,15 @@ func _ao_fechar_tutorial() -> void:
 ## AES aparece marcado como fase 4 porque a fase existe no vocabulario do banco
 ## e ja tem cor reservada, mas nao esta implementada (secao 11 do CLAUDE.md).
 func _montar_tutorial() -> void:
-	var linhas: PackedStringArray = PackedStringArray([
-		"a cor do cachorro diz qual cifra protege o pacote dele.",
-		"cifrar na cor errada nao protege -- e o mesmo que atravessar em texto claro.",
-		"",
-	])
+	var linhas := PackedStringArray()
+
+	# BLOCO 1 -- a cor escolhe a FERRAMENTA.
+	linhas.append("[b]1. a COR do cachorro escolhe a FERRAMENTA[/b]")
+	linhas.append("cada cor pede sempre a mesma ferramenta, em qualquer fase:")
+	linhas.append("um cachorro verde na fase 3 continua pedindo Cesar.")
+	linhas.append("usar a ferramenta errada nao protege -- e o mesmo que atravessar")
+	linhas.append("em texto claro.")
+	linhas.append("")
 
 	for entrada: Dictionary in LegendaCores.entradas():
 		var cor: Color = entrada["cor"]
@@ -86,8 +90,21 @@ func _montar_tutorial() -> void:
 			rotulo += "  (fase 4, ainda nao jogavel)"
 		linhas.append("[color=#%s][b]%s[/b][/color]" % [cor.to_html(false), rotulo])
 		linhas.append("    %s" % String(entrada["explicacao"]))
-		linhas.append("")
 
+	# BLOCO 2 -- a chave e outra coisa, e por isso vem em outro bloco.
+	linhas.append("")
+	linhas.append("[b]2. a CHAVE e o segredo que faz a ferramenta funcionar[/b]")
+	linhas.append("a cor nao e a chave. escolhida a ferramenta pela cor, a chave e o")
+	linhas.append("que voce digita no terminal para ela funcionar -- e cada pacote tem")
+	linhas.append("a sua (o terminal diz qual, e 'dica' ajuda).")
+	linhas.append("")
+
+	for entrada: Dictionary in LegendaCores.entradas():
+		var cor: Color = entrada["cor"]
+		linhas.append("[color=#%s]%s[/color] pede: %s"
+			% [cor.to_html(false), String(entrada["nome"]), String(entrada["chave"])])
+
+	linhas.append("")
 	linhas.append("[b]no labirinto[/b]")
 	linhas.append("T abre o terminal - F3 mostra o caminho da IA - ESC sai da fase")
 	linhas.append("pacotes trancam a porta de saida: colete os tres para ela abrir.")

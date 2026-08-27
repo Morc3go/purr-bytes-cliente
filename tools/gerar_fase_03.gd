@@ -176,36 +176,50 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 
 	# Fase final: as perguntas separam cifra de hash, que e a confusao que a
 	# fase 3 existe para desfazer.
-	var pacote_norte := PacoteConfig.new()
-	pacote_norte.identificador = "sha-norte"
-	pacote_norte.celula = Vector2i(15, 1)
-	pacote_norte.enunciado = ("o pacote chegou com um resumo anexado e voce precisa saber se o "
-		+ "conteudo foi adulterado. que ferramenta responde isso?")
-	pacote_norte.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
-	pacote_norte.resposta_correta = "SHA256"
-	pacote_norte.explicacao_correta = ("SHA-256 e de mao unica: nao esconde o conteudo, prova que "
-		+ "ele nao mudou. e integridade, nao sigilo.")
+	# APLICACAO -- tres cores em cena, e a resposta e a que o jogador acabou de
+	# aprender na fase 2: a fase nova nao cancela a regra antiga.
+	var pacote_aplicacao := PacoteConfig.new()
+	pacote_aplicacao.identificador = "f3-aplicacao"
+	pacote_aplicacao.celula = Vector2i(15, 1)
+	pacote_aplicacao.tipo = "APLICACAO"
+	pacote_aplicacao.enunciado = ("um cachorro AZUL apareceu no corredor de baixo. qual das "
+		+ "tres ferramentas protege o pacote dele?")
+	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
+	pacote_aplicacao.resposta_correta = "VIGENERE"
+	pacote_aplicacao.explicacao_correta = ("isso. e repare: a ferramenta nova desta fase nao "
+		+ "esconde nada, entao ela nao serviria aqui.")
 
-	var pacote_centro := PacoteConfig.new()
-	pacote_centro.identificador = "sha-centro"
-	pacote_centro.celula = Vector2i(9, 5)
-	pacote_centro.enunciado = ("qual destas NAO da para desfazer para recuperar o texto "
-		+ "original, nem com a chave certa?")
-	pacote_centro.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
-	pacote_centro.resposta_correta = "SHA256"
-	pacote_centro.explicacao_correta = ("nao existe 'dehash'. cifra se desfaz com a chave; hash, nunca.")
+	# CONCEITO -- o que o resumo e, sem nomear a ferramenta que o produz.
+	var pacote_conceito := PacoteConfig.new()
+	pacote_conceito.identificador = "f3-conceito"
+	pacote_conceito.celula = Vector2i(9, 5)
+	pacote_conceito.tipo = "CONCEITO"
+	pacote_conceito.enunciado = ("voce mudou UMA letra do pacote e o resumo saiu completamente "
+		+ "diferente. o que isso mostra?")
+	pacote_conceito.opcoes = PackedStringArray([
+		"qualquer alteracao no conteudo aparece na hora",
+		"que a chave usada estava errada",
+		"que o pacote foi protegido duas vezes seguidas",
+	])
+	pacote_conceito.resposta_correta = "qualquer alteracao no conteudo aparece na hora"
+	pacote_conceito.explicacao_correta = ("exato -- e para isso que o resumo serve: conferir se "
+		+ "o conteudo chegou intacto.")
 
-	var pacote_sul := PacoteConfig.new()
-	pacote_sul.identificador = "vigenere-sul"
-	pacote_sul.celula = Vector2i(3, 11)
-	pacote_sul.enunciado = ("um cachorro AZUL apareceu no corredor de baixo. qual das tres "
-		+ "protege o pacote dele?")
-	pacote_sul.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
-	pacote_sul.resposta_correta = "VIGENERE"
-	pacote_sul.explicacao_correta = ("azul = Vigenere. e repare: hash nao serve para se esconder "
-		+ "de cachorro nenhum, so o roxo se deixa enganar por ele.")
+	# DISCERNIMENTO -- cifra x hash, a licao central da fase. Opcoes de
+	# algoritmo, entao e do tipo APLICACAO na forma; mas a pergunta e sobre o
+	# LIMITE da ferramenta, nao sobre a cor -- e o que a torna dificil.
+	var pacote_discernimento := PacoteConfig.new()
+	pacote_discernimento.identificador = "f3-discernimento"
+	pacote_discernimento.celula = Vector2i(3, 11)
+	pacote_discernimento.tipo = "APLICACAO"
+	pacote_discernimento.enunciado = ("qual destas NAO serve para esconder um conteudo que "
+		+ "precisa ser lido de volta depois?")
+	pacote_discernimento.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
+	pacote_discernimento.resposta_correta = "SHA256"
+	pacote_discernimento.explicacao_correta = ("isso. nao existe desfazer um resumo: as outras "
+		+ "duas embaralham e devolvem o texto; esta so confere.")
 
-	config.pacotes = [pacote_norte, pacote_centro, pacote_sul]
+	config.pacotes = [pacote_aplicacao, pacote_conceito, pacote_discernimento]
 
 	var problemas: PackedStringArray = config.problemas()
 	if not problemas.is_empty():

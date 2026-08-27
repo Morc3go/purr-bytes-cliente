@@ -219,6 +219,91 @@ func teste_cancelar_a_caixa_despausa_sem_coletar() -> void:
 	afirmar_falso(pacote.coletado, "sair sem responder nao coleta -- a porta continua trancada")
 
 
+## Regra 3 do banco de perguntas: enunciado que cita o nome da ferramenta que e
+## a propria resposta se responde sozinho. FaseConfig ja recusa a fase nesse
+## caso; este teste confere as tres fases REAIS, que e onde o erro apareceria.
+func teste_nenhum_enunciado_entrega_a_propria_resposta() -> void:
+	for numero: int in [1, 2, 3]:
+		var config: FaseConfig = load("res://recursos/fases/fase_0%d.tres" % numero) as FaseConfig
+		if not afirmar_nao_nulo(config, "fase %d carrega" % numero):
+			continue
+
+		afirmar_igual(config.problemas().size(), 0,
+			"fase %d valida (inclui a checagem de enunciado que entrega a resposta)" % numero)
+
+		var respostas: Dictionary = {}
+		for pacote: PacoteConfig in config.pacotes:
+			respostas[pacote.resposta_correta] = true
+			afirmar_verdadeiro(pacote.opcoes.has(pacote.resposta_correta),
+				"fase %d, pacote '%s': a resposta esta entre as opcoes"
+					% [numero, pacote.identificador])
+
+		# Se todas as perguntas de uma fase tem a mesma resposta, o jogador
+		# aprende a repetir a resposta em vez de pensar -- era o caso da fase 1.
+		afirmar_verdadeiro(respostas.size() >= 2,
+			"fase %d oferece mais de uma resposta correta distinta entre seus pacotes" % numero)
+
+		var tipos: Dictionary = {}
+		for pacote: PacoteConfig in config.pacotes:
+			tipos[pacote.tipo] = true
+		afirmar_verdadeiro(tipos.size() >= 2,
+			"fase %d mistura arquetipos de pergunta, nao so 'qual ferramenta'" % numero)
+
+
+func teste_opcoes_sao_embaralhadas_sem_perder_nem_inventar() -> void:
+	_preparar_mock("embaralha")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	var pacote: Pacote = _fase.pacotes[0]
+	var esperadas: PackedStringArray = pacote.configuracao.opcoes
+
+	var ordens: Dictionary = {}
+	for _repeticao: int in 24:
+		_fase.caixa_puzzle.abrir(pacote.configuracao)
+		var ordem: PackedStringArray = _fase.caixa_puzzle.ordem_das_opcoes()
+
+		afirmar_igual(ordem.size(), esperadas.size(), "nenhuma opcao some no embaralhamento")
+		for opcao: String in esperadas:
+			if not ordem.has(opcao):
+				falhar("opcao '%s' sumiu do painel" % opcao)
+				break
+		ordens["|".join(ordem)] = true
+
+	_fase.caixa_puzzle.fechar()
+	# 24 aberturas de uma lista de 3 caindo sempre na MESMA ordem seria
+	# 1 em 3^23 por acaso -- na pratica, so acontece se nao houver sorteio.
+	afirmar_verdadeiro(ordens.size() >= 2,
+		"a ordem das opcoes muda entre aberturas: a resposta certa nao fica sempre no mesmo botao")
+
+
+func teste_perguntas_se_embaralham_entre_as_posicoes_da_fase() -> void:
+	_preparar_mock("posicoes")
+
+	var identificadores_por_posicao: Dictionary = {}
+	for _repeticao: int in 12:
+		var fase: FaseBase = _montar_fase()
+		await get_tree().process_frame
+
+		var chave := PackedStringArray()
+		for pacote: Pacote in fase.pacotes:
+			chave.append(pacote.configuracao.identificador)
+		identificadores_por_posicao["|".join(chave)] = true
+
+		# Todas as perguntas da fase aparecem SEMPRE: o que muda e onde cada uma
+		# cai, nunca quais o participante recebe -- instrumento igual para todos.
+		afirmar_igual(chave.size(), fase.configuracao.pacotes.size(),
+			"todos os pacotes da fase estao em cena")
+
+		fase.queue_free()
+		if Sessao.ativa:
+			Sessao.encerrar()
+		await get_tree().process_frame
+
+	afirmar_verdadeiro(identificadores_por_posicao.size() >= 2,
+		"as perguntas trocam de posicao entre partidas")
+
+
 # ---------------------------------------------------------------------------
 # Porta
 # ---------------------------------------------------------------------------

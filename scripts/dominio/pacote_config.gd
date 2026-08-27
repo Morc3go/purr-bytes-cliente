@@ -20,10 +20,25 @@ extends Resource
 
 @export_multiline var enunciado: String = ""
 
-## Opcoes oferecidas, em codigos de algoritmo (os mesmos de LegendaCores) --
-## assim cada botao sai na cor do cachorro correspondente, e a caixa de puzzle
-## reforca a mesma associacao cor/cifra do resto do jogo em vez de inventar um
-## vocabulario proprio.
+## Arquetipo da pergunta. Nao e enfeite: ele decide o QUE sao as opcoes.
+##
+##   APLICACAO    -- "qual ferramenta protege deste cachorro?": as opcoes sao
+##                   codigos de algoritmo, e os botoes saem na cor de cada um.
+##                   Ensina a associacao cor -> ferramenta.
+##   CONCEITO     -- "o que essa ferramenta faz com cada letra?": as opcoes sao
+##                   frases. Ensina o mecanismo.
+##   DISCERNIMENTO -- "qual destas NAO serve para X?": tambem frases. Ensina
+##                   limite e comparacao (e onde mora a diferenca cifra x hash).
+##
+## Uma fase mistura os tres de proposito: so APLICACAO ensinaria o jogador a
+## repetir a cor sem entender o que ela significa.
+@export_enum("APLICACAO", "CONCEITO", "DISCERNIMENTO") var tipo: String = "APLICACAO"
+
+## Opcoes oferecidas. Em APLICACAO sao codigos de algoritmo (os mesmos de
+## LegendaCores), e ai cada botao sai na cor do cachorro correspondente,
+## reforcando a associacao do resto do jogo. Nos outros tipos sao frases curtas,
+## exibidas como estao -- misturar conceito e nome de algoritmo nas opcoes da
+## MESMA pergunta so confundiria quem ainda esta aprendendo a diferenca.
 @export var opcoes: PackedStringArray = ["CESAR", "VIGENERE", "SHA256"]
 
 @export var resposta_correta: String = "CESAR"
@@ -50,7 +65,36 @@ func problemas() -> PackedStringArray:
 	if not opcoes.has(resposta_correta):
 		lista.append("pacote '%s': a resposta correta '%s' nao esta entre as opcoes"
 			% [identificador, resposta_correta])
-	for opcao: String in opcoes:
-		if not LegendaCores.conhece(opcao):
-			lista.append("pacote '%s' oferece a opcao desconhecida '%s'" % [identificador, opcao])
+	if opcoes_de_algoritmo():
+		for opcao: String in opcoes:
+			if not LegendaCores.conhece(opcao):
+				lista.append("pacote '%s' e de APLICACAO, entao a opcao '%s' precisa ser um "
+					% [identificador, opcao] + "algoritmo conhecido")
+
+		# Regra 3 do banco de perguntas, virada em validacao: se o enunciado cita
+		# o nome da ferramenta que e a resposta, a pergunta se responde sozinha e
+		# nao mede nada. Como o enunciado descreve a AMEACA (a cor) e a resposta
+		# e a ferramenta, isso e sempre erro de redacao -- e agora reprova a fase
+		# em vez de depender de alguem reparar na revisao.
+		var minusculo: String = enunciado.to_lower()
+		for termo: String in [resposta_correta.to_lower(), LegendaCores.nome(resposta_correta).to_lower()]:
+			if not termo.is_empty() and minusculo.contains(termo):
+				lista.append("pacote '%s': o enunciado cita '%s', que e a propria resposta"
+					% [identificador, termo])
+				break
+	else:
+		for opcao: String in opcoes:
+			if opcao.strip_edges().is_empty():
+				lista.append("pacote '%s' tem opcao vazia" % identificador)
+			elif LegendaCores.conhece(opcao):
+				lista.append(("pacote '%s' e de %s, entao as opcoes sao frases -- '%s' e nome "
+					+ "de algoritmo e pertence a uma pergunta de APLICACAO")
+					% [identificador, tipo, opcao])
+
 	return lista
+
+
+## Em APLICACAO as opcoes sao algoritmos (botao colorido, nome vindo da
+## legenda); nos demais tipos sao frases exibidas como estao.
+func opcoes_de_algoritmo() -> bool:
+	return tipo == "APLICACAO"

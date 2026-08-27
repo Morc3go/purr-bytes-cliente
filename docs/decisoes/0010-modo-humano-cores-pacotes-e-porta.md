@@ -149,3 +149,31 @@ quebraria o treino sem ensinar nada a ninguém. Coberto por
   se espalham pela tabela de varredura (deslocamento por índice), mas continuam sendo uma
   matilha atrás da mesma suspeita — o que não viola a informação imperfeita do ADR 0002,
   já que a crença segue sendo a única fonte.
+
+---
+
+## Adendo (2026-08-25) — separacao "chave x ferramenta" e banco de perguntas
+
+Tres decisoes acrescentadas depois de jogar o tutorial e reler as perguntas:
+
+**11. A cor e a chave viraram dois blocos separados no tutorial.** O texto antigo dizia "a
+chave e esse numero" logo abaixo da tabela de cores, e o jogador saia sem saber se "chave" era
+a cor ou o numero. Agora `LegendaCores._EXPLICACOES` descreve so o MECANISMO (sem a palavra
+"chave") e um dicionario novo, `_CHAVES`, descreve o SEGREDO que cada ferramenta pede -- cada
+um alimenta um bloco com titulo proprio no menu. A cor escolhe a ferramenta; a chave faz a
+ferramenta escolhida funcionar; o SHA-256 nao pede chave nenhuma.
+
+**12. `PacoteConfig.tipo`: APLICACAO, CONCEITO ou DISCERNIMENTO.** So perguntas de
+"qual ferramenta" ensinavam o jogador a repetir a cor sem entender o que ela significa (na
+fase 1 as tres respostas eram CESAR). O tipo decide o que sao as opcoes: codigos de algoritmo
+em APLICACAO (botao colorido), frases nos outros dois. `problemas()` recusa a fase se as
+opcoes nao combinarem com o tipo, e -- regra que faltava -- se um enunciado de APLICACAO citar
+o nome do algoritmo que e a propria resposta. A pergunta que se responde sozinha deixou de
+depender de alguem reparar nela na revisao.
+
+**13. Aleatoriedade dentro da fase, nunca entre participantes.** A ordem das opcoes e
+sorteada a cada abertura da caixa, e as perguntas trocam de posicao no mapa entre partidas.
+O CONJUNTO de perguntas de uma fase e sempre o mesmo, de proposito: sortear QUAIS perguntas
+cada um recebe faria o instrumento variar entre participantes, que e exatamente o
+confundidor metodologico que o ADR 0002 evita no Diretor. Nao ha semente fixa porque nenhum
+teste depende de posicao -- todos verificam valores.

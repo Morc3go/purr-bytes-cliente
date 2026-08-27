@@ -20,7 +20,9 @@ signal respondido(correto: bool, opcao: String, tempo_resposta_ms: int)
 signal cancelada()
 
 @onready var _enunciado: Label = $Raiz/Painel/Coluna/Enunciado
-@onready var _opcoes: HBoxContainer = $Raiz/Painel/Coluna/Opcoes
+## Coluna, e nao linha: as perguntas de conceito tem opcoes que sao frases, e
+## tres frases lado a lado nao cabem em 300 px.
+@onready var _opcoes: VBoxContainer = $Raiz/Painel/Coluna/Opcoes
 @onready var _retorno: Label = $Raiz/Painel/Coluna/Retorno
 
 var _configuracao: PacoteConfig = null
@@ -45,19 +47,38 @@ func _unhandled_input(evento: InputEvent) -> void:
 func abrir(config: PacoteConfig) -> void:
 	_configuracao = config
 	_enunciado.text = config.enunciado
-	_retorno.text = "qual ferramenta resolve este caso?"
+	_retorno.text = "escolha uma resposta:"
 	_retorno.modulate = Color.WHITE
 
 	for antigo: Node in _opcoes.get_children():
+		_opcoes.remove_child(antigo)
 		antigo.queue_free()
 
-	for opcao: String in config.opcoes:
+	# Ordem sorteada a cada abertura. Sem isso, a resposta certa fica sempre na
+	# mesma posicao da lista e o jogador aprende a posicao em vez do conteudo --
+	# o que arruinaria justamente a medida que o puzzle existe para produzir.
+	var ordem := PackedStringArray(config.opcoes)
+	_embaralhar(ordem)
+
+	for opcao: String in ordem:
 		var botao := Button.new()
-		botao.text = LegendaCores.nome(opcao)
 		botao.add_theme_font_size_override("font_size", 10)
-		# A cor do botao e a mesma do cachorro que exige aquela cifra: e assim
-		# que a caixa cobra a legenda do menu em vez de ser um quiz avulso.
-		botao.add_theme_color_override("font_color", LegendaCores.cor(opcao))
+		if config.opcoes_de_algoritmo():
+			botao.text = LegendaCores.nome(opcao)
+			# A cor do botao e a mesma do cachorro que exige aquela cifra: e assim
+			# que a caixa cobra a legenda do menu em vez de ser um quiz avulso.
+			botao.add_theme_color_override("font_color", LegendaCores.cor(opcao))
+		else:
+			# Opcao conceitual: texto corrido, sem cor. Pintar uma frase com a cor
+			# de um algoritmo daria uma dica que a pergunta nao quis dar.
+			botao.text = opcao
+			botao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			botao.custom_minimum_size = Vector2(0, 20)
+		botao.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# O valor da opcao viaja no metadado, e nao no texto do botao: em
+		# APLICACAO o texto e o nome bonito ("SHA-256") e o valor e o codigo
+		# ("SHA256"), entao ler o rotulo de volta daria o dado errado.
+		botao.set_meta("opcao", opcao)
 		botao.pressed.connect(_ao_escolher.bind(opcao))
 		_opcoes.add_child(botao)
 
@@ -82,6 +103,29 @@ func escolher(opcao: String) -> void:
 	_ao_escolher(opcao)
 
 
+## Ordem em que as opcoes estao na tela agora -- existe para o teste conferir
+## que o embaralhamento nao perde nem inventa opcao.
+func ordem_das_opcoes() -> PackedStringArray:
+	var ordem := PackedStringArray()
+	for filho: Node in _opcoes.get_children():
+		var botao := filho as Button
+		if botao != null:
+			ordem.append(String(botao.get_meta("opcao", "")))
+	return ordem
+
+
+## Fisher-Yates com o RNG global (ja semeado por Godot a cada execucao): nao ha
+## nada aqui que precise ser reproduzivel entre partidas -- qual pergunta o
+## jogador respondeu vai para a telemetria pelo identificador do pacote, nao
+## pela posicao do botao.
+func _embaralhar(itens: PackedStringArray) -> void:
+	for i: int in range(itens.size() - 1, 0, -1):
+		var j: int = randi_range(0, i)
+		var troca: String = itens[i]
+		itens[i] = itens[j]
+		itens[j] = troca
+
+
 func _ao_escolher(opcao: String) -> void:
 	if _configuracao == null:
 		return
@@ -91,10 +135,17 @@ func _ao_escolher(opcao: String) -> void:
 
 	if correto:
 		_retorno.text = _configuracao.explicacao_correta
-		_retorno.modulate = LegendaCores.cor(opcao)
+		_retorno.modulate = LegendaCores.cor(opcao) if _configuracao.opcoes_de_algoritmo() \
+			else Color(0.45, 0.88, 0.55)
 	else:
-		_retorno.text = "%s nao resolve este caso. leia de novo e tente outra." \
-			% LegendaCores.nome(opcao)
+		# Numa pergunta de conceito a opcao e uma frase inteira: repeti-la aqui
+		# encheria o painel. O retorno diz so que errou e devolve para o
+		# enunciado, que continua na tela.
+		if _configuracao.opcoes_de_algoritmo():
+			_retorno.text = "%s nao resolve este caso. leia de novo e tente outra." \
+				% LegendaCores.nome(opcao)
+		else:
+			_retorno.text = "nao e essa. leia o enunciado de novo e tente outra."
 		_retorno.modulate = Color(1.0, 0.55, 0.5)
 		# O cronometro reinicia a cada tentativa, como no terminal: cada
 		# tentativa_comando mede o tempo DAQUELA decisao, nao o acumulado.

@@ -139,37 +139,52 @@ func _gerar_config() -> void:
 	#
 	# As perguntas da fase 1 sao de LEITURA da legenda de cores, nao de teoria:
 	# o jogador acabou de ver a tabela no menu e tem cachorros verdes na tela.
-	var pacote_nordeste := PacoteConfig.new()
-	pacote_nordeste.identificador = "cesar-ne"
-	pacote_nordeste.celula = Vector2i(21, 2)
-	pacote_nordeste.enunciado = ("este pacote precisa atravessar o corredor onde ronda um "
-		+ "cachorro VERDE. qual cifra o protege ali?")
-	pacote_nordeste.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
-	pacote_nordeste.resposta_correta = "CESAR"
-	pacote_nordeste.explicacao_correta = ("isso. verde = Cesar: cada cor de cachorro le uma "
-		+ "cifra so, e cifrar na cor errada nao protege.")
+	# APLICACAO -- a associacao cor -> ferramenta. O enunciado descreve a ameaca
+	# pela COR e nunca nomeia a cifra: nomea-la entregaria a resposta.
+	var pacote_aplicacao := PacoteConfig.new()
+	pacote_aplicacao.identificador = "f1-aplicacao"
+	pacote_aplicacao.celula = Vector2i(21, 2)
+	pacote_aplicacao.tipo = "APLICACAO"
+	pacote_aplicacao.enunciado = ("um cachorro VERDE ronda o corredor por onde este pacote "
+		+ "precisa passar. qual ferramenta protege o conteudo dele?")
+	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
+	pacote_aplicacao.resposta_correta = "CESAR"
+	pacote_aplicacao.explicacao_correta = ("isso. verde sempre pede essa ferramenta -- em "
+		+ "qualquer fase, e nao so nesta.")
 
-	var pacote_centro := PacoteConfig.new()
-	pacote_centro.identificador = "cesar-centro"
-	pacote_centro.celula = Vector2i(11, 8)
-	pacote_centro.enunciado = ("na cifra de Cesar, o que exatamente e a chave que voce "
-		+ "digita no terminal?")
-	pacote_centro.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
-	pacote_centro.resposta_correta = "CESAR"
-	pacote_centro.explicacao_correta = ("a chave de Cesar e um NUMERO: quantas casas cada letra "
-		+ "anda no alfabeto. as outras cifras usam outra coisa.")
+	# CONCEITO -- ataca de frente a confusao "chave x ferramenta": a pergunta e
+	# sobre o numero digitado, e nenhuma opcao e nome de algoritmo.
+	var pacote_conceito := PacoteConfig.new()
+	pacote_conceito.identificador = "f1-conceito"
+	pacote_conceito.celula = Vector2i(11, 8)
+	pacote_conceito.tipo = "CONCEITO"
+	pacote_conceito.enunciado = "no comando 'cifrar pacote chave=3', o que e o 3?"
+	pacote_conceito.opcoes = PackedStringArray([
+		"quantas casas cada letra anda no alfabeto",
+		"a cor do cachorro que esta perseguindo",
+		"quantos pacotes ainda faltam coletar",
+	])
+	pacote_conceito.resposta_correta = "quantas casas cada letra anda no alfabeto"
+	pacote_conceito.explicacao_correta = ("exato. a COR escolhe a ferramenta; a CHAVE e o "
+		+ "segredo que faz a ferramenta funcionar. sao coisas diferentes.")
 
-	var pacote_sudoeste := PacoteConfig.new()
-	pacote_sudoeste.identificador = "cesar-so"
-	pacote_sudoeste.celula = Vector2i(2, 15)
-	pacote_sudoeste.enunciado = ("um pacote em texto claro foi interceptado no caminho. "
-		+ "que ferramenta teria impedido a leitura do conteudo?")
-	pacote_sudoeste.opcoes = PackedStringArray(["CESAR", "SHA256"])
-	pacote_sudoeste.resposta_correta = "CESAR"
-	pacote_sudoeste.explicacao_correta = ("cifra esconde o conteudo; hash nao esconde nada, "
-		+ "so prova que o conteudo nao mudou. voce vai usar hash na fase 3.")
+	# DISCERNIMENTO -- limite da ferramenta, sem citar nome de cifra nenhuma.
+	var pacote_discernimento := PacoteConfig.new()
+	pacote_discernimento.identificador = "f1-discernimento"
+	pacote_discernimento.celula = Vector2i(2, 15)
+	pacote_discernimento.tipo = "DISCERNIMENTO"
+	pacote_discernimento.enunciado = ("deslocar todas as letras o mesmo tanto e facil de "
+		+ "quebrar. por que?")
+	pacote_discernimento.opcoes = PackedStringArray([
+		"so existem 25 deslocamentos: da para testar todos",
+		"porque o pacote fica maior depois de cifrado",
+		"porque o cachorro conhece a chave desde o inicio",
+	])
+	pacote_discernimento.resposta_correta = "so existem 25 deslocamentos: da para testar todos"
+	pacote_discernimento.explicacao_correta = ("isso mesmo. poucas chaves possiveis = pouca "
+		+ "protecao. e o problema que a proxima fase resolve.")
 
-	config.pacotes = [pacote_nordeste, pacote_centro, pacote_sudoeste]
+	config.pacotes = [pacote_aplicacao, pacote_conceito, pacote_discernimento]
 
 	var problemas: PackedStringArray = config.problemas()
 	if not problemas.is_empty():

@@ -598,12 +598,26 @@ func _configurar_pacotes() -> void:
 	_pacotes_coletados = 0
 	_tentativas_por_pacote.clear()
 
-	var cena: PackedScene = load(_CENA_DO_PACOTE) as PackedScene
+	# As POSICOES saem da lista na ordem declarada (foram escolhidas para ficarem
+	# espalhadas pelo mapa); as PERGUNTAS sao sorteadas entre si e distribuidas
+	# por essas posicoes. O jogador ve sempre as mesmas perguntas da fase --
+	# nenhum participante recebe um instrumento diferente do outro, que e o que
+	# a validade interna do experimento exige --, mas nao decora "no canto
+	# nordeste a resposta e Cesar" de uma partida para a outra.
+	var celulas: Array[Vector2i] = []
+	var perguntas: Array[PacoteConfig] = []
 	for config_do_pacote: PacoteConfig in configuracao.pacotes:
+		celulas.append(config_do_pacote.celula)
+		perguntas.append(config_do_pacote)
+	perguntas.shuffle()
+
+	var cena: PackedScene = load(_CENA_DO_PACOTE) as PackedScene
+	for i: int in perguntas.size():
+		var config_do_pacote: PacoteConfig = perguntas[i]
 		var pacote: Pacote = cena.instantiate() as Pacote
 		pacote.name = "Pacote_%s" % config_do_pacote.identificador
 		pacotes_no.add_child(pacote)
-		pacote.global_position = _mundo_da_celula(config_do_pacote.celula)
+		pacote.global_position = _mundo_da_celula(celulas[i])
 		pacote.definir(config_do_pacote)
 		pacote.alcancado.connect(_ao_alcancar_pacote)
 		pacotes.append(pacote)
