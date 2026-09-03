@@ -63,14 +63,16 @@ func abrir(config: PacoteConfig) -> void:
 	for opcao: String in ordem:
 		var botao := Button.new()
 		botao.add_theme_font_size_override("font_size", 10)
+		# NENHUMA opcao e colorida, nem quando e o nome de um algoritmo.
+		#
+		# A cor e a pista do LABIRINTO -- serve para reconhecer a ameaca que
+		# esta vindo. Dentro da caixa ela viraria muleta: o jogador pareia a cor
+		# do botao com a do cachorro que acabou de ver e acerta sem entender o
+		# conceito, que e exatamente o que a pergunta quer medir. Botao neutro
+		# obriga a ler o enunciado.
 		if config.opcoes_de_algoritmo():
 			botao.text = LegendaCores.nome(opcao)
-			# A cor do botao e a mesma do cachorro que exige aquela cifra: e assim
-			# que a caixa cobra a legenda do menu em vez de ser um quiz avulso.
-			botao.add_theme_color_override("font_color", LegendaCores.cor(opcao))
 		else:
-			# Opcao conceitual: texto corrido, sem cor. Pintar uma frase com a cor
-			# de um algoritmo daria uma dica que a pergunta nao quis dar.
 			botao.text = opcao
 			botao.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			botao.custom_minimum_size = Vector2(0, 20)
@@ -135,8 +137,9 @@ func _ao_escolher(opcao: String) -> void:
 
 	if correto:
 		_retorno.text = _configuracao.explicacao_correta
-		_retorno.modulate = LegendaCores.cor(opcao) if _configuracao.opcoes_de_algoritmo() \
-			else Color(0.45, 0.88, 0.55)
+		# Verde de "acertou", nao a cor do algoritmo: dentro da caixa nenhuma
+		# cor deve ser lida como pista sobre a resposta.
+		_retorno.modulate = Color(0.45, 0.88, 0.55)
 	else:
 		# Numa pergunta de conceito a opcao e uma frase inteira: repeti-la aqui
 		# encheria o painel. O retorno diz so que errou e devolve para o

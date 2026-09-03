@@ -29,6 +29,19 @@ func _ready() -> void:
 	visible = false
 
 
+## Abrir o terminal pausa a arvore (FaseBase faz isso ao receber `aberto`), e no
+## pausado o _unhandled_input da fase nao roda. Por isso a tecla de FECHAR e
+## tratada aqui, no proprio terminal, que tem process_mode ALWAYS -- como ja
+## acontece na caixa de puzzle. Sem isto, abrir o terminal seria uma armadilha:
+## o jogo pausado e nenhuma tecla capaz de sair.
+func _unhandled_input(evento: InputEvent) -> void:
+	if not visible:
+		return
+	if evento.is_action_pressed("abrir_terminal") or evento.is_action_pressed("pausar"):
+		get_viewport().set_input_as_handled()
+		fechar()
+
+
 func abrir(cabecalho: String = "") -> void:
 	visible = true
 	if cabecalho != "":

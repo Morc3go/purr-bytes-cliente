@@ -70,6 +70,52 @@ func calcular_caminho(origem_mundo: Vector2, destino_mundo: Vector2) -> PackedVe
 	return caminho_mundo
 
 
+## O ponto andavel mais proximo de um ponto qualquer do mundo, em coordenada de
+## mundo. Devolve o proprio ponto quando ele ja esta em celula livre.
+##
+## Existe por causa de um travamento real: o Diretor publica o CENTRO de uma
+## regiao e fase_base.gd varre alguns pontos ao redor dele (+-1 celula). Nada
+## garantia que esses pontos caissem em piso -- e quando caiam em parede,
+## calcular_caminho devolvia vazio, o cachorro parava, e o indice da varredura
+## so avancava quando ele CHEGASSE ao ponto, o que nunca aconteceria. O
+## cachorro travava de vez, e so nas fases com Diretor (2 e 3).
+##
+## A busca e em largura a partir da celula pedida, entao o resultado e sempre a
+## celula livre mais proxima em numero de passos -- nao um chute de direcao.
+func ponto_andavel_mais_proximo(ponto_mundo: Vector2) -> Vector2:
+	if _labirinto == null:
+		return ponto_mundo
+
+	var celula: Vector2i = _labirinto.local_to_map(_labirinto.to_local(ponto_mundo))
+	if _grade.is_in_boundsv(celula) and not _grade.is_point_solid(celula):
+		return ponto_mundo
+
+	var vistos: Dictionary = {celula: true}
+	var fila: Array[Vector2i] = [celula]
+	while not fila.is_empty():
+		var atual: Vector2i = fila.pop_front()
+		if _grade.is_in_boundsv(atual) and not _grade.is_point_solid(atual):
+			return _labirinto.to_global(_labirinto.map_to_local(atual))
+		for direcao: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
+			var vizinho: Vector2i = atual + direcao
+			if vistos.has(vizinho) or not _grade.is_in_boundsv(vizinho):
+				continue
+			vistos[vizinho] = true
+			fila.append(vizinho)
+
+	# Grade inteiramente solida: nao ha para onde mandar ninguem.
+	return ponto_mundo
+
+
+## Se um ponto do mundo cai em celula livre. Usado pelos testes e pela
+## depuracao; a decisao de runtime passa por ponto_andavel_mais_proximo.
+func ponto_e_andavel(ponto_mundo: Vector2) -> bool:
+	if _labirinto == null:
+		return false
+	var celula: Vector2i = _labirinto.local_to_map(_labirinto.to_local(ponto_mundo))
+	return _grade.is_in_boundsv(celula) and not _grade.is_point_solid(celula)
+
+
 func _e_solido(celula: Vector2i) -> bool:
 	var dados: TileData = _labirinto.get_cell_tile_data(celula)
 	if dados == null:

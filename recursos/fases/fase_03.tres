@@ -1,33 +1,31 @@
 [gd_resource type="Resource" script_class="FaseConfig" format=3]
 
-[ext_resource type="Script" path="res://scripts/dominio/cachorro_config.gd" id="1_1k045"]
-[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="2_thhan"]
-[ext_resource type="Script" path="res://scripts/dominio/pacote_config.gd" id="3_5841i"]
-[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="4_7juck"]
-
-[sub_resource type="Resource" id="Resource_vle6f"]
-script = ExtResource("1_1k045")
-identificador = "roxo-norte"
-algoritmo_exigido = "SHA256"
-celula_inicial = Vector2i(5, 1)
-ancoras = Array[Vector2i]([Vector2i(1, 1), Vector2i(15, 1), Vector2i(15, 3), Vector2i(3, 3)])
-
-[sub_resource type="Resource" id="Resource_15727"]
-script = ExtResource("1_1k045")
-identificador = "azul-centro"
-algoritmo_exigido = "VIGENERE"
-celula_inicial = Vector2i(9, 5)
-ancoras = Array[Vector2i]([Vector2i(1, 5), Vector2i(17, 5), Vector2i(17, 7), Vector2i(3, 7)])
+[ext_resource type="Script" path="res://scripts/dominio/cachorro_config.gd" id="1_thhan"]
+[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="2_5841i"]
+[ext_resource type="Script" path="res://scripts/dominio/mapa_config.gd" id="3_7juck"]
+[ext_resource type="Script" path="res://scripts/dominio/pacote_config.gd" id="4_vle6f"]
+[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="5_15727"]
 
 [sub_resource type="Resource" id="Resource_hyxck"]
-script = ExtResource("1_1k045")
-identificador = "verde-sul"
-celula_inicial = Vector2i(9, 9)
-ancoras = Array[Vector2i]([Vector2i(1, 9), Vector2i(15, 9), Vector2i(15, 11), Vector2i(3, 11)])
-velocidade = 36.0
+script = ExtResource("1_thhan")
+identificador = "roxo-norte"
+algoritmo_exigido = "SHA256"
+ancoras = Array[Vector2i]([Vector2i(2, 1), Vector2i(17, 1), Vector2i(12, 3), Vector2i(5, 5)])
 
 [sub_resource type="Resource" id="Resource_jahtl"]
-script = ExtResource("2_thhan")
+script = ExtResource("1_thhan")
+identificador = "azul-centro"
+algoritmo_exigido = "VIGENERE"
+ancoras = Array[Vector2i]([Vector2i(17, 5), Vector2i(18, 9), Vector2i(15, 11), Vector2i(16, 7)])
+
+[sub_resource type="Resource" id="Resource_qr3ng"]
+script = ExtResource("1_thhan")
+identificador = "verde-sul"
+ancoras = Array[Vector2i]([Vector2i(3, 13), Vector2i(7, 11), Vector2i(1, 9), Vector2i(5, 13)])
+velocidade = 36.0
+
+[sub_resource type="Resource" id="Resource_c6um6"]
+script = ExtResource("2_5841i")
 identificador = "sha256-01"
 enunciado = "o pacote 'pacote' chegou com um digest anexado. confira antes de entregar."
 texto_claro = "pacote"
@@ -36,8 +34,8 @@ resposta_esperada = "c00fe504"
 dica = "use 'hash pacote' para calcular o digest voce mesmo e comparar."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_qr3ng"]
-script = ExtResource("2_thhan")
+[sub_resource type="Resource" id="Resource_6mcfx"]
+script = ExtResource("2_5841i")
 identificador = "sha256-02"
 enunciado = "novo pacote 'mensagem' atravessando. confira a integridade de novo."
 texto_claro = "mensagem"
@@ -46,8 +44,8 @@ resposta_esperada = "d38813dc"
 dica = "'hash mensagem' calcula o digest -- compare os primeiros 8 digitos."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_c6um6"]
-script = ExtResource("2_thhan")
+[sub_resource type="Resource" id="Resource_bwu2f"]
+script = ExtResource("2_5841i")
 identificador = "vigenere-revisao"
 enunciado = "pacote em Vigenere no meio do caminho: cifrar rede chave=gato. e a cifra que engana o cachorro azul."
 texto_claro = "rede"
@@ -57,8 +55,8 @@ dica = "Vigenere usa chave-palavra: o deslocamento muda a cada letra."
 pontos_acerto = 80
 pontos_acerto_de_primeira = 120
 
-[sub_resource type="Resource" id="Resource_6mcfx"]
-script = ExtResource("2_thhan")
+[sub_resource type="Resource" id="Resource_evluw"]
+script = ExtResource("2_5841i")
 identificador = "cesar-revisao"
 enunciado = "pacote antigo em Cesar: cifrar chave chave=7. e a cifra que engana o cachorro verde."
 texto_claro = "chave"
@@ -68,43 +66,45 @@ dica = "Cesar e deslocamento fixo: a chave e um numero."
 pontos_acerto = 80
 pontos_acerto_de_primeira = 120
 
-[sub_resource type="Resource" id="Resource_bwu2f"]
-script = ExtResource("3_5841i")
+[sub_resource type="Resource" id="Resource_81voo"]
+script = ExtResource("3_7juck")
+linhas = PackedStringArray("#####################", "#P..............o...#", "#.###.###D....#.###.#", "#...#.#.........#...#", "###.###.#.#.#.#.#..##", "#.#...#.....#.......#", "#.##..#.#.#####.....#", "#.#...#...#...#.....#", "#.#.#######.#.#D....#", "#.#.....o...#.......#", "#.#.######.##.#####.#", "#....D..#...#...#...#", "#.....###.#.#.#.#.#.#", "#o........#...#....S#", "#####################")
+
+[sub_resource type="Resource" id="Resource_ol6pa"]
+script = ExtResource("4_vle6f")
 identificador = "f3-aplicacao"
-celula = Vector2i(15, 1)
 enunciado = "um cachorro AZUL apareceu no corredor de baixo. qual das tres ferramentas protege o pacote dele?"
 opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
 resposta_correta = "VIGENERE"
 explicacao_correta = "isso. e repare: a ferramenta nova desta fase nao esconde nada, entao ela nao serviria aqui."
 
-[sub_resource type="Resource" id="Resource_evluw"]
-script = ExtResource("3_5841i")
+[sub_resource type="Resource" id="Resource_snekf"]
+script = ExtResource("4_vle6f")
 identificador = "f3-conceito"
-celula = Vector2i(9, 5)
 enunciado = "voce mudou UMA letra do pacote e o resumo saiu completamente diferente. o que isso mostra?"
 tipo = "CONCEITO"
 opcoes = PackedStringArray("qualquer alteracao no conteudo aparece na hora", "que a chave usada estava errada", "que o pacote foi protegido duas vezes seguidas")
 resposta_correta = "qualquer alteracao no conteudo aparece na hora"
 explicacao_correta = "exato -- e para isso que o resumo serve: conferir se o conteudo chegou intacto."
 
-[sub_resource type="Resource" id="Resource_81voo"]
-script = ExtResource("3_5841i")
+[sub_resource type="Resource" id="Resource_eajtu"]
+script = ExtResource("4_vle6f")
 identificador = "f3-discernimento"
-celula = Vector2i(3, 11)
 enunciado = "qual destas NAO serve para esconder um conteudo que precisa ser lido de volta depois?"
 opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
 resposta_correta = "SHA256"
 explicacao_correta = "isso. nao existe desfazer um resumo: as outras duas embaralham e devolvem o texto; esta so confere."
 
 [resource]
-script = ExtResource("4_7juck")
+script = ExtResource("5_15727")
 numero = 3
 titulo = "o labirinto de SHA-256"
 algoritmo = "SHA256"
 verbos_permitidos = PackedStringArray("hash", "verificar", "cifrar", "dica", "status")
-desafios = Array[ExtResource("2_thhan")]([SubResource("Resource_jahtl"), SubResource("Resource_qr3ng"), SubResource("Resource_c6um6"), SubResource("Resource_6mcfx")])
-cachorros = Array[ExtResource("1_1k045")]([SubResource("Resource_vle6f"), SubResource("Resource_15727"), SubResource("Resource_hyxck")])
-pacotes = Array[ExtResource("3_5841i")]([SubResource("Resource_bwu2f"), SubResource("Resource_evluw"), SubResource("Resource_81voo")])
+mapa = SubResource("Resource_81voo")
+desafios = Array[ExtResource("2_5841i")]([SubResource("Resource_c6um6"), SubResource("Resource_6mcfx"), SubResource("Resource_bwu2f"), SubResource("Resource_evluw")])
+cachorros = Array[ExtResource("1_thhan")]([SubResource("Resource_hyxck"), SubResource("Resource_jahtl"), SubResource("Resource_qr3ng")])
+pacotes = Array[ExtResource("4_vle6f")]([SubResource("Resource_ol6pa"), SubResource("Resource_snekf"), SubResource("Resource_eajtu")])
 velocidade_cachorro = 44.0
 briefing_pedagogico = "o pacote chega com um digest anexado -- um resumo de mao unica do conteudo.
 use 'hash <palavra>' para calcular o digest de verdade, e 'verificar <palavra> <prefixo>' para confirmar que o pacote nao foi adulterado antes de entregar.

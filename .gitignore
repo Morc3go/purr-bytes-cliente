@@ -12,3 +12,10 @@ dist/
 # Arquivos locais de maquina
 *.tmp
 *.log
+
+# Modelos e checkpoints de aprendizado por reforco
+*.onnx
+*.pth
+*.ckpt
+/modelos/
+/runs/

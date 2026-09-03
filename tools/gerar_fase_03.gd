@@ -23,27 +23,42 @@ extends SceneTree
 ## mudanca de gramatica -- o parser continua intocado desde o Marco 1.
 const TAMANHO_PREFIXO: int = 8
 
+## Marcadores no proprio desenho: P jogador · S porta · o pacote · D cachorro
+## (ver scripts/dominio/mapa_config.gd). Sao TRES 'D' aqui -- um por cor.
+##
+## 21x15, com tracado proprio: ate agora esta fase reusava o mesmo labirinto da
+## fase 2, o que fazia a fase final parecer repeticao da anterior. Validado por
+## MapaConfig antes de entrar no arquivo.
 const MAPA: PackedStringArray = [
-	"###################",
-	"#.................#",
-	"#.###############.#",
-	"#...............#.#",
-	"###############.#.#",
-	"#.................#",
-	"#.###############.#",
-	"#...............#.#",
-	"###############.#.#",
-	"#.................#",
-	"#.###############.#",
-	"#...............#.#",
-	"###################",
+	"#####################",
+	"#P..............o...#",
+	"#.###.###D....#.###.#",
+	"#...#.#.........#...#",
+	"###.###.#.#.#.#.#..##",
+	"#.#...#.....#.......#",
+	"#.##..#.#.#####.....#",
+	"#.#...#...#...#.....#",
+	"#.#.#######.#.#D....#",
+	"#.#.....o...#.......#",
+	"#.#.######.##.#####.#",
+	"#....D..#...#...#...#",
+	"#.....###.#.#.#.#.#.#",
+	"#o........#...#....S#",
+	"#####################",
 ]
 
 const TAMANHO_TILE: int = 16
+## O MapaConfig desta fase: o texto acima vira dado, e e ele que FaseBase
+## repinta e usa para posicionar jogador, porta, pacotes e cachorros.
+func _mapa() -> MapaConfig:
+	var mapa := MapaConfig.new()
+	mapa.linhas = MAPA
+	return mapa
+
+
 const CAMINHO_TILESET: String = "res://recursos/tilesets/labirinto.tres"
 const CAMINHO_CONFIG: String = "res://recursos/fases/fase_03.tres"
 const CAMINHO_CENA: String = "res://cenas/fases/fase_03.tscn"
-const CELULA_SAIDA: Vector2i = Vector2i(17, 11)
 
 
 func _initialize() -> void:
@@ -132,6 +147,7 @@ func _gerar_desafios() -> Array[DesafioConfig]:
 func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	var config := FaseConfig.new()
 	config.numero = 3
+	config.mapa = _mapa()
 	config.titulo = "o labirinto de SHA-256"
 	config.algoritmo = "SHA256"
 	# "cifrar" volta a lista porque a fase final tem cachorro verde e azul, e as
@@ -156,20 +172,17 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	var cachorro_roxo := CachorroConfig.new()
 	cachorro_roxo.identificador = "roxo-norte"
 	cachorro_roxo.algoritmo_exigido = "SHA256"
-	cachorro_roxo.celula_inicial = Vector2i(5, 1)
-	cachorro_roxo.ancoras = [Vector2i(1, 1), Vector2i(15, 1), Vector2i(15, 3), Vector2i(3, 3)]
+	cachorro_roxo.ancoras = [Vector2i(2, 1), Vector2i(17, 1), Vector2i(12, 3), Vector2i(5, 5)]
 
 	var cachorro_azul := CachorroConfig.new()
 	cachorro_azul.identificador = "azul-centro"
 	cachorro_azul.algoritmo_exigido = "VIGENERE"
-	cachorro_azul.celula_inicial = Vector2i(9, 5)
-	cachorro_azul.ancoras = [Vector2i(1, 5), Vector2i(17, 5), Vector2i(17, 7), Vector2i(3, 7)]
+	cachorro_azul.ancoras = [Vector2i(17, 5), Vector2i(18, 9), Vector2i(15, 11), Vector2i(16, 7)]
 
 	var cachorro_verde := CachorroConfig.new()
 	cachorro_verde.identificador = "verde-sul"
 	cachorro_verde.algoritmo_exigido = "CESAR"
-	cachorro_verde.celula_inicial = Vector2i(9, 9)
-	cachorro_verde.ancoras = [Vector2i(1, 9), Vector2i(15, 9), Vector2i(15, 11), Vector2i(3, 11)]
+	cachorro_verde.ancoras = [Vector2i(3, 13), Vector2i(7, 11), Vector2i(1, 9), Vector2i(5, 13)]
 	cachorro_verde.velocidade = 36.0
 
 	config.cachorros = [cachorro_roxo, cachorro_azul, cachorro_verde]
@@ -180,7 +193,6 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	# aprender na fase 2: a fase nova nao cancela a regra antiga.
 	var pacote_aplicacao := PacoteConfig.new()
 	pacote_aplicacao.identificador = "f3-aplicacao"
-	pacote_aplicacao.celula = Vector2i(15, 1)
 	pacote_aplicacao.tipo = "APLICACAO"
 	pacote_aplicacao.enunciado = ("um cachorro AZUL apareceu no corredor de baixo. qual das "
 		+ "tres ferramentas protege o pacote dele?")
@@ -192,7 +204,6 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	# CONCEITO -- o que o resumo e, sem nomear a ferramenta que o produz.
 	var pacote_conceito := PacoteConfig.new()
 	pacote_conceito.identificador = "f3-conceito"
-	pacote_conceito.celula = Vector2i(9, 5)
 	pacote_conceito.tipo = "CONCEITO"
 	pacote_conceito.enunciado = ("voce mudou UMA letra do pacote e o resumo saiu completamente "
 		+ "diferente. o que isso mostra?")
@@ -210,7 +221,6 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	# LIMITE da ferramenta, nao sobre a cor -- e o que a torna dificil.
 	var pacote_discernimento := PacoteConfig.new()
 	pacote_discernimento.identificador = "f3-discernimento"
-	pacote_discernimento.celula = Vector2i(3, 11)
 	pacote_discernimento.tipo = "APLICACAO"
 	pacote_discernimento.enunciado = ("qual destas NAO serve para esconder um conteudo que "
 		+ "precisa ser lido de volta depois?")
@@ -233,17 +243,14 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 		quit(1)
 
 
+## O desenho do .tscn sai do MESMO MapaConfig.pintar() que FaseBase usa ao
+## carregar a fase -- editor e jogo derivam do mesmo texto, entao nao ha como
+## divergirem.
 func _pintar_labirinto() -> PackedByteArray:
 	var tileset: TileSet = load(CAMINHO_TILESET) as TileSet
 	var labirinto := TileMapLayer.new()
 	labirinto.tile_set = tileset
-
-	for y: int in MAPA.size():
-		var linha: String = MAPA[y]
-		for x: int in linha.length():
-			var solido: bool = linha[x] == "#"
-			var atlas: Vector2i = Vector2i(1, 0) if solido else Vector2i(0, 0)
-			labirinto.set_cell(Vector2i(x, y), 0, atlas)
+	_mapa().pintar(labirinto)
 
 	var dados: Variant = labirinto.get("tile_map_data")
 	if typeof(dados) != TYPE_PACKED_BYTE_ARRAY:
@@ -265,9 +272,13 @@ func _gerar_cena(tile_map_data: PackedByteArray) -> void:
 	var meio_x: float = largura_mundo / 2.0
 	var meio_y: float = altura_mundo / 2.0
 
+	# A saida sai do marcador S do proprio mapa: uma constante paralela poderia
+	# discordar do desenho, que e exatamente a classe de bug que MapaConfig veio
+	# eliminar.
+	var celula_de_saida: Vector2i = _mapa().celula_unica(MapaConfig.SAIDA)
 	var saida_mundo: Vector2 = Vector2(
-		CELULA_SAIDA.x * TAMANHO_TILE + TAMANHO_TILE / 2.0,
-		CELULA_SAIDA.y * TAMANHO_TILE + TAMANHO_TILE / 2.0)
+		celula_de_saida.x * TAMANHO_TILE + TAMANHO_TILE / 2.0,
+		celula_de_saida.y * TAMANHO_TILE + TAMANHO_TILE / 2.0)
 
 	var regioes: Array[Dictionary] = [
 		{"nome": "RegiaoNoroeste", "centro": Vector2(meio_x / 2.0, meio_y / 2.0)},

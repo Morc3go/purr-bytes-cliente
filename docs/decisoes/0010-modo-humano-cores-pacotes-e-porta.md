@@ -177,3 +177,37 @@ O CONJUNTO de perguntas de uma fase e sempre o mesmo, de proposito: sortear QUAI
 cada um recebe faria o instrumento variar entre participantes, que e exatamente o
 confundidor metodologico que o ADR 0002 evita no Diretor. Nao ha semente fixa porque nenhum
 teste depende de posicao -- todos verificam valores.
+
+---
+
+## Adendo (2026-08-27) — mapa como dado validado
+
+**14. O labirinto virou texto, e o texto passa por validador.** `MapaConfig`
+(`scripts/dominio/mapa_config.gd`) guarda o grid ASCII; `FaseBase` repinta o TileMapLayer
+a partir dele e posiciona jogador, porta, pacotes e cachorros pelos marcadores. O TileMap
+e o AStarGrid2D passam a ser DERIVADOS do texto, e nao uma segunda fonte capaz de divergir.
+`problemas()` recusa a fase por grid nao retangular, borda aberta, caractere fora da legenda,
+contagem de marcadores diferente da lista da fase, ou pacote/porta/cachorro/ancora
+inalcancavel a partir do P (inundacao em 4 direcoes, as mesmas do A*).
+
+**15. O travamento das fases 2 e 3 era o Diretor, nao o desenho.** `_alvo_de_varredura`
+somava offsets de +-1 celula ao centro da regiao sem olhar o labirinto; caindo em parede, o
+A* devolvia caminho vazio e o indice da varredura so avancaria quando o cachorro CHEGASSE ao
+ponto -- travamento permanente. Agora todo alvo passa por
+`Navegacao.ponto_andavel_mais_proximo()`, e caminho vazio avanca a varredura em vez de
+insistir. Regressao em teste, percorrendo a tabela inteira nas 4 regioes.
+
+**16. O terminal pausa, e a pausa e neutra.** Digitar sob perseguicao media digitacao, nao
+aprendizado. Como a arvore pausada nao entrega input a FaseBase, as teclas de fechar mudaram
+para dentro do proprio terminal (process_mode ALWAYS) -- sem isso, abrir o terminal seria uma
+armadilha. A duracao da cifra corre em _physics_process e portanto NAO consome tempo pausado;
+tempo_resposta_ms segue no relogio de parede, medindo o tempo pensando.
+
+**17. A cifra se explica no terminal, sem emitir CIFRA_DEMONSTRADA.** O acerto imprime claro,
+chave alinhada e cifrado, montados por DemonstracaoCifra.montar() -- a mesma funcao do painel,
+nao uma segunda explicacao. O evento continua reservado para quando o jogador ESCOLHE ver a
+demonstracao; emiti-lo a cada acerto faria o indicador do Eixo 2 virar contador de acertos.
+
+**18. A cor saiu das respostas do puzzle.** Ela e a pista do labirinto; dentro da caixa
+permitia parear cor de botao com cor de cachorro e acertar sem entender o conceito -- que e o
+que o puzzle mede. Cachorro, HUD e tutorial seguem coloridos.

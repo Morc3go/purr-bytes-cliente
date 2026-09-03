@@ -25,6 +25,15 @@ extends Resource
 ## Cesar e Vigenere no terminal -- se mudar mais, o parser esta acoplado a fase.
 @export var verbos_permitidos: PackedStringArray = ["cifrar", "decifrar", "dica", "status"]
 
+## O labirinto, escrito como texto (ver scripts/dominio/mapa_config.gd). E ele
+## que posiciona jogador, porta, pacotes e cachorros -- na ordem de leitura do
+## desenho -- e que FaseBase repinta no TileMapLayer ao carregar a fase.
+##
+## Nulo = fase antiga, com o labirinto so pintado no .tscn e as posicoes vindo
+## dos marcadores da cena e dos campos `celula` de cada config. Continua
+## funcionando, mas sem validacao de alcancabilidade.
+@export var mapa: MapaConfig
+
 @export var desafios: Array[DesafioConfig] = []
 
 ## Cachorros da fase, um por cor/algoritmo exigido. Vazia = a fase usa apenas o
@@ -148,6 +157,10 @@ func problemas() -> PackedStringArray:
 				+ "essa cifra (disponiveis: %s)") % [
 					cachorro.identificador, cachorro.algoritmo_exigido,
 					", ".join(algoritmos_disponiveis)])
+
+	if mapa != null:
+		for problema: String in mapa.problemas(self):
+			lista.append("mapa: %s" % problema)
 
 	var identificadores_de_pacote: Dictionary = {}
 	for i: int in pacotes.size():

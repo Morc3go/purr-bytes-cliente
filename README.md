@@ -126,6 +126,11 @@ usada também pelos cachorros, pela HUD e pelos botões do puzzle.
 desafio ativa a proteção **na cifra daquele desafio**, por alguns segundos. Os desafios de
 uma fase ciclam, então sempre dá para reaplicar a cifra que a cor exige.
 
+Abrir o terminal **pausa o jogo** (como a caixa de puzzle): pensar qual ferramenta a cor
+pede não deve ser uma corrida contra o cachorro. A proteção não conta o tempo pausado.
+Ao acertar, o terminal mostra a transformação **letra a letra** — texto claro, chave
+alinhada e resultado — e o que o cachorro passa a ver no lugar do conteúdo.
+
 **Pacotes.** Três por fase, espalhados em pontas distantes. Encostar num pacote abre uma
 pergunta curta com botões (qual ferramenta serve para aquele caso). Acertar coleta;
 errar custa pontos e deixa tentar de novo. `ESC` fecha sem responder.
@@ -135,6 +140,46 @@ visível do outro lado do labirinto. Aberta, ela leva direto à fase seguinte.
 
 **Teclas.** `WASD`/setas movem · `T` terminal · `F3` mostra o caminho do A\* de cada
 cachorro, na cor dele · `ESC` sai da fase (ou fecha o terminal/puzzle).
+
+### Criando uma fase nova (ou mexendo num labirinto)
+
+O labirinto é **texto**, não desenho. Ele vive no `MAPA` do gerador da fase
+(`tools/gerar_fase_0N.gd`) e vira um `MapaConfig` dentro do `.tres`:
+
+```
+#########
+#..P..o.#
+#.###.#.#
+#.o.#...#
+#.#.###.#
+#...D..S#
+#########
+```
+
+| símbolo | significado |
+|---|---|
+| `#` | parede |
+| `.` | caminho livre |
+| `P` | onde o jogador começa (exatamente um) |
+| `S` | a porta de saída (exatamente uma) |
+| `o` | um pacote — um por `PacoteConfig` da fase, na **ordem de leitura** |
+| `D` | um cachorro — um por `CachorroConfig` da fase, na **ordem de leitura** |
+
+Passo a passo:
+
+1. Edite o `MAPA` no gerador (ou copie um dos existentes e mude).
+2. Rode `& $godot --headless --path . --script res://tools/gerar_fase_0N.gd`.
+3. Se o desenho estiver incoerente, **o gerador falha e diz o porquê** — mapa não
+   retangular, borda aberta, caractere fora da legenda, pacote/porta/cachorro
+   inalcançável a partir do `P`, cachorro nascendo preso, âncora de patrulha em
+   parede, ou contagem de `o`/`D` diferente da lista da fase.
+4. Verde? A fase está pronta. O `TileMapLayer` da cena e o `AStarGrid2D` são
+   **derivados** desse texto, então não há como o mapa jogável divergir do que
+   foi validado.
+
+O mesmo validador roda ao carregar a fase (`FaseConfig.problemas()`), então um
+`.tres` editado à mão também é recusado com mensagem clara em vez de abrir um
+labirinto quebrado.
 
 ### Modo de treino (agente de RL)
 

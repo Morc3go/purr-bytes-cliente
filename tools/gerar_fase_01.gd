@@ -27,30 +27,40 @@ extends SceneTree
 ## PontoDeEntrada fica em (1,1) -- a mesma Vector2(24,24) default de
 ## fase_base.tscn. PontoDeSaida (a porta) e CELULA_SAIDA, no canto oposto, e
 ## por isso fase_01.tscn passa a sobrescrever esse marcador.
+## Marcadores no proprio desenho (ver scripts/dominio/mapa_config.gd):
+##   P jogador · S porta · o pacote · D cachorro
+## A ordem de leitura pareia 'o' com config.pacotes e 'D' com config.cachorros.
 const MAPA: PackedStringArray = [
 	"#########################",
-	"#.........#.....#.......#",
-	"#.....###.#.#.###.#....##",
+	"#P........#.....#.......#",
+	"#.....###.#.#.###.#..o.##",
 	"#.....#.....#.....#.....#",
 	"#.#.#...#.#####.###.###.#",
-	"#.#.#...#.............#.#",
+	"#.#.#...#....D........#.#",
 	"#.#####.#.#######.#.###.#",
 	"#.....#.........#.#...#.#",
-	"##.##.#.#.......#.###.#.#",
+	"##.##.#.#..o....#.###.#.#",
 	"#.....#...............#.#",
 	"#.#######......#.######.#",
 	"#.......#...#...........#",
 	"#######.#...#.#.###.###.#",
 	"#.#...#.#.#.........#...#",
 	"#.....#...###.#..#......#",
-	"#.......#.....#.........#",
-	"#....########.###.......#",
+	"#.o.....#..D..#.........#",
+	"#....########.###.....S.#",
 	"#.............#.........#",
 	"#########################",
 ]
 
 const TAMANHO_TILE: float = 16.0
-const CELULA_SAIDA: Vector2i = Vector2i(22, 16)
+
+## O MapaConfig desta fase: o texto acima vira dado, e e ele que FaseBase
+## repinta e usa para posicionar jogador, porta, pacotes e cachorros.
+func _mapa() -> MapaConfig:
+	var mapa := MapaConfig.new()
+	mapa.linhas = MAPA
+	return mapa
+
 
 const CAMINHO_TILESET: String = "res://recursos/tilesets/labirinto.tres"
 const CAMINHO_CONFIG: String = "res://recursos/fases/fase_01.tres"
@@ -68,6 +78,7 @@ func _initialize() -> void:
 func _gerar_config() -> void:
 	var config := FaseConfig.new()
 	config.numero = 1
+	config.mapa = _mapa()
 	config.titulo = "o labirinto de Cesar"
 	config.algoritmo = "CESAR"
 	config.verbos_permitidos = PackedStringArray(["cifrar", "decifrar", "dica", "status"])
@@ -121,13 +132,11 @@ func _gerar_config() -> void:
 	var cachorro_norte := CachorroConfig.new()
 	cachorro_norte.identificador = "verde-norte"
 	cachorro_norte.algoritmo_exigido = "CESAR"
-	cachorro_norte.celula_inicial = Vector2i(13, 5)
 	cachorro_norte.ancoras = [Vector2i(9, 5), Vector2i(20, 5), Vector2i(19, 3), Vector2i(11, 3)]
 
 	var cachorro_sul := CachorroConfig.new()
 	cachorro_sul.identificador = "verde-sul"
 	cachorro_sul.algoritmo_exigido = "CESAR"
-	cachorro_sul.celula_inicial = Vector2i(11, 15)
 	cachorro_sul.ancoras = [Vector2i(3, 15), Vector2i(11, 17), Vector2i(19, 15), Vector2i(11, 13)]
 	cachorro_sul.velocidade = 34.0  # mais lento: patrulha o dobro de distancia
 
@@ -143,7 +152,6 @@ func _gerar_config() -> void:
 	# pela COR e nunca nomeia a cifra: nomea-la entregaria a resposta.
 	var pacote_aplicacao := PacoteConfig.new()
 	pacote_aplicacao.identificador = "f1-aplicacao"
-	pacote_aplicacao.celula = Vector2i(21, 2)
 	pacote_aplicacao.tipo = "APLICACAO"
 	pacote_aplicacao.enunciado = ("um cachorro VERDE ronda o corredor por onde este pacote "
 		+ "precisa passar. qual ferramenta protege o conteudo dele?")
@@ -156,7 +164,6 @@ func _gerar_config() -> void:
 	# sobre o numero digitado, e nenhuma opcao e nome de algoritmo.
 	var pacote_conceito := PacoteConfig.new()
 	pacote_conceito.identificador = "f1-conceito"
-	pacote_conceito.celula = Vector2i(11, 8)
 	pacote_conceito.tipo = "CONCEITO"
 	pacote_conceito.enunciado = "no comando 'cifrar pacote chave=3', o que e o 3?"
 	pacote_conceito.opcoes = PackedStringArray([
@@ -171,7 +178,6 @@ func _gerar_config() -> void:
 	# DISCERNIMENTO -- limite da ferramenta, sem citar nome de cifra nenhuma.
 	var pacote_discernimento := PacoteConfig.new()
 	pacote_discernimento.identificador = "f1-discernimento"
-	pacote_discernimento.celula = Vector2i(2, 15)
 	pacote_discernimento.tipo = "DISCERNIMENTO"
 	pacote_discernimento.enunciado = ("deslocar todas as letras o mesmo tanto e facil de "
 		+ "quebrar. por que?")
@@ -200,17 +206,14 @@ func _gerar_config() -> void:
 
 ## Pinta o MAPA numa TileMapLayer temporaria e devolve os bytes de tile_map_data
 ## prontos para embutir no override do no Labirinto em fase_01.tscn.
+## O desenho do .tscn sai do MESMO MapaConfig.pintar() que FaseBase usa ao
+## carregar a fase -- editor e jogo derivam do mesmo texto, entao nao ha como
+## divergirem.
 func _pintar_labirinto() -> PackedByteArray:
 	var tileset: TileSet = load(CAMINHO_TILESET) as TileSet
 	var labirinto := TileMapLayer.new()
 	labirinto.tile_set = tileset
-
-	for y: int in MAPA.size():
-		var linha: String = MAPA[y]
-		for x: int in linha.length():
-			var solido: bool = linha[x] == "#"
-			var atlas: Vector2i = Vector2i(1, 0) if solido else Vector2i(0, 0)
-			labirinto.set_cell(Vector2i(x, y), 0, atlas)
+	_mapa().pintar(labirinto)
 
 	var dados: Variant = labirinto.get("tile_map_data")
 	if typeof(dados) != TYPE_PACKED_BYTE_ARRAY:
@@ -227,9 +230,13 @@ func _gerar_cena(tile_map_data: PackedByteArray) -> void:
 	for b: int in tile_map_data:
 		bytes.append(str(b))
 
+	# A saida sai do marcador S do proprio mapa: uma constante paralela poderia
+	# discordar do desenho, que e exatamente a classe de bug que MapaConfig veio
+	# eliminar.
+	var celula_de_saida: Vector2i = _mapa().celula_unica(MapaConfig.SAIDA)
 	var saida_mundo := Vector2(
-		CELULA_SAIDA.x * TAMANHO_TILE + TAMANHO_TILE / 2.0,
-		CELULA_SAIDA.y * TAMANHO_TILE + TAMANHO_TILE / 2.0)
+		celula_de_saida.x * TAMANHO_TILE + TAMANHO_TILE / 2.0,
+		celula_de_saida.y * TAMANHO_TILE + TAMANHO_TILE / 2.0)
 
 	var texto: String = (
 		"[gd_scene load_steps=3 format=3]\n\n"

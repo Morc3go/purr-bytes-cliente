@@ -90,6 +90,117 @@ func teste_cachorro_sem_visao_patrulha_e_nao_persegue_o_jogador() -> void:
 		"o alvo e a primeira ancora da rota")
 
 
+## Regressao do travamento das fases 2 e 3: o Diretor manda o cachorro para o
+## centro de uma regiao e fase_base varre pontos ao redor (+-1 celula). Nada
+## garantia que esses pontos caissem em piso -- caindo em parede, o A* devolvia
+## caminho vazio, o cachorro parava, e o indice da varredura so avancaria quando
+## ele CHEGASSE ao ponto. Travava para sempre.
+func teste_alvo_de_varredura_nunca_cai_em_parede() -> void:
+	_preparar_mock("varredura")
+	var cena: PackedScene = load("res://cenas/fases/fase_02.tscn") as PackedScene
+	Sessao.iniciar()
+	_fase = cena.instantiate() as FaseBase
+	add_child(_fase)
+	await get_tree().process_frame
+
+	if not afirmar_nao_nulo(_fase._diretor, "fase 2 tem Diretor (e regioes)"):
+		return
+
+	var cachorro: Cachorro = _fase.cachorros[0]
+	cachorro.parar()
+	cachorro.global_position = Vector2(4000, 4000)  # longe: sem linha de visao
+
+	# Percorre a tabela de varredura inteira, em todas as regioes.
+	for regiao_indice: int in _fase.regioes_no.get_child_count():
+		var regiao: Area2D = _fase.regioes_no.get_child(regiao_indice) as Area2D
+		for _passo: int in 8:
+			var alvo: Vector2 = _fase._alvo_de_varredura(cachorro, regiao)
+			if not _fase._navegacao.ponto_e_andavel(alvo):
+				falhar("alvo de varredura %s caiu em parede" % alvo)
+				return
+			_fase._indice_varredura += 1
+
+	afirmar_verdadeiro(true, "todo alvo de varredura cai em celula livre, em todas as regioes")
+
+
+func teste_cachorro_alcanca_o_outro_lado_do_labirinto() -> void:
+	_preparar_mock("travessia")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	# Cachorro na entrada, alvo na porta: o caminho tem que existir e ser
+	# valido celula a celula. E o teste que prova que o mapa nao tem buraco
+	# entre os dois extremos.
+	var cachorro: Cachorro = _fase.cachorros[0]
+	cachorro.parar()
+	cachorro.global_position = _fase.ponto_de_entrada.global_position
+
+	var caminho: PackedVector2Array = _fase._navegacao.calcular_caminho(
+		cachorro.global_position, _fase.ponto_de_saida.global_position)
+
+	if not afirmar_verdadeiro(caminho.size() > 1, "existe caminho da entrada ate a porta"):
+		return
+	for ponto: Vector2 in caminho:
+		if not _fase._navegacao.ponto_e_andavel(ponto):
+			falhar("o caminho passa por parede em %s" % ponto)
+			return
+	afirmar_verdadeiro(true, "nenhum waypoint do caminho cai em parede")
+
+
+func teste_ponto_em_parede_e_corrigido_para_a_celula_livre_mais_proxima() -> void:
+	_preparar_mock("snap")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	# (0,0) e sempre parede: e a quina da borda externa.
+	var parede: Vector2 = _fase._mundo_da_celula(Vector2i(0, 0))
+	afirmar_falso(_fase._navegacao.ponto_e_andavel(parede), "o ponto escolhido e parede mesmo")
+
+	var corrigido: Vector2 = _fase._navegacao.ponto_andavel_mais_proximo(parede)
+	afirmar_verdadeiro(_fase._navegacao.ponto_e_andavel(corrigido),
+		"a correcao devolve uma celula livre")
+	afirmar_verdadeiro(parede.distance_to(corrigido) <= 32.0,
+		"e a mais proxima, nao um ponto qualquer do mapa")
+
+
+# ---------------------------------------------------------------------------
+# Terminal: pausa
+# ---------------------------------------------------------------------------
+
+func teste_terminal_pausa_e_despausa_o_jogo() -> void:
+	_preparar_mock("pausa_terminal")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	afirmar_falso(get_tree().paused, "o jogo comeca rodando")
+
+	_fase.terminal.abrir()
+	afirmar_verdadeiro(get_tree().paused,
+		"abrir o terminal pausa: digitar 'cifrar' fugindo mede digitacao, nao aprendizado")
+
+	_fase.terminal.fechar()
+	afirmar_falso(get_tree().paused, "fechar o terminal devolve o jogo ao movimento")
+
+
+func teste_protecao_nao_consome_tempo_com_o_jogo_pausado() -> void:
+	_preparar_mock("pausa_protecao")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	_fase.jogador.ativar_protecao(10.0, "CESAR")
+	_fase.terminal.abrir()
+
+	# A contagem da protecao corre em Jogador._physics_process, que nao roda
+	# pausado -- entao ler o terminal com calma nao custa cifra.
+	var restante_antes: float = _fase.jogador._restante_de_protecao_s
+	for _quadro: int in 8:
+		await get_tree().physics_frame
+	afirmar_igual(_fase.jogador._restante_de_protecao_s, restante_antes,
+		"a protecao nao anda enquanto o terminal esta aberto")
+
+	_fase.terminal.fechar()
+
+
 # ---------------------------------------------------------------------------
 # Cifra certa x cifra errada
 # ---------------------------------------------------------------------------
@@ -275,6 +386,27 @@ func teste_opcoes_sao_embaralhadas_sem_perder_nem_inventar() -> void:
 	# 1 em 3^23 por acaso -- na pratica, so acontece se nao houver sorteio.
 	afirmar_verdadeiro(ordens.size() >= 2,
 		"a ordem das opcoes muda entre aberturas: a resposta certa nao fica sempre no mesmo botao")
+
+
+## A cor e a pista do LABIRINTO. Dentro da caixa ela viraria muleta: bastaria
+## parear a cor do botao com a do cachorro que acabou de passar para acertar sem
+## entender nada -- e e justamente o entendimento que o puzzle mede.
+func teste_nenhuma_opcao_do_puzzle_e_colorida() -> void:
+	_preparar_mock("sem_cor")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	for pacote: Pacote in _fase.pacotes:
+		_fase.caixa_puzzle.abrir(pacote.configuracao)
+		for filho: Node in _fase.caixa_puzzle._opcoes.get_children():
+			var botao := filho as Button
+			if botao == null:
+				continue
+			if botao.has_theme_color_override("font_color"):
+				falhar("o botao '%s' esta colorido: a cor entregaria a resposta" % botao.text)
+				return
+	_fase.caixa_puzzle.fechar()
+	afirmar_verdadeiro(true, "todos os botoes de resposta sao neutros")
 
 
 func teste_perguntas_se_embaralham_entre_as_posicoes_da_fase() -> void:

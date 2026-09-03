@@ -1,25 +1,24 @@
 [gd_resource type="Resource" script_class="FaseConfig" format=3]
 
-[ext_resource type="Script" path="res://scripts/dominio/cachorro_config.gd" id="1_4v4o1"]
-[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="2_a3w8w"]
-[ext_resource type="Script" path="res://scripts/dominio/pacote_config.gd" id="3_llbwm"]
-[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="4_lw3ls"]
+[ext_resource type="Script" path="res://scripts/dominio/cachorro_config.gd" id="1_a3w8w"]
+[ext_resource type="Script" path="res://scripts/dominio/desafio_config.gd" id="2_llbwm"]
+[ext_resource type="Script" path="res://scripts/dominio/mapa_config.gd" id="3_lw3ls"]
+[ext_resource type="Script" path="res://scripts/dominio/pacote_config.gd" id="4_36ouy"]
+[ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="5_3ppbp"]
 
-[sub_resource type="Resource" id="Resource_36ouy"]
-script = ExtResource("1_4v4o1")
+[sub_resource type="Resource" id="Resource_hcn5s"]
+script = ExtResource("1_a3w8w")
 identificador = "verde-norte"
-celula_inicial = Vector2i(13, 5)
 ancoras = Array[Vector2i]([Vector2i(9, 5), Vector2i(20, 5), Vector2i(19, 3), Vector2i(11, 3)])
 
-[sub_resource type="Resource" id="Resource_3ppbp"]
-script = ExtResource("1_4v4o1")
+[sub_resource type="Resource" id="Resource_tf0sd"]
+script = ExtResource("1_a3w8w")
 identificador = "verde-sul"
-celula_inicial = Vector2i(11, 15)
 ancoras = Array[Vector2i]([Vector2i(3, 15), Vector2i(11, 17), Vector2i(19, 15), Vector2i(11, 13)])
 velocidade = 34.0
 
-[sub_resource type="Resource" id="Resource_hcn5s"]
-script = ExtResource("2_a3w8w")
+[sub_resource type="Resource" id="Resource_yxpfl"]
+script = ExtResource("2_llbwm")
 identificador = "cesar-01"
 enunciado = "o pacote 'pacote' precisa de protecao. desloque 3 posicoes: cifrar pacote chave=3"
 texto_claro = "pacote"
@@ -27,8 +26,8 @@ chave_esperada = "3"
 dica = "conte 3 letras a frente de cada letra: 'p'->'s', 'a'->'d' ..."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_tf0sd"]
-script = ExtResource("2_a3w8w")
+[sub_resource type="Resource" id="Resource_jesxa"]
+script = ExtResource("2_llbwm")
 identificador = "cesar-02"
 enunciado = "novo pacote 'rede' atravessando. desta vez o deslocamento e outro: cifrar rede chave=5"
 texto_claro = "rede"
@@ -36,28 +35,29 @@ chave_esperada = "5"
 dica = "desloque 5 posicoes desta vez, nao 3 -- cada pacote pode usar uma chave diferente."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_yxpfl"]
-script = ExtResource("3_llbwm")
+[sub_resource type="Resource" id="Resource_ow3gu"]
+script = ExtResource("3_lw3ls")
+linhas = PackedStringArray("#########################", "#P........#.....#.......#", "#.....###.#.#.###.#..o.##", "#.....#.....#.....#.....#", "#.#.#...#.#####.###.###.#", "#.#.#...#....D........#.#", "#.#####.#.#######.#.###.#", "#.....#.........#.#...#.#", "##.##.#.#..o....#.###.#.#", "#.....#...............#.#", "#.#######......#.######.#", "#.......#...#...........#", "#######.#...#.#.###.###.#", "#.#...#.#.#.........#...#", "#.....#...###.#..#......#", "#.o.....#..D..#.........#", "#....########.###.....S.#", "#.............#.........#", "#########################")
+
+[sub_resource type="Resource" id="Resource_5e5u2"]
+script = ExtResource("4_36ouy")
 identificador = "f1-aplicacao"
-celula = Vector2i(21, 2)
 enunciado = "um cachorro VERDE ronda o corredor por onde este pacote precisa passar. qual ferramenta protege o conteudo dele?"
 opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
 explicacao_correta = "isso. verde sempre pede essa ferramenta -- em qualquer fase, e nao so nesta."
 
-[sub_resource type="Resource" id="Resource_jesxa"]
-script = ExtResource("3_llbwm")
+[sub_resource type="Resource" id="Resource_aen5p"]
+script = ExtResource("4_36ouy")
 identificador = "f1-conceito"
-celula = Vector2i(11, 8)
 enunciado = "no comando 'cifrar pacote chave=3', o que e o 3?"
 tipo = "CONCEITO"
 opcoes = PackedStringArray("quantas casas cada letra anda no alfabeto", "a cor do cachorro que esta perseguindo", "quantos pacotes ainda faltam coletar")
 resposta_correta = "quantas casas cada letra anda no alfabeto"
 explicacao_correta = "exato. a COR escolhe a ferramenta; a CHAVE e o segredo que faz a ferramenta funcionar. sao coisas diferentes."
 
-[sub_resource type="Resource" id="Resource_ow3gu"]
-script = ExtResource("3_llbwm")
+[sub_resource type="Resource" id="Resource_tpi2g"]
+script = ExtResource("4_36ouy")
 identificador = "f1-discernimento"
-celula = Vector2i(2, 15)
 enunciado = "deslocar todas as letras o mesmo tanto e facil de quebrar. por que?"
 tipo = "DISCERNIMENTO"
 opcoes = PackedStringArray("so existem 25 deslocamentos: da para testar todos", "porque o pacote fica maior depois de cifrado", "porque o cachorro conhece a chave desde o inicio")
@@ -65,12 +65,13 @@ resposta_correta = "so existem 25 deslocamentos: da para testar todos"
 explicacao_correta = "isso mesmo. poucas chaves possiveis = pouca protecao. e o problema que a proxima fase resolve."
 
 [resource]
-script = ExtResource("4_lw3ls")
+script = ExtResource("5_3ppbp")
 titulo = "o labirinto de Cesar"
 verbos_permitidos = PackedStringArray("cifrar", "decifrar", "dica", "status")
-desafios = Array[ExtResource("2_a3w8w")]([SubResource("Resource_hcn5s"), SubResource("Resource_tf0sd")])
-cachorros = Array[ExtResource("1_4v4o1")]([SubResource("Resource_36ouy"), SubResource("Resource_3ppbp")])
-pacotes = Array[ExtResource("3_llbwm")]([SubResource("Resource_yxpfl"), SubResource("Resource_jesxa"), SubResource("Resource_ow3gu")])
+mapa = SubResource("Resource_ow3gu")
+desafios = Array[ExtResource("2_llbwm")]([SubResource("Resource_yxpfl"), SubResource("Resource_jesxa")])
+cachorros = Array[ExtResource("1_a3w8w")]([SubResource("Resource_hcn5s"), SubResource("Resource_tf0sd")])
+pacotes = Array[ExtResource("4_36ouy")]([SubResource("Resource_5e5u2"), SubResource("Resource_aen5p"), SubResource("Resource_tpi2g")])
 velocidade_cachorro = 40.0
 briefing_pedagogico = "o pacote precisa atravessar o labirinto ate a saida.
 em texto claro, o cachorro fareja e intercepta -- use 'cifrar <pacote> chave=<numero>' para proteger, 'dica' se travar, 'status' para reler o desafio atual."

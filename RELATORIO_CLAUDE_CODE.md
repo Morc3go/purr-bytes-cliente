@@ -295,3 +295,148 @@ tocados por esta mudança.
 5. **Fases 2 e 3:** confirmar que a pergunta de aplicação da fase 2 responde `César` (numa
    fase de Vigenère) e a da fase 3 responde `Vigenère` (numa fase de SHA-256) — é assim que se
    vê que a fase nova não cancela a regra antiga.
+
+---
+---
+
+# Manutenção — mapas validados, cachorros, pausa e cifra explicada
+
+**Data:** 2026-08-27 · **Escopo:** correção e sistematização. A arquitetura em camadas
+(autoloads, `FaseConfig`/`DesafioConfig`/`PacoteConfig`, `LegendaCores`, `cripto/`,
+`navegacao.gd`) ficou intacta; entrou um recurso novo, `MapaConfig`, no mesmo padrão dos
+demais.
+
+## 1. Por que as fases 2 e 3 travavam — não era o desenho do mapa
+
+O diagnóstico do pedido era que os mapas tinham buracos. **Não tinham.** Conferi célula a
+célula: os grids das fases 2 e 3 estavam íntegros, conectados, e pacotes, cachorros e porta
+todos sobre piso.
+
+O que travava era o **Diretor**. Ele publica o *centro* de uma região como alvo, e
+`FaseBase._alvo_de_varredura` varre pontos a ±16 px (±1 célula) desse centro para o cachorro
+não ficar parado em cima de um ponto só. Nada garantia que esses pontos caíssem em piso.
+
+No mapa antigo da fase 2, o centro da região noroeste era a célula (4,3); o offset `(0,16)`
+apontava para (4,4), que é parede. `Navegacao.calcular_caminho` devolve caminho vazio quando
+o destino é sólido → o cachorro parava. E o índice da varredura só avança quando ele *chega*
+ao ponto — que nunca aconteceria. **Travamento permanente**, e só nas fases com Diretor,
+que é exatamente o sintoma relatado (a fase 1 não tem Diretor e não travava).
+
+Correção em duas camadas:
+
+- `Navegacao.ponto_andavel_mais_proximo()` — busca em largura pela célula livre mais próxima.
+  Todo alvo de varredura e de patrulha passa por ela agora.
+- Se mesmo assim o caminho voltar vazio (região separada, por exemplo), o índice da varredura
+  avança em vez de insistir no mesmo ponto para sempre.
+
+Regressão: `teste_modo_humano.gd::teste_alvo_de_varredura_nunca_cai_em_parede` percorre a
+tabela de varredura inteira nas 4 regiões da fase 2 e falha se qualquer alvo cair em parede.
+
+## 2. `MapaConfig`: o labirinto virou texto validado
+
+Mesmo não sendo a causa do travamento, o diagnóstico do pedido estava certo sobre o risco: o
+labirinto só existia pintado dentro do `.tscn`, e `Navegacao._e_solido` trata célula **não
+pintada** como parede. Um tile esquecido no editor viraria parede invisível, sem uma linha de
+erro. Agora:
+
+- O mapa é um grid ASCII (`#` parede, `.` piso, `P` jogador, `S` porta, `o` pacote,
+  `D` cachorro) dentro de um `MapaConfig`, guardado no `.tres` da fase.
+- `FaseBase._ready` **repinta** o `TileMapLayer` a partir desse texto e posiciona jogador,
+  porta, pacotes e cachorros pelos marcadores, na ordem de leitura. O texto é a fonte; o
+  TileMap e o `AStarGrid2D` são derivados — não há tabela paralela para divergir.
+- `MapaConfig.problemas()` recusa a fase, com mensagem clara, quando: o grid não é retangular,
+  há caractere fora da legenda, a borda externa tem buraco, falta `P`/`S` (ou há mais de um),
+  a contagem de `o`/`D` não bate com a lista do `FaseConfig`, ou **pacote, porta, cachorro ou
+  âncora de patrulha é inalcançável** a partir do `P` (inundação em 4 direções, as mesmas do
+  A\*). Cachorro sem vizinho andável também reprova.
+- O validador roda nos dois lados: no gerador (antes de escrever o `.tres`) e no `_ready` da
+  fase, via `FaseConfig.problemas()`.
+
+Cobertura: `tests/teste_mapa_config.gd`, 10 testes — cada um é um bug que antes passava
+silencioso — mais a verificação de que as três fases reais passam.
+
+## 3. Mapas 2 e 3 redesenhados
+
+Eram o **mesmo** labirinto serpenteado 19×13 nas duas fases, o que fazia a fase final parecer
+repetição da anterior. Agora são dois traçados distintos de 21×15, com câmaras e ciclos,
+gerados e conferidos pelo validador antes de entrar no arquivo. Os centros das 4 regiões do
+Diretor foram garantidos em piso.
+
+## 4. O terminal pausa o jogo
+
+Digitar `cifrar pacote chave=3` com um cachorro colado nas costas mede velocidade de digitação
+sob pânico, não aprendizado. Abrir o terminal agora pausa a árvore, como a caixa de puzzle.
+
+Detalhe de implementação que o pedido não previa: com a árvore pausada, o `_unhandled_input`
+da fase não roda. As teclas de **fechar** passaram para dentro do próprio terminal (que tem
+`process_mode = ALWAYS`), senão abrir o terminal seria uma armadilha — jogo pausado e nenhuma
+tecla capaz de sair.
+
+Sobre o tempo: a contagem de `duracao_cifra_s` corre em `Jogador._physics_process`, que não
+roda pausado, então **a pausa não consome tempo de cifra** — ler com calma não é punido.
+Já `tempo_resposta_ms` continua no relógio de parede, ou seja, mede o tempo *pensando*, que
+é a métrica do Eixo 1 e agora vem sem o ruído da fuga simultânea. Ambos com teste.
+
+## 5. A cifra passou a se explicar
+
+`scripts/cripto/` não foi tocado — a matemática já estava certa e testada. O que mudou é a
+apresentação: ao acertar, o terminal imprime
+
+```
+--- o que aconteceu com o pacote ---
+claro   : p  a  c  o  t  e
+chave   : 3  3  3  3  3  3
+cifrado : s  d  f  r  w  h
+o cachorro agora ve 'sdfrwh', e nao 'pacote' -- e por isso que ele passa direto.
+```
+
+O alinhamento vem de `DemonstracaoCifra.montar()`, a **mesma** função que alimenta o painel de
+demonstração — não há uma segunda forma de explicar a cifra no projeto. No SHA-256 o texto é
+outro, porque a lição é outra: o resumo confere integridade, é de mão única, e não existe
+desfazer.
+
+Decisão deliberada: isso **não** emite `CIFRA_DEMONSTRADA`. Aquele evento mede o jogador
+*escolher* ver a explicação (Eixo 2); emiti-lo a cada acerto transformaria o indicador num
+contador de acertos.
+
+## 6. As opções do puzzle perderam a cor
+
+Os botões de resposta são neutros, inclusive quando a opção é o nome de um algoritmo. A cor
+continua onde ela é mecânica — no cachorro, na HUD e no tutorial —, mas dentro da caixa ela
+virava muleta: bastava parear a cor do botão com a do cachorro que acabou de passar para
+acertar sem entender nada, e é justamente o entendimento que o puzzle mede. Com teste que
+falha se algum botão tiver `font_color` sobrescrito.
+
+O banco de perguntas e o embaralhamento das opções ficaram como estavam, a pedido.
+
+## 7. Testes
+
+**180 testes, 1047 verificações, 0 falhas** (era 161/941).
+
+Arquivo novo `tests/teste_mapa_config.gd` (10 testes) e mais 6 em `teste_modo_humano.gd`
+(19 no total): varredura nunca em parede, travessia do labirinto ponta a ponta sem waypoint em
+parede, correção de ponto em parede, pausa do terminal, proteção que não corre pausada, e
+ausência de cor nas opções.
+
+`teste_transporte_http.gd` e `teste_resiliencia_http.gd` continuam **sem rodar**: sobem
+`tools/servidor_eco.py` e não há `python` nesta máquina. Nada nesta entrega toca o transporte
+HTTP.
+
+## 8. Como testar à mão
+
+1. **Validador recusando um mapa quebrado.** Em `tools/gerar_fase_01.gd`, troque um `.` por
+   `#` isolando um `o` (ou apague um caractere de uma linha) e rode
+   `godot --headless --path . --script res://tools/gerar_fase_01.gd`. Ele deve **falhar**
+   dizendo qual pacote ficou inalcançável (ou qual linha ficou com tamanho diferente), sem
+   gravar nada. Desfaça e rode de novo para ver passar.
+2. **Fases 2 e 3.** Jogue as duas: os cachorros devem patrulhar e perseguir continuamente,
+   sem nenhum parar de vez no meio do mapa. `F3` mostra o caminho de cada um, na cor dele.
+3. **Pausa do terminal.** Com um cachorro perto, aperte `T`: tudo congela, inclusive ele.
+   Digite com calma, aperte `ESC` e confirme que o jogo volta a andar. Confira também que o
+   contador de cifra na HUD não anda enquanto o terminal está aberto.
+4. **Cifra explicada.** Resolva `cifrar pacote chave=3` e leia o bloco "o que aconteceu com o
+   pacote": as três linhas alinhadas e a frase do que o cachorro passa a ver.
+5. **Puzzle sem cor.** Encoste num pacote: os botões devem estar todos na mesma cor neutra, e
+   a ordem deve mudar se você reabrir a caixa.
+6. **Criar uma fase nova**, seguindo o passo a passo do `README.md` — é o teste real de que o
+   esquema ficou seguro de usar.

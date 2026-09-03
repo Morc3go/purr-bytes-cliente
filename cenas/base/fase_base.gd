@@ -121,6 +121,11 @@ func _ready() -> void:
 	_configurada = true
 	_conectar_sinais()
 
+	# O mapa e a PRIMEIRA coisa: ele repinta o labirinto e reposiciona entrada e
+	# saida, e todo o resto (navegacao, cachorros, pacotes, camera) depende
+	# desse desenho ja estar no lugar.
+	_aplicar_mapa()
+
 	jogador.reposicionar(ponto_de_entrada.global_position)
 	jogador.velocidade = maxf(jogador.velocidade, 1.0)
 	_configurar_cachorros()
@@ -205,19 +210,17 @@ func _unhandled_input(evento: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
+	# Abrir o terminal pausa a arvore, e a partir dai este _unhandled_input nao
+	# roda mais (FaseBase e PAUSABLE): quem trata as teclas de FECHAR e o
+	# proprio terminal, que tem process_mode ALWAYS. Por isso aqui so existe o
+	# caminho de abrir.
 	if evento.is_action_pressed("abrir_terminal"):
-		if terminal.esta_aberto():
-			terminal.fechar()
-		else:
-			terminal.abrir()
+		terminal.abrir()
 		get_viewport().set_input_as_handled()
 		return
 
 	if evento.is_action_pressed("pausar"):
-		if terminal.esta_aberto():
-			terminal.fechar()
-		else:
-			abandonar()
+		abandonar()
 		get_viewport().set_input_as_handled()
 
 
@@ -277,13 +280,43 @@ func _conectar_sinais() -> void:
 	# proprio cachorro em bind() -- a fase precisa saber QUAL encostou para
 	# decidir se a cifra ativa protege contra aquela cor.
 	terminal.comando_submetido.connect(_ao_submeter_comando)
-	terminal.aberto.connect(func() -> void: jogador.definir_entrada_habilitada(false))
-	terminal.fechado.connect(func() -> void: jogador.definir_entrada_habilitada(true))
+	terminal.aberto.connect(_ao_abrir_terminal)
+	terminal.fechado.connect(_ao_fechar_terminal)
 	tela_captura.encerrada.connect(_ao_terminar_captura)
 	caixa_puzzle.respondido.connect(_ao_responder_puzzle)
 	caixa_puzzle.cancelada.connect(_fechar_puzzle)
 	ponto_de_saida.body_entered.connect(_ao_chegar_na_saida)
 	Sessao.vidas_esgotadas.connect(_ao_esgotar_vidas)
+
+
+## O terminal pausa o jogo, como a caixa de puzzle.
+##
+## Digitar 'cifrar pacote chave=3' com um cachorro colado nas costas nao mede
+## se o jogador aprendeu a cifra: mede a velocidade de digitacao dele sob
+## panico. Pausando, o terminal vira o que deveria ser -- o momento de PENSAR
+## qual ferramenta a cor pede e qual e a chave.
+##
+## Consequencias, todas desejadas:
+## - a duracao da protecao (FaseConfig.duracao_cifra_s) corre em
+##   Jogador._physics_process, que nao roda pausado, entao a pausa NAO consome
+##   tempo de cifra: o jogador nao e punido por ler o enunciado com calma;
+## - tempo_resposta_ms continua medindo o relogio de parede (Relogio.marca_ms),
+##   ou seja, o tempo que o jogador levou PENSANDO -- que e exatamente a
+##   metrica do Eixo 1, e agora sem o ruido da fuga simultanea;
+## - o temporizador de descarga da Telemetria tambem para; a fila acumula em
+##   memoria e drena ao despausar (mesmo efeito ja aceito para o puzzle).
+func _ao_abrir_terminal() -> void:
+	jogador.definir_entrada_habilitada(false)
+	get_tree().paused = true
+
+
+func _ao_fechar_terminal() -> void:
+	# A caixa de puzzle tambem pausa: se ela estiver aberta, quem manda
+	# despausar e ela, nao o terminal.
+	if _pacote_em_puzzle == null:
+		get_tree().paused = false
+	if not _encerrada:
+		jogador.definir_entrada_habilitada(true)
 
 
 ## A porta so deixa passar com todos os pacotes na mao. Chegar nela sem eles nao
@@ -425,12 +458,62 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 			{"desafio": desafio_atual.identificador}, configuracao.numero)
 
 	if veredicto.resolveu_desafio:
+		_explicar_no_terminal(desafio_atual, veredicto.algoritmo_protecao)
 		jogador.ativar_protecao(veredicto.duracao_protecao_s, veredicto.algoritmo_protecao)
 		_avancar_desafio()
 	elif _e_tentativa_do_desafio_corrente(desafio_atual, resultado.ast.verbo):
 		# So conta como nova tentativa do MESMO desafio quando o verbo bate com
 		# o que o desafio espera -- "status" e "dica" nao consomem tentativa.
 		_numero_tentativa_do_desafio += 1
+
+
+## Mostra no terminal O QUE ACABOU DE ACONTECER com o pacote -- letra a letra.
+##
+## Antes, acertar imprimia so "pacote protegido": o jogador via a recompensa e
+## nao via a transformacao, entao a cifra continuava sendo um botao magico. Aqui
+## ele le o texto claro, a chave alinhada e o resultado, e a frase que fecha a
+## licao: o cachorro passa a ver OUTRA palavra.
+##
+## O alinhamento vem de DemonstracaoCifra.montar(), a MESMA funcao que alimenta
+## o painel de demonstracao -- nao ha uma segunda forma de explicar a cifra
+## neste projeto. E de proposito NAO emite CIFRA_DEMONSTRADA: aquele evento mede
+## o jogador ESCOLHER ver a explicacao (Eixo 2); emiti-lo a cada acerto
+## transformaria o indicador num contador de acertos.
+func _explicar_no_terminal(desafio: DesafioConfig, algoritmo: String) -> void:
+	if desafio == null:
+		return
+
+	if algoritmo == "SHA256":
+		# Hash nao tem "antes e depois" para alinhar: a licao dele e outra, e a
+		# confusao hash x cifra e o erro conceitual mais comum do tema.
+		terminal.escrever("o resumo confere: o conteudo nao foi adulterado no caminho.")
+		terminal.escrever("repare que voce NAO escondeu nada -- o resumo e de mao unica, "
+			+ "nao existe desfazer. ele serve para provar integridade, nao para dar sigilo.")
+		return
+
+	var cifra: Cifra = FabricaCifra.para_algoritmo(algoritmo)
+	if cifra == null or desafio.texto_claro.is_empty():
+		return
+
+	var linhas: Array[DemonstracaoCifra.Linha] = DemonstracaoCifra.montar(
+		desafio.texto_claro, desafio.chave_esperada, cifra)
+
+	var claro := ""
+	var chaves := ""
+	var cifrado := ""
+	for linha: DemonstracaoCifra.Linha in linhas:
+		# Uma coluna de largura fixa por letra: alinhado em fonte monoespacada,
+		# que e a do terminal.
+		claro += "%-3s" % linha.claro
+		chaves += "%-3s" % (linha.chave if linha.chave != "" else "-")
+		cifrado += "%-3s" % linha.cifrado
+
+	terminal.escrever("--- o que aconteceu com o pacote ---")
+	terminal.escrever("claro   : %s" % claro)
+	terminal.escrever("chave   : %s" % chaves)
+	terminal.escrever("cifrado : %s" % cifrado)
+	terminal.escrever("o cachorro agora ve '%s', e nao '%s' -- e por isso que ele passa direto."
+		% [cifra.cifrar(desafio.texto_claro, desafio.chave_esperada), desafio.texto_claro])
 
 
 func _registrar_tentativa(
@@ -525,6 +608,43 @@ func _configurar_camera() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Mapa: o texto de MapaConfig vira o labirinto e as posicoes
+# ---------------------------------------------------------------------------
+
+## Repinta o TileMapLayer a partir do texto e leva entrada e saida para as
+## celulas marcadas nele. Fase sem MapaConfig fica exatamente como era: o
+## labirinto pintado no .tscn e os marcadores onde a cena os colocou.
+##
+## Repintar em vez de confiar no que o .tscn traz nao e redundancia inutil: o
+## desenho do .tscn e GERADO do mesmo texto (tools/gerar_fase_0N.gd chama o
+## mesmo MapaConfig.pintar), entao repintar aqui garante que editar o texto e
+## esquecer de regerar a cena nao produza um jogo diferente do que o validador
+## conferiu. O texto e a fonte; o resto e derivado.
+func _aplicar_mapa() -> void:
+	if configuracao.mapa == null:
+		return
+
+	configuracao.mapa.pintar(labirinto)
+
+	var celula_de_entrada: Vector2i = configuracao.mapa.celula_unica(MapaConfig.JOGADOR)
+	if celula_de_entrada.x >= 0:
+		ponto_de_entrada.global_position = _mundo_da_celula(celula_de_entrada)
+
+	var celula_de_saida: Vector2i = configuracao.mapa.celula_unica(MapaConfig.SAIDA)
+	if celula_de_saida.x >= 0:
+		ponto_de_saida.global_position = _mundo_da_celula(celula_de_saida)
+
+
+## A celula onde a entidade de indice `indice` nasce: do desenho, quando ha
+## MapaConfig; do campo `celula` do proprio config, quando nao ha.
+func _celula_do_mapa(marcador: String, indice: int, alternativa: Vector2i) -> Vector2i:
+	if configuracao.mapa == null:
+		return alternativa
+	var celulas: Array[Vector2i] = configuracao.mapa.celulas_de(marcador)
+	return celulas[indice] if indice < celulas.size() else alternativa
+
+
+# ---------------------------------------------------------------------------
 # Cachorros: criacao a partir do dado da fase
 # ---------------------------------------------------------------------------
 
@@ -553,10 +673,10 @@ func _configurar_cachorros() -> void:
 			alvo = cena.instantiate() as Cachorro
 			alvo.name = "Cachorro%d" % (i + 1)
 			add_child(alvo)
-		_preparar_cachorro(alvo, configuracao.cachorros[i])
+		_preparar_cachorro(alvo, configuracao.cachorros[i], i)
 
 
-func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig) -> void:
+func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig, indice: int = 0) -> void:
 	var algoritmo: String = configuracao.algoritmo
 	var velocidade: float = configuracao.velocidade_cachorro
 	var alcance: float = configuracao.alcance_deteccao_cachorro
@@ -568,7 +688,8 @@ func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig) -> v
 			velocidade = config_do_cachorro.velocidade
 		if config_do_cachorro.alcance_deteccao > 0.0:
 			alcance = config_do_cachorro.alcance_deteccao
-		alvo.global_position = _mundo_da_celula(config_do_cachorro.celula_inicial)
+		alvo.global_position = _mundo_da_celula(
+			_celula_do_mapa(MapaConfig.CACHORRO, indice, config_do_cachorro.celula_inicial))
 
 	alvo.velocidade = velocidade
 	alvo.alcance_deteccao = alcance
@@ -606,8 +727,9 @@ func _configurar_pacotes() -> void:
 	# nordeste a resposta e Cesar" de uma partida para a outra.
 	var celulas: Array[Vector2i] = []
 	var perguntas: Array[PacoteConfig] = []
-	for config_do_pacote: PacoteConfig in configuracao.pacotes:
-		celulas.append(config_do_pacote.celula)
+	for i: int in configuracao.pacotes.size():
+		var config_do_pacote: PacoteConfig = configuracao.pacotes[i]
+		celulas.append(_celula_do_mapa(MapaConfig.PACOTE, i, config_do_pacote.celula))
 		perguntas.append(config_do_pacote)
 	perguntas.shuffle()
 
@@ -702,6 +824,8 @@ func _fechar_puzzle() -> void:
 func _garantir_jogo_despausado() -> void:
 	if caixa_puzzle != null and caixa_puzzle.esta_aberta():
 		caixa_puzzle.fechar()
+	if terminal != null and terminal.esta_aberto():
+		terminal.fechar()
 	_pacote_em_puzzle = null
 	get_tree().paused = false
 
@@ -751,6 +875,12 @@ func _replanejar_caminho_do_cachorro() -> void:
 		_soma_replanejamento_us += Time.get_ticks_usec() - inicio_us
 		_contagem_replanejamento += 1
 		alvo.definir_caminho(caminho)
+
+		# Alvo sem rota (regiao separada, por exemplo): avanca a varredura em
+		# vez de insistir no mesmo ponto inalcancavel para sempre. E o segundo
+		# fecho do travamento -- o primeiro e mandar so pontos andaveis.
+		if caminho.is_empty() and _diretor != null:
+			_indice_varredura += 1
 
 	if _depuracao_astar_visivel:
 		queue_redraw()
@@ -827,7 +957,10 @@ func _alvo_de_patrulha(alvo: Cachorro) -> Vector2:
 		_ancora_por_cachorro[alvo] = indice
 		destino = _mundo_da_celula(ancoras[indice % ancoras.size()])
 
-	return destino
+	# Mesma protecao da varredura: uma ancora mal colocada (em parede) travaria
+	# o cachorro no lugar em vez de so desviar a rota. MapaConfig.problemas()
+	# ja recusa a fase nesse caso; isto e a rede para as fases sem MapaConfig.
+	return _navegacao.ponto_andavel_mais_proximo(destino)
 
 
 ## Comportamento de caca local (secao 7 do CLAUDE.md): ao chegar perto do
@@ -851,7 +984,12 @@ func _alvo_de_varredura(alvo: Cachorro, regiao: Area2D) -> Vector2:
 	if alvo.global_position.distance_to(ponto) <= alvo.tolerancia_de_chegada:
 		_indice_varredura += 1
 		ponto = centro + _OFFSETS_DE_VARREDURA[(_indice_varredura + deslocamento) % total]
-	return ponto
+	# Os offsets sao cegos ao labirinto: o centro de uma regiao pode estar
+	# colado numa parede e o ponto ao lado cair dentro dela. Sem esta correcao
+	# o A* devolvia caminho vazio e o cachorro travava para sempre, porque o
+	# indice da varredura so avanca quando ele CHEGA ao ponto -- e nunca
+	# chegaria. Ver ponto_andavel_mais_proximo em scripts/ia/navegacao.gd.
+	return _navegacao.ponto_andavel_mais_proximo(ponto)
 
 
 # ---------------------------------------------------------------------------

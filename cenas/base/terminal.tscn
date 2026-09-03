@@ -4,6 +4,7 @@
 
 [node name="Terminal" type="CanvasLayer"]
 layer = 2
+process_mode = 3
 script = ExtResource("1_terminal")
 
 [node name="Painel" type="PanelContainer" parent="."]
