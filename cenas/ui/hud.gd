@@ -36,16 +36,18 @@ func mostrar_pacotes(coletados: int, total: int) -> void:
 	_pacotes.modulate = Color(0.40, 0.88, 0.52) if coletados >= total and total > 0 else Color.WHITE
 
 
-## Mostra QUAL cifra esta ativa, e na cor do cachorro que ela engana: com varios
-## interceptadores em cena, "cifra ativa" sozinho nao diz ao jogador se ele esta
-## protegido do cachorro que esta vindo -- a cor diz.
+## Mostra QUAL cifra esta ativa e por quanto tempo -- "cifra ativa" sozinho nao
+## diria ao jogador se ele esta protegido do interceptador que esta vindo.
+##
+## Em cor neutra, de proposito: a cor e identidade visual do cachorro, nao um
+## codigo que diga qual cifra usar. Pintar o aviso com a cor de um algoritmo
+## sugeriria uma associacao que o jogo nao promete.
 func mostrar_protecao(ativa: bool, restante_s: float, algoritmo: String = "") -> void:
+	_protecao.modulate = Color.WHITE
 	if ativa:
 		_protecao.text = "%s ativa %0.1fs" % [LegendaCores.nome(algoritmo), restante_s]
-		_protecao.modulate = LegendaCores.cor(algoritmo)
 	else:
 		_protecao.text = "texto claro"
-		_protecao.modulate = Color.WHITE
 
 
 func _ao_mudar_vidas(vidas: int) -> void:

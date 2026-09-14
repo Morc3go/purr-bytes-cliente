@@ -106,8 +106,11 @@ modo_treino=false             ; true desliga as mecânicas de jogador humano (ve
 estiver vazio ou fora do formato UUID, o cliente gera um local e avisa alto — a sessão é
 gravável, mas não pareia com o pré-teste e o pós-teste.
 
-O menu principal → **telemetria** mostra modo, fila, sequência e descartes na própria tela,
-sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
+O menu principal → **telemetria** abre o **Dashboard de Telemetria**: acertos × erros,
+tempo de resolução por fase e exportação em JSON. O painel de diagnóstico técnico (modo,
+fila, sequência, descartes) abre por um botão lá dentro — é por ele que se confere, na
+máquina da escola e sem ferramenta nenhuma instalada, se a coleta está funcionando. A
+chave de API nunca aparece em nenhum dos dois.
 
 ---
 
@@ -115,19 +118,18 @@ sem ferramenta nenhuma instalada. A chave de API nunca aparece ali.
 
 O labirinto é a topologia da rede e o pacote de dados é o que você transporta.
 
-**Cores.** Cada cachorro farejador lê **uma** cifra, e a cor dele diz qual:
-🟢 verde = César · 🔵 azul = Vigenère · 🟣 roxo = SHA-256. Cifrar na cor errada **não
-protege** — é o mesmo que atravessar em texto claro. A tabela completa está no menu, em
-**tutorial de cores**, e sai de `scripts/dominio/legenda_cores.gd`, que é a fonte única
-usada também pelos cachorros, pela HUD e pelos botões do puzzle.
+**Interceptadores.** Cada cachorro farejador lê **uma** cifra, e só ela o engana: cifrar
+com outra **não protege** -- é o mesmo que atravessar em texto claro. A cor do cachorro é
+identidade visual (`CachorroConfig.cor`, escolhida livremente), não um código que diga qual
+cifra usar. Quando você é pego, a tela de captura nomeia a cifra que teria protegido.
 
 **Terminal** (`T`). É onde a cifra é aplicada: `cifrar <pacote> chave=<valor>`,
 `hash <palavra>`, `verificar <palavra> <prefixo>`, mais `dica` e `status`. Resolver um
 desafio ativa a proteção **na cifra daquele desafio**, por alguns segundos. Os desafios de
-uma fase ciclam, então sempre dá para reaplicar a cifra que a cor exige.
+uma fase ciclam, então sempre dá para reaplicar a cifra que o interceptador exige.
 
-Abrir o terminal **pausa o jogo** (como a caixa de puzzle): pensar qual ferramenta a cor
-pede não deve ser uma corrida contra o cachorro. A proteção não conta o tempo pausado.
+Abrir o terminal **pausa o jogo** (como a caixa de puzzle): pensar qual ferramenta usar
+não deve ser uma corrida contra o cachorro. A proteção não conta o tempo pausado.
 Ao acertar, o terminal mostra a transformação **letra a letra** — texto claro, chave
 alinhada e resultado — e o que o cachorro passa a ver no lugar do conteúdo.
 
@@ -189,7 +191,7 @@ e **só** essas duas:
 | | `modo_treino=false` (padrão) | `modo_treino=true` |
 |---|---|---|
 | Pacote | abre a caixa de puzzle | coletado ao encostar |
-| Proteção | só a cifra da cor do cachorro | qualquer cifra ativa |
+| Proteção | só a cifra que aquele interceptador exige | qualquer cifra ativa |
 
 Labirinto, A\*, Diretor, terminal, porta e telemetria são idênticos nos dois modos.
 Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
@@ -205,6 +207,7 @@ Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
 | 2 — Fase 2: Vigenère e Diretor de IA | ✅ concluído |
 | 3 — Fase 3: SHA-256 e telemetria HTTP | ✅ concluído |
 | Evolução de gameplay (modo humano) | ✅ concluído — [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md), [relatório](RELATORIO_CLAUDE_CODE.md) |
+| Tutorial de cores removido · telemetria global (`id_fase`) · Dashboard | ✅ concluído — [conformidade](docs/conformidade-monografia.md) |
 
 ### Pendências conhecidas da evolução de gameplay
 

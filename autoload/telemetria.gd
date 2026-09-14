@@ -178,8 +178,22 @@ func encerrar_sessao(status: String = STATUS_ENCERRADA) -> void:
 	_persistir()
 
 
-## fase = 0 significa "fora de fase" e viaja como null, porque
-## evento_telemetria.fase e nulavel mas tem CHECK (fase BETWEEN 1 AND 4).
+## A fase de um evento e identificada por `id_fase` (UUID), nao pelo numero.
+##
+## O numero existia porque o banco nasceu com quatro fases fixas
+## (CHECK fase BETWEEN 1 AND 4). Com fases criadas livremente esse numero deixa
+## de ser identidade, e amarrar a coleta a ele significava PERDER a telemetria
+## de toda fase fora da faixa -- que e o oposto do que a instrumentacao existe
+## para fazer.
+##
+## Entao: `id_fase` e `titulo_fase` vem de Sessao e viajam em todo evento, e
+## nenhum evento e descartado por causa de numero de fase. O campo numerico
+## `fase` continua sendo enviado como LEGADO, e vai null fora de 1..4 -- nao por
+## amarra do cliente, mas porque o CHECK ainda existe no banco de producao e um
+## valor fora da faixa faria a API recusar o LOTE INTEIRO (4xx = erro
+## permanente = lote descartado), levando junto centenas de eventos validos. A
+## identidade real esta em id_fase; no dia em que o CHECK cair, basta parar de
+## anular aqui. Ver docs/contrato-telemetria.md.
 func registrar_evento(tipo_evento: String, payload: Dictionary = {}, fase: int = 0) -> Dictionary:
 	# Restricao 7: codigo fora do catalogo nao existe. Descartar aqui e melhor
 	# que enviar: tipo_evento tem chave estrangeira para pesquisa.tipo_evento, e
@@ -202,6 +216,8 @@ func registrar_evento(tipo_evento: String, payload: Dictionary = {}, fase: int =
 		"id_sessao": _id_sessao,
 		"sequencia": _sequencia,
 		"tipo_evento": tipo_evento,
+		"id_fase": Sessao.id_fase,
+		"titulo_fase": _sanitizar_texto(Sessao.titulo_fase, LIMITE_DESAFIO),
 		"fase": fase if fase >= 1 and fase <= 4 else null,
 		"ocorrido_em": Relogio.agora_utc_iso(),
 		"payload": _sanitizar_payload(payload, 0),
@@ -236,9 +252,9 @@ func registrar_tentativa(
 			"resultado fora da constraint ck_tentativa_resultado, descartado: %s" % resultado)
 		return {}
 
-	if fase < 1 or fase > 4:
-		Registro.erro("Telemetria", "fase fora de 1..4 (%d); tentativa descartada" % fase)
-		return {}
+	# A tentativa NAO e mais descartada por numero de fase: numa ferramenta de
+	# fases livres, isso jogaria fora o dado da maioria das fases. A identidade
+	# viaja em id_fase; ver o cabecalho de registrar_evento.
 
 	if not _sessao_aberta:
 		Registro.aviso("Telemetria", "tentativa sem sessao aberta, descartada")
@@ -247,7 +263,10 @@ func registrar_tentativa(
 	var tentativa: Dictionary = {
 		"id_tentativa": Identificador.uuid_v4(),
 		"id_sessao": _id_sessao,
-		"fase": fase,
+		"id_fase": Sessao.id_fase,
+		"titulo_fase": _sanitizar_texto(Sessao.titulo_fase, LIMITE_DESAFIO),
+		# Legado, pelo mesmo motivo do evento: o CHECK do banco ainda existe.
+		"fase": fase if fase >= 1 and fase <= 4 else null,
 		"desafio": _sanitizar_texto(desafio, LIMITE_DESAFIO),
 		"entrada_normalizada": _sanitizar_texto(entrada_normalizada, LIMITE_TEXTO_LIVRE),
 		"tokens": _sanitizar_tokens(tokens),
@@ -313,6 +332,17 @@ func descarregar() -> void:
 
 	_persistir()
 	_descarregando = false
+
+
+## Caminho do registro local da coleta -- o JSONL do modo MOCK. Vazio em modo
+## HTTP, onde o historico vive no servidor e o cliente nao guarda copia.
+##
+## E a fonte do Dashboard de Telemetria. Devolver vazio (em vez de inventar um
+## caminho) e o que permite a tela dizer "o historico esta no servidor" em vez
+## de mostrar um grafico zerado como se nao houvesse dado nenhum.
+func caminho_do_registro_local() -> String:
+	var mock := _transporte as TransporteMock
+	return mock.caminho() if mock != null else ""
 
 
 func estatisticas() -> Dictionary:

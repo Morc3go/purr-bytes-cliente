@@ -24,10 +24,12 @@ signal destino_alcancado()
 ## fase (ex: cena de teste isolada).
 @export_range(8.0, 400.0, 1.0) var alcance_deteccao: float = 90.0
 
-## Algoritmo que protege contra ESTE cachorro, e nada mais. A cor que ele veste
-## e LegendaCores.cor(algoritmo_exigido) -- cor e regra sao o mesmo dado, e e
-## por isso que olhar o cachorro basta para saber qual comando digitar.
-## Preenchido por fase_base.gd a partir do CachorroConfig da fase.
+## Algoritmo que protege contra ESTE cachorro, e nada mais. Preenchido por
+## fase_base.gd a partir do CachorroConfig da fase.
+##
+## A cor NAO sai daqui: ela e identidade visual (CachorroConfig.cor) e chega por
+## definir_cor(). Separar as duas e o que permite trocar a aparencia -- ou
+## troca-la por um sprite -- sem tocar na regra de protecao.
 @export_enum("CESAR", "VIGENERE", "SHA256", "AES") var algoritmo_exigido: String = "CESAR"
 
 ## Vai para o payload de CACHORRO_DETECTOU/CACHORRO_PERDEU/JOGADOR_CAPTURADO:
@@ -37,6 +39,9 @@ var identificador: String = "cachorro"
 
 var _caminho: PackedVector2Array = PackedVector2Array()
 var _indice: int = 0
+## Cinza claro enquanto a fase nao definir: cachorro instanciado fora de uma
+## fase (cena de teste isolada) continua visivel.
+var _cor: Color = Color(0.85, 0.85, 0.85)
 
 @onready var _area_de_contato: Area2D = $AreaDeContato
 @onready var _linha_de_visao: RayCast2D = $LinhaDeVisao
@@ -46,20 +51,24 @@ var _indice: int = 0
 func _ready() -> void:
 	_area_de_contato.body_entered.connect(_ao_encostar)
 	_linha_de_visao.enabled = false  # forcamos o update manualmente em tem_linha_de_visao()
-	definir_algoritmo(algoritmo_exigido)
+	definir_cor(_cor)
+
+
+func definir_algoritmo(algoritmo: String) -> void:
+	algoritmo_exigido = algoritmo
 
 
 ## modulate sobre o mesmo sprite placeholder, e nao uma textura por cor: quando
 ## a arte definitiva entrar, um cachorro colorido continua sendo o mesmo desenho
-## tingido -- nao quatro arquivos de imagem para manter em sincronia.
-func definir_algoritmo(algoritmo: String) -> void:
-	algoritmo_exigido = algoritmo
+## tingido -- nao um arquivo de imagem por cor para manter em sincronia.
+func definir_cor(nova_cor: Color) -> void:
+	_cor = nova_cor
 	if _sprite != null:
-		_sprite.modulate = LegendaCores.cor(algoritmo)
+		_sprite.modulate = _cor
 
 
 func cor() -> Color:
-	return LegendaCores.cor(algoritmo_exigido)
+	return _cor
 
 
 func _physics_process(_delta: float) -> void:

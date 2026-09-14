@@ -138,7 +138,10 @@ func _ready() -> void:
 	_configurar_temporizador_desempenho()
 	_replanejar_caminho_do_cachorro()
 
-	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais)
+	# A identidade da fase entra na sessao ANTES do primeiro evento: FASE_INICIADA
+	# ja precisa sair com id_fase preenchido.
+	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais,
+		configuracao.garantir_id_fase(), configuracao.titulo)
 	hud.definir_titulo("fase %d -- %s" % [configuracao.numero, configuracao.titulo])
 
 	Telemetria.registrar_evento(CatalogoEventos.FASE_INICIADA, {
@@ -383,15 +386,14 @@ func _protegido_contra(cachorro_alvo: Cachorro) -> bool:
 ## pego" (secao 7 do CLAUDE.md: enquadramento pedagogico, nao punitivo).
 func _explicacao_da_captura(cachorro_alvo: Cachorro) -> String:
 	var exigido: String = LegendaCores.nome(cachorro_alvo.algoritmo_exigido)
-	var cor_do_cachorro: String = LegendaCores.nome_da_cor(cachorro_alvo.algoritmo_exigido)
 
 	if not jogador.protecao_ativa:
-		return ("o pacote viajava em texto claro. o cachorro %s le %s: "
-			+ "use o terminal para cifrar antes de atravessar.") % [cor_do_cachorro, exigido]
+		return ("o pacote viajava em texto claro. este interceptador le %s: "
+			+ "use o terminal para cifrar antes de atravessar.") % exigido
 
-	return ("a cifra ativa era %s, mas o cachorro %s so e enganado por %s. "
+	return ("a cifra ativa era %s, mas este interceptador so e enganado por %s. "
 		+ "cifrar nao basta: tem que ser a cifra certa para o interceptador certo.") % [
-			LegendaCores.nome(jogador.algoritmo_protegido), cor_do_cachorro, exigido]
+			LegendaCores.nome(jogador.algoritmo_protegido), exigido]
 
 
 func _ao_terminar_captura() -> void:
@@ -694,6 +696,8 @@ func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig, indi
 	alvo.velocidade = velocidade
 	alvo.alcance_deteccao = alcance
 	alvo.definir_algoritmo(algoritmo)
+	alvo.definir_cor(config_do_cachorro.cor_efetiva() if config_do_cachorro != null
+		else LegendaCores.cor(algoritmo))
 	alvo.contato_com_jogador.connect(_ao_encostar_no_jogador.bind(alvo))
 
 	cachorros.append(alvo)

@@ -56,6 +56,16 @@ const TAMANHO_TILE: float = 16.0
 
 ## O MapaConfig desta fase: o texto acima vira dado, e e ele que FaseBase
 ## repinta e usa para posicionar jogador, porta, pacotes e cachorros.
+## Preserva o id_fase ja gravado, se houver: regerar a fase NAO pode trocar a
+## identidade dela, senao a telemetria ja coletada deixa de parear com as
+## sessoes novas.
+func _id_existente() -> String:
+	var anterior: FaseConfig = load(CAMINHO_CONFIG) as FaseConfig if ResourceLoader.exists(CAMINHO_CONFIG) else null
+	if anterior != null and Identificador.e_uuid(anterior.id_fase):
+		return anterior.id_fase
+	return Identificador.uuid_v4()
+
+
 func _mapa() -> MapaConfig:
 	var mapa := MapaConfig.new()
 	mapa.linhas = MAPA
@@ -78,6 +88,9 @@ func _initialize() -> void:
 func _gerar_config() -> void:
 	var config := FaseConfig.new()
 	config.numero = 1
+	# Identidade estavel da fase: gerada UMA vez e gravada no .tres. Regerar a
+	# fase mantem o id se ele ja existir (ver _id_existente).
+	config.id_fase = _id_existente()
 	config.mapa = _mapa()
 	config.titulo = "o labirinto de Cesar"
 	config.algoritmo = "CESAR"
@@ -157,8 +170,8 @@ func _gerar_config() -> void:
 		+ "precisa passar. qual ferramenta protege o conteudo dele?")
 	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
 	pacote_aplicacao.resposta_correta = "CESAR"
-	pacote_aplicacao.explicacao_correta = ("isso. verde sempre pede essa ferramenta -- em "
-		+ "qualquer fase, e nao so nesta.")
+	pacote_aplicacao.explicacao_correta = ("isso. cada interceptador le uma cifra so, e a tela "
+		+ "de captura diz qual quando ele te pega.")
 
 	# CONCEITO -- ataca de frente a confusao "chave x ferramenta": a pergunta e
 	# sobre o numero digitado, e nenhuma opcao e nome de algoritmo.
@@ -172,8 +185,8 @@ func _gerar_config() -> void:
 		"quantos pacotes ainda faltam coletar",
 	])
 	pacote_conceito.resposta_correta = "quantas casas cada letra anda no alfabeto"
-	pacote_conceito.explicacao_correta = ("exato. a COR escolhe a ferramenta; a CHAVE e o "
-		+ "segredo que faz a ferramenta funcionar. sao coisas diferentes.")
+	pacote_conceito.explicacao_correta = ("exato. a CHAVE e o segredo que faz a cifra funcionar -- "
+		+ "nao se confunde com a cifra em si.")
 
 	# DISCERNIMENTO -- limite da ferramenta, sem citar nome de cifra nenhuma.
 	var pacote_discernimento := PacoteConfig.new()

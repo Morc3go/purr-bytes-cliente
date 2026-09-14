@@ -21,8 +21,15 @@ signal fase_alterada(numero: int)
 signal vidas_esgotadas()
 
 var id_sessao: String = ""
-## 0 = fora de fase (menu). 1..4 = fase jogavel.
+## 0 = fora de fase (menu). Qualquer outro numero = a fase jogavel corrente.
+## E rotulo de ordem, nao identidade -- quem identifica a fase e id_fase.
 var fase_atual: int = 0
+## Identidade da fase corrente: UUID estavel, gerado uma vez por fase e gravado
+## no recurso dela. Vazio fora de fase. E a chave que liga evento -> fase na
+## analise, e o que permite fases criadas livremente sem numero reservado.
+var id_fase: String = ""
+## Titulo da fase corrente, so para diagnostico legivel no dashboard e nos logs.
+var titulo_fase: String = ""
 var vidas: int = 0
 var pontuacao: int = 0
 var ativa: bool = false
@@ -35,6 +42,8 @@ func iniciar() -> String:
 
 	id_sessao = Identificador.uuid_v4()
 	fase_atual = 0
+	id_fase = ""
+	titulo_fase = ""
 	vidas = 0
 	pontuacao = 0
 	ativa = true
@@ -53,14 +62,22 @@ func encerrar(status: String = "") -> void:
 	Telemetria.encerrar_sessao(status_final)
 	ativa = false
 	fase_atual = 0
+	id_fase = ""
+	titulo_fase = ""
 	Registro.info("Sessao", "sessao encerrada (%s): %s" % [status_final, id_sessao])
 	sessao_encerrada.emit(id_sessao, status_final)
 
 
 ## Chamado por fase_base.gd ao entrar em uma fase. As vidas iniciais vem do
 ## FaseConfig, nunca de constante em codigo (secao 9: zero numero magico).
-func entrar_na_fase(numero: int, vidas_iniciais: int) -> void:
-	fase_atual = clampi(numero, 1, 4)
+## O numero NAO e mais limitado a 1..4: numa ferramenta de fases livres, prender
+## a sessao a quatro numeros faria toda fase criada depois se passar por outra
+## na telemetria. Quem identifica a fase e o id_fase.
+func entrar_na_fase(numero: int, vidas_iniciais: int,
+		id_da_fase: String = "", titulo: String = "") -> void:
+	fase_atual = maxi(0, numero)
+	id_fase = id_da_fase
+	titulo_fase = titulo
 	vidas = maxi(1, vidas_iniciais)
 	fase_alterada.emit(fase_atual)
 	vidas_alteradas.emit(vidas)
@@ -68,6 +85,8 @@ func entrar_na_fase(numero: int, vidas_iniciais: int) -> void:
 
 func sair_da_fase() -> void:
 	fase_atual = 0
+	id_fase = ""
+	titulo_fase = ""
 	fase_alterada.emit(fase_atual)
 
 

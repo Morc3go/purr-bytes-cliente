@@ -6,18 +6,18 @@
 [ext_resource type="Script" path="res://scripts/dominio/pacote_config.gd" id="4_opoan"]
 [ext_resource type="Script" path="res://scripts/dominio/fase_config.gd" id="5_ri1oo"]
 
-[sub_resource type="Resource" id="Resource_rb0xv"]
+[sub_resource type="Resource" id="Resource_qu21c"]
 script = ExtResource("1_qu21c")
 identificador = "verde-norte"
 ancoras = Array[Vector2i]([Vector2i(2, 1), Vector2i(15, 1), Vector2i(13, 7), Vector2i(5, 5)])
 
-[sub_resource type="Resource" id="Resource_y6cny"]
+[sub_resource type="Resource" id="Resource_5oi4k"]
 script = ExtResource("1_qu21c")
 identificador = "azul-sul"
 algoritmo_exigido = "VIGENERE"
 ancoras = Array[Vector2i]([Vector2i(15, 11), Vector2i(10, 9), Vector2i(3, 13), Vector2i(11, 5)])
 
-[sub_resource type="Resource" id="Resource_asqx5"]
+[sub_resource type="Resource" id="Resource_y6c6o"]
 script = ExtResource("2_5oi4k")
 identificador = "vigenere-01"
 enunciado = "o pacote 'pacote' precisa de protecao. tente: cifrar pacote chave=gato"
@@ -26,7 +26,7 @@ chave_esperada = "gato"
 dica = "a chave e um bicho de estimacao comum, 4 letras."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_kyf4m"]
+[sub_resource type="Resource" id="Resource_opoan"]
 script = ExtResource("2_5oi4k")
 identificador = "vigenere-02"
 enunciado = "novo pacote 'servidor' atravessando, com outra chave: cifrar servidor chave=rede"
@@ -35,7 +35,7 @@ chave_esperada = "rede"
 dica = "a chave e a propria palavra que representa a topologia que voce esta atravessando."
 pontos_acerto_de_primeira = 150
 
-[sub_resource type="Resource" id="Resource_t3mgo"]
+[sub_resource type="Resource" id="Resource_ri1oo"]
 script = ExtResource("2_5oi4k")
 identificador = "cesar-revisao"
 enunciado = "um pacote antigo, em Cesar, ainda circula: cifrar chave chave=5. e essa cifra que engana o cachorro verde."
@@ -46,18 +46,18 @@ dica = "Cesar e deslocamento fixo: a chave e um numero, nao uma palavra."
 pontos_acerto = 80
 pontos_acerto_de_primeira = 120
 
-[sub_resource type="Resource" id="Resource_wpv2t"]
+[sub_resource type="Resource" id="Resource_rb0xv"]
 script = ExtResource("3_y6c6o")
 linhas = PackedStringArray("#####################", "#P......#.......o.#.#", "#.....#.#####.###...#", "#.....#...D...#.#.#.#", "#.#.######.####.....#", "#.#.....#.......#.#.#", "#.####.......##.#.#.#", "#.............D.#...#", "########......#####.#", "#.......o.........#.#", "#.#.#.#.##.####.....#", "#.#.....#.....#.....#", "#.#.###.###.#.#.....#", "#o............#....S#", "#####################")
 
-[sub_resource type="Resource" id="Resource_vqhxv"]
+[sub_resource type="Resource" id="Resource_y6cny"]
 script = ExtResource("4_opoan")
 identificador = "f2-aplicacao"
 enunciado = "o cachorro que patrulha esta passagem e VERDE. qual ferramenta protege o pacote dele?"
 opcoes = PackedStringArray("CESAR", "VIGENERE")
-explicacao_correta = "verde continua pedindo a mesma ferramenta de sempre, mesmo numa fase nova: quem manda e a cor, nao a fase."
+explicacao_correta = "este interceptador continua pedindo a mesma cifra de sempre, mesmo numa fase nova: quem manda e ele, nao a fase."
 
-[sub_resource type="Resource" id="Resource_g65dx"]
+[sub_resource type="Resource" id="Resource_asqx5"]
 script = ExtResource("4_opoan")
 identificador = "f2-conceito"
 enunciado = "nesta fase a chave e uma palavra em vez de um numero. o que isso muda no embaralhamento?"
@@ -66,7 +66,7 @@ opcoes = PackedStringArray("cada letra anda um tanto diferente, seguindo a palav
 resposta_correta = "cada letra anda um tanto diferente, seguindo a palavra"
 explicacao_correta = "isso. um numero so move todas as letras igual; a palavra troca o deslocamento a cada posicao."
 
-[sub_resource type="Resource" id="Resource_o5s18"]
+[sub_resource type="Resource" id="Resource_kyf4m"]
 script = ExtResource("4_opoan")
 identificador = "f2-discernimento"
 enunciado = "contar quais letras mais se repetem ajuda a quebrar um deslocamento fixo. por que isso para de funcionar aqui?"
@@ -78,13 +78,14 @@ explicacao_correta = "exato: sem repeticao previsivel, contar letras nao entrega
 [resource]
 script = ExtResource("5_ri1oo")
 numero = 2
+id_fase = "8a3b57af-4457-4f79-847d-de62f92e3d87"
 titulo = "o labirinto de Vigenere"
 algoritmo = "VIGENERE"
 verbos_permitidos = PackedStringArray("cifrar", "decifrar", "dica", "status")
-mapa = SubResource("Resource_wpv2t")
-desafios = Array[ExtResource("2_5oi4k")]([SubResource("Resource_asqx5"), SubResource("Resource_kyf4m"), SubResource("Resource_t3mgo")])
-cachorros = Array[ExtResource("1_qu21c")]([SubResource("Resource_rb0xv"), SubResource("Resource_y6cny")])
-pacotes = Array[ExtResource("4_opoan")]([SubResource("Resource_vqhxv"), SubResource("Resource_g65dx"), SubResource("Resource_o5s18")])
+mapa = SubResource("Resource_rb0xv")
+desafios = Array[ExtResource("2_5oi4k")]([SubResource("Resource_y6c6o"), SubResource("Resource_opoan"), SubResource("Resource_ri1oo")])
+cachorros = Array[ExtResource("1_qu21c")]([SubResource("Resource_qu21c"), SubResource("Resource_5oi4k")])
+pacotes = Array[ExtResource("4_opoan")]([SubResource("Resource_y6cny"), SubResource("Resource_asqx5"), SubResource("Resource_kyf4m")])
 velocidade_cachorro = 42.0
 briefing_pedagogico = "o pacote precisa atravessar o labirinto ate a saida, do outro lado do mapa.
 a chave desta vez e uma palavra, nao um numero: 'cifrar <pacote> chave=<palavra>'.

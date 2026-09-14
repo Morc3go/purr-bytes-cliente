@@ -28,6 +28,40 @@ responde `202`. `tests/teste_transporte_http.gd` e
 
 ---
 
+## 0. MUDANÇA DE CONTRATO — `id_fase` (2026-09-14)
+
+**Para o time do banco.** O cliente deixou de identificar a fase pelo número.
+
+Motivo: o esquema nasceu com quatro fases fixas (`CHECK (fase BETWEEN 1 AND 4)`), e o
+cliente honrava isso **descartando** qualquer evento ou tentativa fora dessa faixa. Com
+fases criadas livremente, esse descarte significaria perder a telemetria da maioria das
+fases — o oposto do que a instrumentação existe para fazer.
+
+O que muda no corpo enviado:
+
+| campo | antes | agora |
+|---|---|---|
+| `id_fase` | — | **novo, sempre presente.** UUID v4 estável, gerado uma vez por fase e gravado no recurso dela. É a chave de ligação fase ↔ eventos. |
+| `titulo_fase` | — | **novo**, ≤ 60 caracteres. Rótulo legível, só para diagnóstico. |
+| `fase` | número 1..4, obrigatório em `tentativa_comando` | **legado e opcional.** Continua indo quando está em 1..4; vai `null` fora disso. |
+
+O cliente **nunca mais descarta** um registro por causa do número da fase.
+
+Enquanto o `CHECK` existir no banco de produção, o cliente segue anulando `fase` fora de
+1..4 — não por amarra própria, mas porque um valor fora da faixa faria a API recusar o
+**lote inteiro** (4xx = erro permanente = lote descartado), levando junto centenas de
+registros válidos. A identidade real já está em `id_fase`.
+
+**O que pedimos ao banco:** uma coluna `id_fase UUID` em `evento_telemetria` e
+`tentativa_comando` (mais `titulo_fase VARCHAR(60)` se for útil), e a remoção do
+`CHECK (fase BETWEEN 1 AND 4)`. Feito isso, o cliente para de anular o campo numérico —
+é uma linha em `autoload/telemetria.gd`, já marcada em comentário.
+
+`id_fase` é técnico e anônimo: não deriva de nada pessoal e não identifica participante.
+O pseudônimo do sujeito continua sendo só `id_sujeito`.
+
+---
+
 ## 1. Rotas
 
 | Método | Rota | Quando |

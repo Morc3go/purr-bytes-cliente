@@ -71,6 +71,48 @@ func teste_fase_01_tem_dois_cachorros_com_cor_da_legenda() -> void:
 		"cada cachorro nasce na celula que o CachorroConfig manda")
 
 
+## A camada que ENSINAVA "a cor diz qual cifra" saiu (tutorial do menu, HUD
+## colorida). O que NAO pode sair junto: a cor do cachorro e o aviso de
+## protecao. Este teste e a rede contra perder um deles por descuido.
+func teste_o_tutorial_saiu_mas_a_cor_e_o_aviso_de_protecao_ficaram() -> void:
+	var menu: Control = load("res://cenas/ui/menu_principal.tscn").instantiate() as Control
+	afirmar_nulo(menu.get_node_or_null("PainelTutorial"),
+		"o painel de tutorial de cores nao existe mais")
+	afirmar_nulo(menu.get_node_or_null("Coluna/Botoes/Tutorial"),
+		"nem o botao que o abria")
+	afirmar_nao_nulo(menu.get_node_or_null("Coluna/Botoes/Telemetria"),
+		"o botao de telemetria continua no lugar, sem buraco no layout")
+	menu.free()
+
+	_preparar_mock("cor_preservada")
+	_fase = _montar_fase()
+	await get_tree().process_frame
+
+	for cachorro: Cachorro in _fase.cachorros:
+		var pintada: Color = (cachorro.get_node("Sprite") as Sprite2D).modulate
+		afirmar_igual(pintada, cachorro.cor(), "o cachorro continua pintado com a cor dele")
+		afirmar_verdadeiro(pintada.a > 0.0, "e a cor e visivel, nao transparente")
+
+	# O aviso de protecao continua informando QUAL cifra esta ativa...
+	_fase.jogador.ativar_protecao(10.0, "CESAR")
+	await get_tree().process_frame
+	var rotulo: Label = _fase.hud.get_node("Raiz/Linha/Protecao") as Label
+	afirmar_contem(rotulo.text, "Cesar", "a HUD continua dizendo qual cifra protege")
+	# ...mas em cor neutra: a cor deixou de ser codigo semantico.
+	afirmar_igual(rotulo.modulate, Color.WHITE, "sem cor semantica no aviso")
+
+
+func teste_cor_do_cachorro_pode_ser_escolhida_a_mao() -> void:
+	var config := CachorroConfig.new()
+	config.algoritmo_exigido = "CESAR"
+	afirmar_igual(config.cor_efetiva(), LegendaCores.cor("CESAR"),
+		"sem escolha, a cor default e a do algoritmo")
+
+	config.cor = Color(1.0, 0.0, 0.5)
+	afirmar_igual(config.cor_efetiva(), Color(1.0, 0.0, 0.5),
+		"a cor escolhida a mao manda: ela e identidade visual, nao regra")
+
+
 func teste_cachorro_sem_visao_patrulha_e_nao_persegue_o_jogador() -> void:
 	_preparar_mock("patrulha")
 	_fase = _montar_fase()

@@ -44,6 +44,16 @@ const MAPA: PackedStringArray = [
 const TAMANHO_TILE: int = 16
 ## O MapaConfig desta fase: o texto acima vira dado, e e ele que FaseBase
 ## repinta e usa para posicionar jogador, porta, pacotes e cachorros.
+## Preserva o id_fase ja gravado, se houver: regerar a fase NAO pode trocar a
+## identidade dela, senao a telemetria ja coletada deixa de parear com as
+## sessoes novas.
+func _id_existente() -> String:
+	var anterior: FaseConfig = load(CAMINHO_CONFIG) as FaseConfig if ResourceLoader.exists(CAMINHO_CONFIG) else null
+	if anterior != null and Identificador.e_uuid(anterior.id_fase):
+		return anterior.id_fase
+	return Identificador.uuid_v4()
+
+
 func _mapa() -> MapaConfig:
 	var mapa := MapaConfig.new()
 	mapa.linhas = MAPA
@@ -67,6 +77,9 @@ func _initialize() -> void:
 func _gerar_config() -> void:
 	var config := FaseConfig.new()
 	config.numero = 2
+	# Identidade estavel da fase: gerada UMA vez e gravada no .tres. Regerar a
+	# fase mantem o id se ele ja existir (ver _id_existente).
+	config.id_fase = _id_existente()
 	config.mapa = _mapa()
 	config.titulo = "o labirinto de Vigenere"
 	config.algoritmo = "VIGENERE"
@@ -158,7 +171,7 @@ func _gerar_config() -> void:
 	# tem na mao, que e a competencia que a fase inteira treina.
 	# APLICACAO -- a pergunta que a fase 2 existe para fazer: a fase e de
 	# Vigenere, mas quem esta no corredor e VERDE. Resposta = Cesar. E a unica
-	# forma de o jogador descobrir que a cor manda, e nao a fase.
+	# forma de o jogador descobrir que o interceptador manda, e nao a fase.
 	var pacote_aplicacao := PacoteConfig.new()
 	pacote_aplicacao.identificador = "f2-aplicacao"
 	pacote_aplicacao.tipo = "APLICACAO"
@@ -166,8 +179,8 @@ func _gerar_config() -> void:
 		+ "ferramenta protege o pacote dele?")
 	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
 	pacote_aplicacao.resposta_correta = "CESAR"
-	pacote_aplicacao.explicacao_correta = ("verde continua pedindo a mesma ferramenta de "
-		+ "sempre, mesmo numa fase nova: quem manda e a cor, nao a fase.")
+	pacote_aplicacao.explicacao_correta = ("este interceptador continua pedindo a mesma cifra de "
+		+ "sempre, mesmo numa fase nova: quem manda e ele, nao a fase.")
 
 	# CONCEITO -- o que a palavra-chave muda em relacao a um numero fixo.
 	var pacote_conceito := PacoteConfig.new()

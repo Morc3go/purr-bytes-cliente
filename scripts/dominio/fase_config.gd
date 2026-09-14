@@ -17,6 +17,19 @@ extends Resource
 ## recusada, entao validar() trata isso como erro fatal.
 @export_range(1, 4) var numero: int = 1
 
+## Identidade ESTAVEL e unica da fase (UUID v4), gerada uma vez e guardada no
+## recurso. E ela que liga fase -> eventos na telemetria.
+##
+## Por que nao o `numero`: ele nasceu de um banco com quatro fases fixas. Numa
+## ferramenta em que fases sao criadas livremente, numero deixa de ser
+## identidade (duas fases podem nascer "5", uma fase pode ser reordenada) e
+## amarrar a coleta a ele significa perder ou embaralhar dado. O UUID nao tem
+## esse problema, e continua anonimo: e tecnico, nao diz nada sobre pessoa.
+##
+## Vazio = recurso antigo; garantir_id_fase() preenche na carga (migracao
+## suave, sem quebrar .tres ja gravado).
+@export var id_fase: String = ""
+
 @export var titulo: String = ""
 
 @export_enum("CESAR", "VIGENERE", "SHA256", "AES") var algoritmo: String = "CESAR"
@@ -188,6 +201,24 @@ func algoritmos_dos_desafios() -> PackedStringArray:
 		if not lista.has(algoritmo_do_desafio):
 			lista.append(algoritmo_do_desafio)
 	return lista
+
+
+## Garante que a fase tenha identidade antes de gerar telemetria.
+##
+## Um id gerado em runtime (recurso antigo, sem id gravado) vale para a sessao,
+## mas NAO e estavel entre execucoes -- o aviso existe para isso nao passar
+## despercebido numa coleta de verdade, onde a analise precisa parear as sessoes
+## de uma mesma fase. Rodar o gerador da fase grava o id de vez.
+func garantir_id_fase() -> String:
+	if Identificador.e_uuid(id_fase):
+		return id_fase
+
+	id_fase = Identificador.uuid_v4()
+	Registro.aviso("FaseConfig", ("fase '%s' sem id_fase gravado; gerado um temporario (%s). "
+		+ "Rode tools/gerar_fase_0N.gd para grava-lo no recurso -- sem isso, cada execucao "
+		+ "usa um id diferente e a analise nao consegue juntar as sessoes desta fase.")
+		% [titulo, id_fase])
+	return id_fase
 
 
 func valida() -> bool:

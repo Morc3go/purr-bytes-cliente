@@ -440,3 +440,123 @@ HTTP.
    a ordem deve mudar se você reabrir a caixa.
 6. **Criar uma fase nova**, seguindo o passo a passo do `README.md` — é o teste real de que o
    esquema ficou seguro de usar.
+
+---
+---
+
+# Tutorial removido, telemetria global e Dashboard
+
+**Data:** 2026-09-14 · **Escopo:** as quatro partes do brief, executadas na ordem pedida.
+
+## 0. Uma premissa do brief que não se confirmou
+
+O brief parte de que "o projeto virou uma ferramenta de autoria: o professor cria fases
+(JSON + editor), define cachorros com cor livre e comando de bloqueio em texto livre".
+**Isso não existe neste repositório.** Ele está em `f0fa062`, igual ao `origin/main`: sem
+editor de fases, sem `.json` de fase, sem comando em texto livre, e o `CachorroConfig` não
+tinha campo `cor` (o brief supõe que "provavelmente já existe").
+
+Mais importante: a regra "cor = cifra" **não era legado morto** — era e continua sendo a
+mecânica central (`FaseBase._protegido_contra`, `FaseConfig.problemas()`). Levantei isso
+antes de começar; a resposta foi seguir o script, e foi o que fiz. O que a Parte 1 removeu
+foi a camada que **ensinava** a regra, não a regra. A consequência está registrada abaixo e
+em `docs/conformidade-monografia.md` — não foi enterrada.
+
+## 1. O que saiu, o que ficou
+
+| Removido | Por quê |
+|---|---|
+| Botão "tutorial de cores" e `PainelTutorial` (menu) | ensinava a associação cor → cifra |
+| `_montar_tutorial`, `_ao_abrir_tutorial`, `_ao_fechar_tutorial` e os `@onready` órfãos | idem |
+| Coloração do aviso de proteção na HUD | a cor deixou de ser código semântico |
+| `LegendaCores._EXPLICACOES`, `_CHAVES`, `_NOMES_DAS_CORES`, `entradas()` | existiam só para o tutorial |
+| Frases "o cachorro **verde** lê César" (captura, terminal, feedback dos pacotes) | afirmavam a regra removida |
+
+| Preservado | Como |
+|---|---|
+| **Cor do cachorro** | virou dado próprio: `CachorroConfig.cor` (livre), com a cor do algoritmo só como default. `Cachorro.definir_cor()` substituiu a derivação. Coberto por teste. |
+| **Aviso de proteção** | continua dizendo qual cifra está ativa e por quanto tempo — em branco. |
+| **A mecânica** | cada cachorro ainda exige um algoritmo; cifra errada não protege. |
+| `LegendaCores` | reduzido a `nome()`, `cor()` e `conhece()` — os três em uso real (rótulos, default de cor, validações). Não foi apagado. |
+
+**Pendência honesta:** sem o tutorial, o jogador só descobre qual cifra engana qual
+interceptador ao **ser pego** (a tela de captura nomeia o algoritmo). E três perguntas de
+pacote ainda dizem "um cachorro VERDE ronda...", pressupondo a legenda que saiu. Não
+reescrevi o banco de perguntas porque não foi pedido e porque na tarefa anterior a
+orientação foi deixá-lo como está. Está listado em `docs/conformidade-monografia.md` como
+item a resolver antes da coleta.
+
+## 2. Telemetria global
+
+O diagnóstico do brief estava **certo**: `telemetria.gd` descartava tentativa com fase fora
+de 1..4 e `sessao.gd` fazia `clampi(numero, 1, 4)`.
+
+- `FaseConfig.id_fase` — UUID v4 estável, gravado no `.tres`. `garantir_id_fase()` gera na
+  carga para recurso antigo (migração suave) e **avisa alto**, porque id gerado em runtime
+  não pareia sessões entre execuções.
+- Os geradores preservam o id já gravado ao regerar a fase — verificado: regerar duas vezes
+  mantém o mesmo UUID. Trocar a identidade desemparelharia a telemetria já coletada.
+- `id_fase` e `titulo_fase` viajam em **todo** evento e **toda** tentativa.
+- `Sessao` guarda os dois; o `clampi` saiu.
+- **Nada mais é descartado por número de fase.**
+
+**Decisão de engenharia que diverge do texto do brief:** o campo numérico `fase` continua
+indo como `null` fora de 1..4. Não é amarra do cliente — é que o `CHECK (fase BETWEEN 1
+AND 4)` ainda existe no banco de produção, e um valor fora da faixa faz a API recusar o
+**lote inteiro** (4xx = erro permanente = lote descartado), levando junto centenas de
+registros válidos. Ou seja: mandar o número "livre" hoje perderia exatamente o dado que a
+mudança quer salvar. A identidade real está em `id_fase`, e quando o `CHECK` cair é uma
+linha para remover, já marcada em comentário. Contrato para o time do banco na seção 0 de
+`docs/contrato-telemetria.md`.
+
+## 3. Dashboard de Telemetria (Figura 7)
+
+Tela nova, `cenas/ui/dashboard_telemetria.tscn`, ligada ao botão "Telemetria":
+
+- **acertos × erros** em barras desenhadas com `_draw` (duas barras não pagam uma
+  dependência nova, e `_draw` dá controle total do contraste);
+- **tempo de resolução por fase**, rotulado por `titulo_fase`/`id_fase` — nunca "Nível 1/2"
+  fixo, que mentiria na primeira fase criada;
+- **exportar JSON** — drena a fila antes, para não exportar retrato incompleto, e grava
+  `user://resumo_telemetria.json`;
+- **voltar ao menu**;
+- **o painel de diagnóstico técnico não foi removido**: abre por um botão aqui dentro. Ele
+  responde "a coleta está funcionando?"; o dashboard responde "o que a coleta diz".
+
+A agregação vive em `scripts/telemetria/resumo_telemetria.gd` — lógica pura, testável sem
+abrir a cena. `ABANDONO` e `TIMEOUT` não contam como erro: desistir não é errar, e somá-los
+inflaria a taxa de erro com outro fenômeno.
+
+Fonte dos dados: o JSONL do modo MOCK, que é o registro local da coleta. Em modo HTTP o
+histórico está no servidor e a tela **diz isso**, em vez de mostrar um gráfico zerado como
+se não houvesse dado.
+
+## 4. Revisão geral
+
+- **Opacidade (o bug histórico):** os `PanelContainer` do terminal, da caixa de puzzle, do
+  painel da cifra e da tela de captura usavam o `StyleBox` **padrão do tema, que é
+  semitransparente**. Todos ganharam `StyleBoxFlat` opaco explícito. O dashboard já nasceu
+  assim, com teste que falha se o fundo não for opaco.
+- **Código morto:** saíram os `@onready` órfãos do menu e o painel de telemetria duplicado
+  (migrou para o dashboard). `LegendaCores` foi reduzido, não apagado.
+- **Warnings:** importação limpa, sem aviso do editor.
+- **Suíte:** **196 testes, 1109 verificações, 0 falhas** (era 180/1047). Arquivos novos:
+  `teste_telemetria_global.gd` (6) e `teste_dashboard.gd` (8), mais 2 em `teste_modo_humano`
+  (21) travando a remoção do tutorial **e** a sobrevivência da cor e do aviso de proteção.
+- `teste_transporte_http.gd` e `teste_resiliencia_http.gd` continuam **sem rodar** (exigem
+  `python`, ausente nesta máquina); nada aqui toca o transporte HTTP.
+
+## 5. Como testar à mão
+
+1. **Menu:** só "jogar", "telemetria" e "sair" — sem tutorial de cores e sem buraco no
+   layout.
+2. **Jogar uma fase:** os cachorros continuam coloridos; a HUD mostra "Cesar ativa 9.4s" em
+   branco ao cifrar; ser pego mostra "este interceptador lê Cesar" (sem citar cor).
+3. **Telemetria com fase fora de 1..4:** abra `tools/gerar_fase_01.gd`, troque
+   `config.numero` para 3 e regere — ou rode `tests/runner.gd -- telemetria_global`, que
+   cobre fase 97 e fase 42. Os eventos **não** são descartados e carregam `id_fase`.
+4. **Dashboard:** menu → "telemetria". Deve mostrar sessões, taxa de acerto, as duas barras
+   e a tabela por fase. "exportar JSON" grava `resumo_telemetria.json` na pasta `user://` e
+   informa o caminho completo no rodapé. "diagnóstico" abre o painel técnico de sempre.
+5. **Opacidade:** abra o terminal (`T`), a caixa de puzzle e a tela de captura com o
+   labirinto atrás — nenhum deve deixar o mapa aparecer através do painel.

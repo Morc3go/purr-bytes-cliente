@@ -129,8 +129,8 @@ static func _resolver_cifra(
 			"essa chave nao protege o pacote deste desafio.")
 
 	var veredicto: VeredictoComando = VeredictoComando.sucesso(
-		"pacote protegido em %s. os cachorros %s nao reconhecem mais o conteudo -- os das outras cores, sim."
-		% [LegendaCores.nome(algoritmo), LegendaCores.nome_da_cor(algoritmo)])
+		"pacote protegido em %s. quem le %s nao reconhece mais o conteudo -- os outros interceptadores, sim."
+		% [LegendaCores.nome(algoritmo), LegendaCores.nome(algoritmo)])
 	veredicto.resolveu_desafio = true
 	veredicto.duracao_protecao_s = configuracao.duracao_cifra_s
 	veredicto.algoritmo_protecao = algoritmo
