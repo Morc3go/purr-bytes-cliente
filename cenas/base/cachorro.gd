@@ -37,6 +37,15 @@ signal destino_alcancado()
 ## responde mais nenhuma pergunta de analise.
 var identificador: String = "cachorro"
 
+## Comando em texto livre que bloqueia este cachorro (fases de autoria). Vazio
+## = ele obedece a regra por algoritmo das fases 1 a 3. Copiado do
+## CachorroConfig por fase_base.gd.
+var comando_para_bloquear: String = ""
+
+
+func bloqueia_por_comando() -> bool:
+	return not comando_para_bloquear.is_empty()
+
 var _caminho: PackedVector2Array = PackedVector2Array()
 var _indice: int = 0
 ## Cinza claro enquanto a fase nao definir: cachorro instanciado fora de uma

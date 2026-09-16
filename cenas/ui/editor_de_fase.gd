@@ -1,0 +1,326 @@
+extends Control
+
+## Editor visual de fases: monta uma fase e grava como .json em user://fases.
+##
+## O editor NAO tem modelo de dados proprio. Ele preenche o FaseConfig que o
+## jogo ja usa e delega a validacao para FaseConfig.problemas() e
+## CarregadorFaseJson -- as mesmas funcoes que rodam ao carregar a fase. Se o
+## editor validasse por conta propria, existiriam duas nocoes de "fase valida"
+## e elas divergiriam no primeiro campo novo.
+##
+## As listas de vigias e de terminais sao construidas em codigo (e nao no
+## .tscn) porque a quantidade e livre: o professor adiciona e remove enquanto
+## monta. Cada linha carrega os seus proprios campos, e ler a tela de volta e
+## percorrer essas linhas -- nao ha estado paralelo para dessincronizar.
+##
+## Abre em branco (criar) ou com uma fase carregada (editar), conforme
+## EditorDeFaseEstado.consumir_caminho().
+
+const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
+const CENA_DA_SELECAO: String = "res://cenas/ui/selecao_de_fases.tscn"
+
+const _COR_PADRAO_DO_VIGIA: Color = Color(0.40, 0.66, 1.0)
+
+@onready var _campo_titulo: LineEdit = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/CampoTitulo
+@onready var _campo_vidas: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/CampoVidas
+@onready var _campo_largura: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/LinhaMapa/CampoLargura
+@onready var _campo_altura: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/LinhaMapa/CampoAltura
+@onready var _campo_semente: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/CampoSemente
+@onready var _campo_briefing: TextEdit = $Raiz/Margem/Coluna/Rolagem/Conteudo/CampoBriefing
+@onready var _vigias: VBoxContainer = $Raiz/Margem/Coluna/Rolagem/Conteudo/Vigias
+@onready var _terminais: VBoxContainer = $Raiz/Margem/Coluna/Rolagem/Conteudo/Terminais
+@onready var _erros: RichTextLabel = $Raiz/Margem/Coluna/Erros
+@onready var _titulo_da_tela: Label = $Raiz/Margem/Coluna/Titulo
+
+## Caminho do arquivo sendo editado. Vazio = fase nova (o nome sai do titulo ao
+## salvar). Preenchido = salvar grava POR CIMA deste arquivo, sem criar copia.
+var _caminho_em_edicao: String = ""
+## Id da fase em edicao: preservado para a telemetria ja coletada continuar
+## pareando com ela depois de uma edicao.
+var _id_fase: String = ""
+
+
+func _ready() -> void:
+	$Raiz/Margem/Coluna/Rolagem/Conteudo/AdicionarVigia.pressed.connect(
+		func() -> void: _adicionar_vigia())
+	$Raiz/Margem/Coluna/Rolagem/Conteudo/AdicionarTerminal.pressed.connect(
+		func() -> void: _adicionar_terminal())
+	$Raiz/Margem/Coluna/Acoes/Salvar.pressed.connect(func() -> void: _salvar(false))
+	$Raiz/Margem/Coluna/Acoes/SalvarEJogar.pressed.connect(func() -> void: _salvar(true))
+	$Raiz/Margem/Coluna/Acoes/Voltar.pressed.connect(_ao_voltar)
+
+	var caminho: String = EditorDeFaseEstado.consumir_caminho()
+	if caminho.is_empty():
+		_preparar_fase_nova()
+	else:
+		_carregar(caminho)
+
+
+func _preparar_fase_nova() -> void:
+	_titulo_da_tela.text = "criar fase"
+	_id_fase = Identificador.uuid_v4()
+	# Uma fase precisa de pelo menos um terminal para a porta ter o que
+	# destrancar; comecar com um vigia e um terminal poupa o professor de
+	# descobrir isso pelo erro de validacao.
+	_adicionar_vigia()
+	_adicionar_terminal()
+
+
+func _carregar(caminho: String) -> void:
+	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(caminho)
+	if not resultado.ok():
+		_mostrar_erros(resultado.erros)
+		_preparar_fase_nova()
+		return
+
+	var config: FaseConfig = resultado.config
+	_caminho_em_edicao = caminho
+	_id_fase = config.id_fase
+	_titulo_da_tela.text = "editar fase"
+
+	_campo_titulo.text = config.titulo
+	_campo_vidas.value = config.vidas_iniciais
+	_campo_briefing.text = config.briefing_pedagogico
+	_campo_largura.value = config.mapa.largura() if config.mapa != null else 21
+	_campo_altura.value = config.mapa.altura() if config.mapa != null else 15
+	# A semente volta para o campo: sem ela, salvar geraria OUTRO labirinto e a
+	# fase editada nao seria mais a fase que o professor testou.
+	_campo_semente.value = config.semente_do_mapa
+
+	for cachorro: CachorroConfig in config.cachorros:
+		_adicionar_vigia(cachorro.cor_efetiva(), cachorro.comando_para_bloquear)
+	for pacote: PacoteConfig in config.pacotes:
+		_adicionar_terminal(pacote.enunciado, pacote.opcoes, pacote.resposta_correta,
+			pacote.explicacao_correta)
+
+
+# ---------------------------------------------------------------------------
+# Linhas dinamicas
+# ---------------------------------------------------------------------------
+
+func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "") -> HBoxContainer:
+	var linha := HBoxContainer.new()
+	linha.add_theme_constant_override("separation", 6)
+
+	var seletor := ColorPickerButton.new()
+	seletor.custom_minimum_size = Vector2(38, 20)
+	seletor.color = cor
+	seletor.name = "Cor"
+	linha.add_child(seletor)
+
+	var campo := LineEdit.new()
+	campo.name = "Comando"
+	campo.text = comando
+	campo.placeholder_text = "comando que bloqueia (vazio = so persegue)"
+	campo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	campo.add_theme_font_size_override("font_size", 9)
+	linha.add_child(campo)
+
+	var remover := Button.new()
+	remover.text = "x"
+	remover.add_theme_font_size_override("font_size", 9)
+	remover.pressed.connect(func() -> void:
+		_vigias.remove_child(linha)
+		linha.queue_free())
+	linha.add_child(remover)
+
+	_vigias.add_child(linha)
+	return linha
+
+
+func _adicionar_terminal(enunciado: String = "", opcoes: PackedStringArray = PackedStringArray(),
+		correta: String = "", explicacao: String = "") -> VBoxContainer:
+
+	var bloco := VBoxContainer.new()
+	bloco.add_theme_constant_override("separation", 3)
+
+	var campo_enunciado := LineEdit.new()
+	campo_enunciado.name = "Enunciado"
+	campo_enunciado.text = enunciado
+	campo_enunciado.placeholder_text = "pergunta (ex.: qual destas e a senha mais dificil de descobrir?)"
+	campo_enunciado.add_theme_font_size_override("font_size", 9)
+	bloco.add_child(campo_enunciado)
+
+	var lista_de_opcoes := VBoxContainer.new()
+	lista_de_opcoes.name = "Opcoes"
+	lista_de_opcoes.add_theme_constant_override("separation", 2)
+	bloco.add_child(lista_de_opcoes)
+
+	# Um ButtonGroup por terminal: e ele que faz os circulos virarem escolha
+	# unica sem nenhuma logica de desmarcar a mao.
+	var grupo := ButtonGroup.new()
+	bloco.set_meta("grupo", grupo)
+
+	var campo_explicacao := LineEdit.new()
+	campo_explicacao.name = "Explicacao"
+	campo_explicacao.text = explicacao
+	campo_explicacao.placeholder_text = "explicacao mostrada ao acertar (opcional)"
+	campo_explicacao.add_theme_font_size_override("font_size", 8)
+
+	var acoes := HBoxContainer.new()
+	acoes.add_theme_constant_override("separation", 6)
+
+	var adicionar_opcao := Button.new()
+	adicionar_opcao.text = "+ opcao"
+	adicionar_opcao.add_theme_font_size_override("font_size", 8)
+	adicionar_opcao.pressed.connect(func() -> void:
+		_adicionar_opcao(lista_de_opcoes, grupo, "", false))
+	acoes.add_child(adicionar_opcao)
+
+	var remover := Button.new()
+	remover.text = "remover terminal"
+	remover.add_theme_font_size_override("font_size", 8)
+	remover.pressed.connect(func() -> void:
+		_terminais.remove_child(bloco)
+		bloco.queue_free())
+	acoes.add_child(remover)
+
+	bloco.add_child(campo_explicacao)
+	bloco.add_child(acoes)
+	_terminais.add_child(bloco)
+
+	if opcoes.is_empty():
+		# Duas opcoes de partida: uma pergunta de escolha precisa de pelo menos
+		# duas, e a validacao cobraria isso depois de qualquer jeito.
+		_adicionar_opcao(lista_de_opcoes, grupo, "", true)
+		_adicionar_opcao(lista_de_opcoes, grupo, "", false)
+	else:
+		for opcao: String in opcoes:
+			_adicionar_opcao(lista_de_opcoes, grupo, opcao, opcao == correta)
+
+	return bloco
+
+
+func _adicionar_opcao(lista: VBoxContainer, grupo: ButtonGroup, texto: String,
+		marcada: bool) -> HBoxContainer:
+
+	var linha := HBoxContainer.new()
+	linha.add_theme_constant_override("separation", 4)
+
+	var marca := CheckBox.new()
+	marca.name = "Correta"
+	marca.button_group = grupo
+	marca.button_pressed = marcada
+	linha.add_child(marca)
+
+	var campo := LineEdit.new()
+	campo.name = "Texto"
+	campo.text = texto
+	campo.placeholder_text = "opcao"
+	campo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	campo.add_theme_font_size_override("font_size", 9)
+	linha.add_child(campo)
+
+	var remover := Button.new()
+	remover.text = "x"
+	remover.add_theme_font_size_override("font_size", 8)
+	remover.pressed.connect(func() -> void:
+		lista.remove_child(linha)
+		linha.queue_free())
+	linha.add_child(remover)
+
+	lista.add_child(linha)
+	return linha
+
+
+# ---------------------------------------------------------------------------
+# Tela -> JSON
+# ---------------------------------------------------------------------------
+
+## Le a tela e devolve o dicionario no formato de CarregadorFaseJson. Ler da
+## propria arvore de nos (em vez de manter um modelo em paralelo) e o que
+## garante que o que o professor VE e o que e salvo.
+func montar_dicionario() -> Dictionary:
+	var cachorros: Array[Dictionary] = []
+	for linha: Node in _vigias.get_children():
+		var comando: String = (linha.get_node("Comando") as LineEdit).text.strip_edges()
+		cachorros.append({
+			"cor": (linha.get_node("Cor") as ColorPickerButton).color.to_html(false),
+			"comando_para_bloquear": comando,
+			"modo_de_bloqueio": "COMANDO" if not comando.is_empty() else "NENHUM",
+		})
+
+	var terminais: Array[Dictionary] = []
+	for bloco: Node in _terminais.get_children():
+		var opcoes: Array[String] = []
+		var correta := ""
+		for linha: Node in bloco.get_node("Opcoes").get_children():
+			var texto: String = (linha.get_node("Texto") as LineEdit).text.strip_edges()
+			if texto.is_empty():
+				continue
+			opcoes.append(texto)
+			if (linha.get_node("Correta") as CheckBox).button_pressed:
+				correta = texto
+
+		terminais.append({
+			"enunciado": (bloco.get_node("Enunciado") as LineEdit).text.strip_edges(),
+			"opcoes": opcoes,
+			"correta": correta,
+			"explicacao": (bloco.get_node("Explicacao") as LineEdit).text.strip_edges(),
+		})
+
+	return {
+		"titulo": _campo_titulo.text.strip_edges(),
+		"id_fase": _id_fase,
+		"briefing": _campo_briefing.text,
+		"vidas": int(_campo_vidas.value),
+		"mapa": {
+			"largura": int(_campo_largura.value),
+			"altura": int(_campo_altura.value),
+			"seed": int(_campo_semente.value),
+		},
+		"cachorros": cachorros,
+		"terminais": terminais,
+	}
+
+
+func _salvar(jogar_depois: bool) -> void:
+	var dados: Dictionary = montar_dicionario()
+
+	# Validacao pelo MESMO caminho que a carga usa: se passar aqui, joga.
+	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_texto(JSON.stringify(dados))
+	if not resultado.ok():
+		_mostrar_erros(resultado.erros)
+		return
+
+	# A semente efetivamente usada volta para o arquivo: pedir "0 = sortear" e
+	# gravar 0 faria a proxima abertura sortear outro labirinto.
+	dados["mapa"]["seed"] = resultado.config.semente_do_mapa
+	_campo_semente.value = resultado.config.semente_do_mapa
+
+	var caminho: String = _caminho_em_edicao
+	if caminho.is_empty():
+		caminho = CarregadorFaseJson.nome_de_arquivo(String(dados["titulo"]))
+
+	CarregadorFaseJson.garantir_pasta()
+	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
+	if arquivo == null:
+		_mostrar_erros(PackedStringArray(["nao foi possivel gravar %s (erro %d)"
+			% [caminho, FileAccess.get_open_error()]]))
+		return
+
+	arquivo.store_string(JSON.stringify(dados, "\t"))
+	arquivo.close()
+	_caminho_em_edicao = caminho
+
+	if jogar_depois:
+		if not Sessao.ativa:
+			Sessao.iniciar()
+		IniciadorDeFase.jogar(get_tree(), resultado.config)
+		return
+
+	_erros.clear()
+	_erros.append_text("[color=#8fd694]fase salva em %s[/color]" % caminho.get_file())
+
+
+func _mostrar_erros(erros: PackedStringArray) -> void:
+	_erros.clear()
+	if erros.is_empty():
+		return
+	_erros.append_text("[b]a fase ainda nao pode ser salva:[/b]\n- %s" % "\n- ".join(erros))
+
+
+func _ao_voltar() -> void:
+	# Volta para a lista quando veio dela; para o menu quando e fase nova.
+	var destino: String = CENA_DA_SELECAO if not _caminho_em_edicao.is_empty() else CENA_DO_MENU
+	get_tree().change_scene_to_file(destino)

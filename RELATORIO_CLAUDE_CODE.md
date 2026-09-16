@@ -560,3 +560,94 @@ se não houvesse dado.
    informa o caminho completo no rodapé. "diagnóstico" abre o painel técnico de sempre.
 5. **Opacidade:** abra o terminal (`T`), a caixa de puzzle e a tela de captura com o
    labirinto atrás — nenhum deve deixar o mapa aparecer através do painel.
+
+---
+---
+
+# Editor visual de fases (construção)
+
+**Data:** 2026-09-16 · **Branch:** `reconstrucao-editor` · **ADR:** [0011](docs/decisoes/0011-editor-visual-de-fases.md)
+
+## 0. A perda não se confirmou — é construção, não restauração
+
+O pedido dizia que o commit `5b443f5` apagou um editor de fases. **A apuração do Git mostra
+que não:**
+
+- `5b443f5` **não apagou nenhum arquivo** (`--diff-filter=D` vazio); alterou dois.
+- As 126 + 82 linhas removidas foram, textualmente, o `PainelTutorial` (legenda de cores) e o
+  `PainelTelemetria` de diagnóstico — que não sumiu, migrou para dentro do dashboard. Os
+  números batem com o brief porque era exatamente isso que aquelas linhas eram.
+- `git log --all -S` por `CarregadorFaseJson`, `user://fases` e `FileDialog`: **zero
+  ocorrências em toda a história**. `scripts/geracao/` nunca existiu; nenhum arquivo de editor
+  foi adicionado em commit algum. Os dois *dangling commits* do `fsck` são versões antigas do
+  commit "conteudo:", de um cherry-pick.
+
+O editor nunca esteve neste repositório. Foi construído agora, do zero, sobre o motor que
+sobreviveu (que estava intacto). Registrado no ADR 0011 para quem auditar o histórico depois.
+
+## 1. O que foi construído, por etapa
+
+| Commit | Entrega |
+|---|---|
+| `cbfdb54` | `GeradorDeMapa` + `CarregadorFaseJson` + `modo_de_bloqueio` no motor + fase de exemplo |
+| `cc4369f` | Menu reorganizado + tela de seleção (jogar, excluir) + `IniciadorDeFase` |
+| `6b2ad85` | Editor visual (criar, editar, salvar, round-trip) |
+| *(este)* | Subir e exportar `.json` |
+
+**Nota de honestidade:** as Etapas 3 e 4 do brief saíram no mesmo commit. Editar não é código
+separado de criar — é a mesma tela carregada a partir de um arquivo, e o round-trip é uma
+propriedade desse mesmo código. Cheguei a criar um commit vazio para marcar a Etapa 4 e o
+removi: commit sem diff alega trabalho que não existe.
+
+## 2. Decisões que valem citar
+
+- **O JSON é transporte de um `FaseConfig`**, não um segundo modelo. Validação pelas mesmas
+  funções `problemas()` do jogo — não há duas noções de "fase válida" para divergir.
+- **O mapa viaja como semente**, não desenhado: `{largura, altura, seed}`. Mesma semente =
+  mesmo labirinto, então a fase testada é a fase jogada. A semente sorteada volta gravada ao
+  salvar (manter `seed: 0` faria cada abertura sortear outro mapa).
+- **"Sempre solucionável" é verificação, não promessa:** o mapa só sai do gerador depois de
+  passar por `MapaConfig.problemas()`; falhando, tenta a próxima semente e, no limite, devolve
+  erro em vez de labirinto quebrado.
+- **Braiding (75% dos becos viram ciclo):** labirinto perfeito encurrala quem foge e torna a
+  fuga sorte. Com ciclos, dar a volta no perseguidor é decisão — a vibe Pac-Man pedida.
+- **Três modos de bloqueio explícitos** (`CIFRA` | `COMANDO` | `NENHUM`), não inferidos de
+  "o comando está vazio?". "Não tem comando porque usa cifra" e "não tem comando porque só
+  persegue" são coisas diferentes, e inferir faria a validação cobrar cifra de um vigia que
+  nunca foi feito para ser enganado.
+- **`id_fase` nunca muda** ao editar, exportar ou subir: é a chave que liga fase ↔ telemetria.
+  Com teste em cada caminho.
+
+## 3. Nada do que existia regrediu
+
+As fases 1–3 continuam funcionando pelo caminho antigo (cenas + `.tres`, proteção por cifra).
+Telemetria global, dashboard, cripto, navegação, A\*, Diretor e a pausa do terminal: intactos.
+O único ajuste no motor foi relaxar `FaseConfig.problemas()` para não exigir desafio de
+terminal quando nenhum vigia depende de cifra — as fases do TCC seguem exigindo.
+
+**Suíte: 254 testes, 1347 verificações, 0 falhas** (era 196/1109). Arquivos novos:
+`teste_fases_json.gd` (14), `teste_selecao_de_fases.gd` (7), `teste_editor_de_fase.gd` (8).
+
+`teste_transporte_http.gd` e `teste_resiliencia_http.gd` continuam **sem rodar** (precisam de
+`python`, ausente nesta máquina); nada aqui toca o transporte HTTP.
+
+## 4. Teste manual completo
+
+1. **Criar:** menu → *criar fase*. Preencha título, briefing, vidas. Em *vigias*, escolha uma
+   cor e escreva `trocar senha`; adicione um segundo vigia e **deixe o comando em branco**
+   (esse só persegue). Em *terminais*, escreva uma pergunta, duas opções, marque a correta.
+   *Salvar* → deve aparecer "fase salva em …".
+2. **Validação:** apague o título e *salvar* de novo — não grava, e o erro aparece na tela.
+3. **Jogar:** menu → *escolher fase* → selecione a sua → *jogar*. No labirinto, abra o
+   terminal (`T`) e digite `trocar senha`: o vigia daquela cor deixa de te pegar por alguns
+   segundos; o outro continua perigoso. Colete os terminais e atravesse a porta.
+4. **Editar:** volte, *editar* a mesma fase — os campos devem vir **preenchidos**, com os dois
+   vigias e a pergunta. Mude o briefing, salve: **nenhum arquivo novo** deve aparecer na lista.
+5. **Exportar / subir:** *exportar* para a Área de Trabalho; depois menu → *subir fase* e
+   escolha esse arquivo. A fase deve ser aceita e aparecer na lista (com sufixo, se o título
+   colidir). Tente subir um `.txt` qualquer renomeado para `.json`: deve ser **recusado** com
+   o motivo.
+6. **Excluir:** selecione e *excluir* — pede confirmação e some da lista.
+7. **Telemetria:** menu → *telemetria*. A fase criada deve aparecer na tabela pelo título, com
+   o `id_fase` ligando os eventos. Confirme que nenhuma tela (editor, seleção, dashboard,
+   terminal, puzzle) deixa o fundo aparecer através do painel.

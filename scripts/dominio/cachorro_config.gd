@@ -31,6 +31,49 @@ extends Resource
 ## mude uma linha.
 @export var cor: Color = Color(0, 0, 0, 0)
 
+## COMO este cachorro e bloqueado -- os tres modos que o jogo tem:
+##
+##   CIFRA   (padrao) -- so a cifra de `algoritmo_exigido` protege. E o modo das
+##                       fases 1 a 3 do TCC, preservado intacto.
+##   COMANDO          -- so digitar `comando_para_bloquear` protege. Modo das
+##                       fases criadas no editor.
+##   NENHUM           -- nada bloqueia: ele so persegue, e a unica defesa e a
+##                       rota. E o que o editor grava quando o professor deixa o
+##                       comando em branco.
+##
+## O modo e explicito, e nao inferido de "o comando esta vazio?": a diferenca
+## entre "nao tem comando porque usa cifra" e "nao tem comando porque so
+## persegue" e real, e inferir faria a validacao de justica cobrar cifra de um
+## cachorro que nunca foi feito para ser enganado.
+@export_enum("CIFRA", "COMANDO", "NENHUM") var modo_de_bloqueio: String = "CIFRA"
+
+## Comando em TEXTO LIVRE que bloqueia este cachorro, digitado no terminal.
+##
+## E o modelo de autoria: o professor escreve o comando que quer ensinar, sem
+## depender do enum de algoritmos. Comparacao EXATA (inclusive maiusculas e
+## espacos nas pontas ja aparados) -- o jogador precisa digitar o que a fase
+## pede, nao algo parecido.
+##
+## Vazio = este cachorro NAO e bloqueavel por comando: ele so persegue, e a
+## unica defesa e a rota. Vazio tambem e o caso das fases 1 a 3, que continuam
+## usando a protecao por algoritmo (algoritmo_exigido).
+@export var comando_para_bloquear: String = ""
+
+
+func bloqueia_por_comando() -> bool:
+	return modo_de_bloqueio == "COMANDO" and not comando_para_bloquear.strip_edges().is_empty()
+
+
+func bloqueia_por_cifra() -> bool:
+	return modo_de_bloqueio == "CIFRA"
+
+
+## Nada o bloqueia: so perseguir. Nao e bug nem fase mal configurada -- e uma
+## ameaca da qual se foge, e o editor permite isso de proposito.
+func apenas_persegue() -> bool:
+	return modo_de_bloqueio == "NENHUM" \
+		or (modo_de_bloqueio == "COMANDO" and comando_para_bloquear.strip_edges().is_empty())
+
 ## Celula do labirinto (coordenada de TileMapLayer, nao pixel) onde ele nasce.
 ## Em celula, e nao em pixel, porque e assim que o mapa e escrito e conferido.
 @export var celula_inicial: Vector2i = Vector2i(1, 1)

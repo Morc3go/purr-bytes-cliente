@@ -143,7 +143,51 @@ visível do outro lado do labirinto. Aberta, ela leva direto à fase seguinte.
 **Teclas.** `WASD`/setas movem · `T` terminal · `F3` mostra o caminho do A\* de cada
 cachorro, na cor dele · `ESC` sai da fase (ou fecha o terminal/puzzle).
 
-### Criando uma fase nova (ou mexendo num labirinto)
+### Criando uma fase pelo editor (o caminho do professor)
+
+Menu -> **criar fase**. A tela pede titulo, briefing, vidas e o tamanho do mapa, e traz duas
+listas que crescem conforme voce adiciona:
+
+- **vigias** — cor (identidade visual) e o **comando que bloqueia** aquele vigia. O jogador
+  precisa digitar esse comando **exatamente** assim no terminal. Comando em branco = o vigia
+  so persegue, e a unica defesa e a rota.
+- **terminais** — as perguntas espalhadas pelo labirinto: enunciado, opcoes (marque a
+  correta no circulo) e uma explicacao opcional, mostrada ao acertar. O jogador precisa
+  coletar todos para a porta abrir.
+
+**Salvar** valida pelo mesmo caminho que o jogo usa: fase invalida nao e gravada e os erros
+aparecem na tela. **Salvar e jogar** ja abre a fase. O arquivo vai para `user://fases/` com
+o nome derivado do titulo.
+
+Em **escolher fase** ficam as acoes sobre cada uma: jogar, editar (reabre preenchida e grava
+por cima), exportar (`.json` para onde voce quiser) e excluir (com confirmacao). **Subir
+fase**, no menu, valida o arquivo antes de aceitar — `.json` quebrado e recusado na porta.
+
+O formato:
+
+```json
+{
+  "titulo": "Senhas fortes",
+  "id_fase": "uuid-v4",
+  "briefing": "texto mostrado ao entrar",
+  "mapa":   {"largura": 21, "altura": 15, "seed": 20260914},
+  "vidas": 3,
+  "cachorros": [{"cor": "#4da3ff", "comando_para_bloquear": "trocar senha"}],
+  "terminais": [
+    {"enunciado": "...", "opcoes": ["a", "b"], "correta": "a", "explicacao": "..."}
+  ]
+}
+```
+
+O mapa **nao** viaja desenhado: viajam largura, altura e semente, e o labirinto e regerado
+igual. Por isso exportar num computador e subir em outro leva a fase inteira, e por isso a
+semente sorteada volta gravada ao salvar. O `id_fase` nunca muda ao editar, exportar ou
+subir — e ele que liga a fase a telemetria ja coletada.
+
+Uma fase de exemplo ("Senhas fortes") e criada em `user://fases/` no primeiro boot, e so se
+a pasta estiver vazia.
+
+### Criando uma fase por codigo (as tres fases do TCC)
 
 O labirinto é **texto**, não desenho. Ele vive no `MAPA` do gerador da fase
 (`tools/gerar_fase_0N.gd`) e vira um `MapaConfig` dentro do `.tres`:
@@ -208,6 +252,7 @@ Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
 | 3 — Fase 3: SHA-256 e telemetria HTTP | ✅ concluído |
 | Evolução de gameplay (modo humano) | ✅ concluído — [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md), [relatório](RELATORIO_CLAUDE_CODE.md) |
 | Tutorial de cores removido · telemetria global (`id_fase`) · Dashboard | ✅ concluído — [conformidade](docs/conformidade-monografia.md) |
+| Editor visual de fases · fases como JSON | ✅ concluído — [ADR 0011](docs/decisoes/0011-editor-visual-de-fases.md) |
 
 ### Pendências conhecidas da evolução de gameplay
 

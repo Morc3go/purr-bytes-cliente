@@ -47,6 +47,12 @@ extends Resource
 ## funcionando, mas sem validacao de alcancabilidade.
 @export var mapa: MapaConfig
 
+## Semente que gerou o mapa, quando ele veio de GeradorDeMapa. E o que permite
+## reabrir uma fase de autoria e obter o MESMO labirinto: sem ela, o .json
+## guardaria so as medidas e cada abertura sortearia um traçado diferente.
+## 0 = mapa desenhado a mao (as fases 1 a 3).
+@export var semente_do_mapa: int = 0
+
 @export var desafios: Array[DesafioConfig] = []
 
 ## Cachorros da fase, um por cor/algoritmo exigido. Vazia = a fase usa apenas o
@@ -125,8 +131,12 @@ func problemas() -> PackedStringArray:
 	if verbos_permitidos.is_empty():
 		lista.append("verbos_permitidos vazio: o terminal recusaria qualquer comando")
 
-	if desafios.is_empty():
-		lista.append("nenhum desafio configurado")
+	# Desafio de terminal so e obrigatorio quando ALGUM cachorro depende dele
+	# para ser enganado. Uma fase de autoria em que todos os cachorros bloqueiam
+	# por comando livre (ou so perseguem) e valida sem nenhum desafio -- exigir
+	# um ali seria pedir dado que a mecanica dela nao usa.
+	if desafios.is_empty() and _algum_cachorro_exige_cifra():
+		lista.append("nenhum desafio configurado, mas ha cachorro que so e enganado por cifra")
 
 	if faixa_chave_minima > faixa_chave_maxima:
 		lista.append("faixa de chave invertida (%d > %d)"
@@ -165,6 +175,12 @@ func problemas() -> PackedStringArray:
 		# fase que so ensina Cesar seria uma captura inevitavel -- e um erro de
 		# configuracao, nao de habilidade, entao ele reprova a fase inteira em
 		# vez de virar frustracao no laboratorio da escola.
+		# So o cachorro do modo CIFRA passa pela regra de justica: quem bloqueia
+		# por comando traz o comando consigo (nao ha como ser inalcancavel), e
+		# quem so persegue nunca foi feito para ser enganado.
+		if not cachorro.bloqueia_por_cifra():
+			continue
+
 		if not algoritmos_disponiveis.has(cachorro.algoritmo_exigido):
 			lista.append(("cachorro '%s' exige %s, mas nenhum desafio desta fase produz "
 				+ "essa cifra (disponiveis: %s)") % [
@@ -188,6 +204,17 @@ func problemas() -> PackedStringArray:
 		identificadores_de_pacote[pacote.identificador] = true
 
 	return lista
+
+
+## Ha cachorro cuja unica defesa e a cifra certa? Cachorro que bloqueia por
+## comando livre nao conta, e cachorro que so persegue tambem nao.
+func _algum_cachorro_exige_cifra() -> bool:
+	for cachorro: CachorroConfig in cachorros:
+		if cachorro != null and cachorro.bloqueia_por_cifra():
+			return true
+	# Fase sem cachorro nenhum: o desafio de terminal continua sendo o conteudo
+	# dela, entao a exigencia antiga vale.
+	return cachorros.is_empty()
 
 
 ## Algoritmos que o jogador consegue ativar nesta fase, um por desafio (cada
