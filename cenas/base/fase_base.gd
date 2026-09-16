@@ -378,6 +378,14 @@ func _protegido_contra(cachorro_alvo: Cachorro) -> bool:
 		return false
 	if ConfigJogo.modo_treino:
 		return true
+
+	# Dois modos convivem, e o cachorro diz qual e o dele:
+	#   - fase de autoria: ele traz um comando em texto livre, e so digitar
+	#     AQUELE comando o bloqueia (comparacao exata);
+	#   - fases 1 a 3: nao ha comando, e vale a cifra exigida.
+	if cachorro_alvo.bloqueia_por_comando():
+		return jogador.comando_protegido == cachorro_alvo.comando_para_bloquear
+
 	return jogador.algoritmo_protegido == cachorro_alvo.algoritmo_exigido
 
 
@@ -418,6 +426,43 @@ func _ao_esgotar_vidas() -> void:
 ## quando os dois passam e que ResolvedorComando entra para decidir SUCESSO vs
 ## ERRO_SEMANTICO contra o FaseConfig e o desafio corrente.
 func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
+	# Comando livre de fase de autoria vem ANTES do analisador, de proposito: o
+	# professor escreve o comando que quiser ("desligue o roteador", "bloquear
+	# porta 22"), e isso nao precisa caber na gramatica do terminal do TCC --
+	# que continua valendo, intacta, para tudo o mais. Comparacao exata, como o
+	# formato promete.
+	if _tentar_comando_de_bloqueio(texto, tempo_resposta_ms):
+		return
+
+	_analisar_comando(texto, tempo_resposta_ms)
+
+
+## Devolve true quando o texto bloqueou algum cachorro -- e ai o comando ja foi
+## tratado e registrado, e o pipeline lexico nao roda.
+func _tentar_comando_de_bloqueio(texto: String, tempo_resposta_ms: int) -> bool:
+	var limpo: String = texto.strip_edges()
+	if limpo.is_empty():
+		return false
+
+	for alvo: Cachorro in cachorros:
+		if not alvo.bloqueia_por_comando() or alvo.comando_para_bloquear != limpo:
+			continue
+
+		jogador.ativar_protecao(configuracao.duracao_cifra_s, "", limpo)
+		terminal.escrever("comando aceito: '%s' bloqueia este interceptador por %.0fs."
+			% [limpo, configuracao.duracao_cifra_s])
+
+		# Entra na telemetria como qualquer outra tentativa: e uma resposta do
+		# jogador, com tempo de resposta e resultado, e a analise precisa dela.
+		Telemetria.registrar_tentativa(
+			configuracao.numero, "comando-%s" % alvo.identificador, limpo, [],
+			CatalogoResultados.SUCESSO, "", tempo_resposta_ms, 1)
+		return true
+
+	return false
+
+
+func _analisar_comando(texto: String, tempo_resposta_ms: int) -> void:
 	var resultado: ResultadoComando = AnalisadorComando.analisar(texto)
 
 	if resultado.resultado == CatalogoResultados.ERRO_LEXICO:
@@ -690,6 +735,7 @@ func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig, indi
 			velocidade = config_do_cachorro.velocidade
 		if config_do_cachorro.alcance_deteccao > 0.0:
 			alcance = config_do_cachorro.alcance_deteccao
+		alvo.comando_para_bloquear = config_do_cachorro.comando_para_bloquear.strip_edges()
 		alvo.global_position = _mundo_da_celula(
 			_celula_do_mapa(MapaConfig.CACHORRO, indice, config_do_cachorro.celula_inicial))
 

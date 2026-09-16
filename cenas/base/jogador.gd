@@ -28,6 +28,12 @@ var protecao_ativa: bool = false
 ## licao inteira da mecanica de cores.
 var algoritmo_protegido: String = ""
 
+## O COMANDO livre que produziu a protecao, nas fases de autoria. Convive com
+## algoritmo_protegido porque os dois modos coexistem: as fases 1 a 3 protegem
+## por cifra, as fases criadas no editor protegem pelo comando que o professor
+## escreveu. Vazio quando a protecao veio por cifra (ou quando nao ha protecao).
+var comando_protegido: String = ""
+
 var _restante_de_protecao_s: float = 0.0
 var _entrada_habilitada: bool = true
 
@@ -39,6 +45,7 @@ func _physics_process(delta: float) -> void:
 		if is_zero_approx(_restante_de_protecao_s):
 			protecao_ativa = false
 			algoritmo_protegido = ""
+			comando_protegido = ""
 			protecao_alterada.emit(false, 0.0, "")
 			protecao_expirou.emit()
 
@@ -55,9 +62,10 @@ func _physics_process(delta: float) -> void:
 ## Chamado pela fase quando um comando de cifra e aceito. A duracao vem do
 ## FaseConfig: e ela que forca o jogador a reaplicar a cifra, e a repeticao com
 ## intencao e o ponto pedagogico da mecanica.
-func ativar_protecao(duracao_s: float, algoritmo: String = "") -> void:
+func ativar_protecao(duracao_s: float, algoritmo: String = "", comando: String = "") -> void:
 	protecao_ativa = duracao_s > 0.0
 	algoritmo_protegido = algoritmo if protecao_ativa else ""
+	comando_protegido = comando if protecao_ativa else ""
 	_restante_de_protecao_s = maxf(0.0, duracao_s)
 	protecao_alterada.emit(protecao_ativa, _restante_de_protecao_s, algoritmo_protegido)
 
@@ -65,6 +73,7 @@ func ativar_protecao(duracao_s: float, algoritmo: String = "") -> void:
 func cancelar_protecao() -> void:
 	protecao_ativa = false
 	algoritmo_protegido = ""
+	comando_protegido = ""
 	_restante_de_protecao_s = 0.0
 	protecao_alterada.emit(false, 0.0, "")
 
