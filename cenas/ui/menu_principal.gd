@@ -13,13 +13,36 @@ extends Control
 
 const CENA_DA_FASE_1: String = "res://cenas/fases/fase_01.tscn"
 const CENA_DO_DASHBOARD: String = "res://cenas/ui/dashboard_telemetria.tscn"
+const CENA_DA_SELECAO: String = "res://cenas/ui/selecao_de_fases.tscn"
+const CENA_DO_EDITOR: String = "res://cenas/ui/editor_de_fase.tscn"
 
 
 func _ready() -> void:
+	# A fase de exemplo e semeada aqui, e nao no autoload: o jogo so precisa
+	# dela quando alguem abre o menu, e escrever em user:// durante um teste
+	# headless seria efeito colateral escondido.
+	CarregadorFaseJson.semear_exemplo()
+
 	$Coluna/Botoes/Jogar.pressed.connect(_ao_jogar)
+	$Coluna/Botoes/EscolherFase.pressed.connect(_ao_escolher_fase)
+	$Coluna/Botoes/CriarFase.pressed.connect(_ao_criar_fase)
 	$Coluna/Botoes/Telemetria.pressed.connect(_ao_abrir_telemetria)
 	$Coluna/Botoes/Sair.pressed.connect(_ao_sair)
 	$Coluna/Botoes/Jogar.grab_focus()
+
+
+## As fases criadas pelo professor: lista, joga, edita, exclui e exporta.
+func _ao_escolher_fase() -> void:
+	get_tree().change_scene_to_file(CENA_DA_SELECAO)
+
+
+func _ao_criar_fase() -> void:
+	if not ResourceLoader.exists(CENA_DO_EDITOR):
+		return
+	# Caminho vazio = editor em branco; preenchido = editar fase existente.
+	EditorDeFaseEstado.caminho_para_editar = ""
+	get_tree().change_scene_to_file(CENA_DO_EDITOR)
+
 
 
 func _ao_jogar() -> void:
