@@ -1,0 +1,185 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://cenas/ui/editor_de_fase.gd" id="1_editor"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_painel"]
+bg_color = Color(0.11, 0.12, 0.16, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.38, 0.46, 1)
+
+[node name="EditorDeFase" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_editor")
+
+[node name="Fundo" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.07, 0.08, 0.11, 1)
+
+[node name="Raiz" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_painel")
+
+[node name="Margem" type="MarginContainer" parent="Raiz"]
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="Coluna" type="VBoxContainer" parent="Raiz/Margem"]
+theme_override_constants/separation = 5
+
+[node name="Titulo" type="Label" parent="Raiz/Margem/Coluna"]
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 13
+text = "criar fase"
+horizontal_alignment = 1
+
+[node name="Rolagem" type="ScrollContainer" parent="Raiz/Margem/Coluna"]
+size_flags_vertical = 3
+
+[node name="Conteudo" type="VBoxContainer" parent="Raiz/Margem/Coluna/Rolagem"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="Geral" type="GridContainer" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="RotuloTitulo" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_font_sizes/font_size = 9
+text = "titulo da fase"
+
+[node name="CampoTitulo" type="LineEdit" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+custom_minimum_size = Vector2(260, 0)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+placeholder_text = "ex.: Senhas fortes"
+
+[node name="RotuloVidas" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_font_sizes/font_size = 9
+text = "vidas"
+
+[node name="CampoVidas" type="SpinBox" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+min_value = 1.0
+max_value = 10.0
+value = 3.0
+
+[node name="RotuloMapa" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_font_sizes/font_size = 9
+text = "mapa (largura x altura)"
+
+[node name="LinhaMapa" type="HBoxContainer" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+theme_override_constants/separation = 6
+
+[node name="CampoLargura" type="SpinBox" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/LinhaMapa"]
+min_value = 9.0
+max_value = 41.0
+step = 2.0
+value = 21.0
+
+[node name="CampoAltura" type="SpinBox" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/LinhaMapa"]
+min_value = 9.0
+max_value = 31.0
+step = 2.0
+value = 15.0
+
+[node name="RotuloSemente" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_font_sizes/font_size = 9
+text = "semente (0 = sortear)"
+
+[node name="CampoSemente" type="SpinBox" parent="Raiz/Margem/Coluna/Rolagem/Conteudo/Geral"]
+max_value = 999999.0
+
+[node name="RotuloBriefing" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_font_sizes/font_size = 9
+text = "briefing (o que o jogador le ao entrar)"
+
+[node name="CampoBriefing" type="TextEdit" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+custom_minimum_size = Vector2(0, 46)
+theme_override_font_sizes/font_size = 9
+wrap_mode = 1
+
+[node name="TituloVigias" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 11
+text = "vigias"
+
+[node name="AjudaVigias" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+theme_override_font_sizes/font_size = 8
+text = "o comando bloqueia o vigia quando digitado EXATAMENTE assim no terminal. deixe em branco para o vigia so perseguir (sem defesa possivel)."
+autowrap_mode = 3
+
+[node name="Vigias" type="VBoxContainer" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_constants/separation = 4
+
+[node name="AdicionarVigia" type="Button" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_font_sizes/font_size = 9
+text = "+ vigia"
+
+[node name="TituloTerminais" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 11
+text = "terminais (perguntas espalhadas pelo mapa)"
+
+[node name="AjudaTerminais" type="Label" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+theme_override_font_sizes/font_size = 8
+text = "marque a opcao correta no circulo a esquerda. o jogador precisa coletar todos os terminais para a porta abrir."
+autowrap_mode = 3
+
+[node name="Terminais" type="VBoxContainer" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_constants/separation = 6
+
+[node name="AdicionarTerminal" type="Button" parent="Raiz/Margem/Coluna/Rolagem/Conteudo"]
+theme_override_font_sizes/font_size = 9
+text = "+ terminal"
+
+[node name="Erros" type="RichTextLabel" parent="Raiz/Margem/Coluna"]
+custom_minimum_size = Vector2(0, 38)
+theme_override_colors/default_color = Color(1, 0.62, 0.6, 1)
+theme_override_font_sizes/normal_font_size = 8
+theme_override_font_sizes/bold_font_size = 8
+bbcode_enabled = true
+fit_content = true
+
+[node name="Acoes" type="HBoxContainer" parent="Raiz/Margem/Coluna"]
+theme_override_constants/separation = 6
+
+[node name="Salvar" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+text = "salvar"
+
+[node name="SalvarEJogar" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+text = "salvar e jogar"
+
+[node name="Voltar" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+text = "voltar"
