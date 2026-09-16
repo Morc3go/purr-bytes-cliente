@@ -25,7 +25,9 @@ var _caminhos: PackedStringArray = PackedStringArray()
 func _ready() -> void:
 	$Raiz/Margem/Coluna/Acoes/Jogar.pressed.connect(_ao_jogar)
 	$Raiz/Margem/Coluna/Acoes/Editar.pressed.connect(_ao_editar)
+	$Raiz/Margem/Coluna/Acoes/Exportar.pressed.connect(_ao_exportar)
 	$Raiz/Margem/Coluna/Acoes/Excluir.pressed.connect(_ao_pedir_exclusao)
+	$DialogoDeExportacao.file_selected.connect(_ao_escolher_destino)
 	$Raiz/Margem/Coluna/Acoes/Voltar.pressed.connect(_ao_voltar)
 	_lista.item_selected.connect(_ao_selecionar)
 	_lista.item_activated.connect(func(_indice: int) -> void: _ao_jogar())
@@ -99,6 +101,7 @@ func _ao_selecionar(indice: int) -> void:
 func _definir_acoes_habilitadas(habilitadas: bool) -> void:
 	$Raiz/Margem/Coluna/Acoes/Jogar.disabled = not habilitadas
 	$Raiz/Margem/Coluna/Acoes/Editar.disabled = not habilitadas
+	$Raiz/Margem/Coluna/Acoes/Exportar.disabled = not habilitadas
 	$Raiz/Margem/Coluna/Acoes/Excluir.disabled = not habilitadas
 
 
@@ -134,6 +137,34 @@ func _ao_editar() -> void:
 		return
 	EditorDeFaseEstado.caminho_para_editar = caminho
 	get_tree().change_scene_to_file(CENA_DO_EDITOR)
+
+
+## Exportar grava o .json da fase escolhida onde o professor mandar -- e o par
+## de "subir": exportar num computador e subir em outro leva a fase inteira,
+## porque o arquivo JA e a fase (o mapa viaja como semente, nao desenhado).
+func _ao_exportar() -> void:
+	var caminho: String = _caminho_selecionado()
+	if caminho.is_empty():
+		return
+	$DialogoDeExportacao.current_file = caminho.get_file()
+	$DialogoDeExportacao.popup_centered()
+
+
+func _ao_escolher_destino(destino: String) -> void:
+	var origem: String = _caminho_selecionado()
+	if origem.is_empty():
+		return
+
+	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(origem)
+	if not resultado.ok():
+		_rodape.text = "a fase esta invalida e nao foi exportada."
+		return
+
+	var erros: PackedStringArray = CarregadorFaseJson.salvar(resultado.config, destino)
+	if not erros.is_empty():
+		_rodape.text = "falha ao exportar: %s" % " | ".join(erros)
+		return
+	_rodape.text = "exportada para %s" % destino
 
 
 func _ao_pedir_exclusao() -> void:

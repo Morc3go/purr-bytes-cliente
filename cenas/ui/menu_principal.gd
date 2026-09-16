@@ -26,6 +26,8 @@ func _ready() -> void:
 	$Coluna/Botoes/Jogar.pressed.connect(_ao_jogar)
 	$Coluna/Botoes/EscolherFase.pressed.connect(_ao_escolher_fase)
 	$Coluna/Botoes/CriarFase.pressed.connect(_ao_criar_fase)
+	$Coluna/Botoes/SubirFase.pressed.connect(_ao_subir_fase)
+	$DialogoDeImportacao.file_selected.connect(_ao_escolher_arquivo_para_subir)
 	$Coluna/Botoes/Telemetria.pressed.connect(_ao_abrir_telemetria)
 	$Coluna/Botoes/Sair.pressed.connect(_ao_sair)
 	$Coluna/Botoes/Jogar.grab_focus()
@@ -43,6 +45,39 @@ func _ao_criar_fase() -> void:
 	EditorDeFaseEstado.caminho_para_editar = ""
 	get_tree().change_scene_to_file(CENA_DO_EDITOR)
 
+
+
+func _ao_subir_fase() -> void:
+	$DialogoDeImportacao.popup_centered()
+
+
+## Subir = VALIDAR e so entao copiar para user://fases. Um .json quebrado que
+## entrasse na pasta viraria uma linha "(com erro)" na lista da qual o professor
+## teria de se livrar depois -- e melhor recusar na porta, dizendo o porque.
+func _ao_escolher_arquivo_para_subir(caminho: String) -> void:
+	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(caminho)
+	if not resultado.ok():
+		_avisar("este arquivo nao e uma fase valida:\n\n%s" % resultado.mensagem())
+		return
+
+	var destino: String = CarregadorFaseJson.nome_de_arquivo(resultado.config.titulo)
+	if FileAccess.file_exists(destino):
+		# Nao sobrescrever calado: o professor pode ter uma fase com o mesmo
+		# titulo e perder o trabalho dela sem perceber.
+		destino = "%s/%s-%s.json" % [CarregadorFaseJson.PASTA_DAS_FASES,
+			destino.get_file().get_basename(), resultado.config.id_fase.substr(0, 8)]
+
+	var erros: PackedStringArray = CarregadorFaseJson.salvar(resultado.config, destino)
+	if not erros.is_empty():
+		_avisar("nao foi possivel copiar a fase:\n\n%s" % "\n".join(erros))
+		return
+
+	_avisar("fase '%s' adicionada.\nela ja aparece em 'escolher fase'." % resultado.config.titulo)
+
+
+func _avisar(mensagem: String) -> void:
+	$Aviso.dialog_text = mensagem
+	$Aviso.popup_centered()
 
 
 func _ao_jogar() -> void:

@@ -91,6 +91,11 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 9
 text = "editar"
 
+[node name="Exportar" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+text = "exportar"
+
 [node name="Excluir" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 9
@@ -108,3 +113,11 @@ size = Vector2i(300, 120)
 ok_button_text = "excluir"
 dialog_text = ""
 dialog_autowrap = true
+
+[node name="DialogoDeExportacao" type="FileDialog" parent="."]
+title = "exportar fase (.json)"
+initial_position = 2
+size = Vector2i(460, 300)
+ok_button_text = "salvar"
+access = 2
+filters = PackedStringArray("*.json ; fase do Purr Bytes")

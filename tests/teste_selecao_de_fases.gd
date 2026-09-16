@@ -139,3 +139,42 @@ func teste_fase_de_json_entra_em_jogo_sem_cena_propria() -> void:
 
 	fase.queue_free()
 	await get_tree().process_frame
+
+
+func teste_exportar_e_subir_fazem_round_trip() -> void:
+	# Exportar num computador e subir em outro tem que levar a fase INTEIRA --
+	# o mapa inclusive, que viaja como semente e nao desenhado.
+	var origem: String = _gravar("zz-teste-export.json", _json_minimo("Exportavel"))
+	var carregada: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(origem)
+	if not afirmar_verdadeiro(carregada.ok(), "a fase de origem carrega"):
+		return
+
+	var destino: String = caminho_temporario("exportada.json")
+	var erros: PackedStringArray = CarregadorFaseJson.salvar(carregada.config, destino)
+	afirmar_igual(erros.size(), 0, "exportar grava sem erro")
+	afirmar_verdadeiro(FileAccess.file_exists(destino), "o arquivo de destino existe")
+
+	# "Subir" e ler o arquivo externo e validar antes de aceitar.
+	var subida: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(destino)
+	if not afirmar_verdadeiro(subida.ok(), "o arquivo exportado sobe de volta (%s)"
+			% subida.mensagem()):
+		return
+
+	afirmar_igual(subida.config.titulo, carregada.config.titulo, "titulo atravessa")
+	afirmar_igual(subida.config.id_fase, carregada.config.id_fase,
+		"id_fase atravessa: a telemetria das duas maquinas fala da MESMA fase")
+	afirmar_tamanho(subida.config.cachorros, carregada.config.cachorros.size(), "vigias atravessam")
+	afirmar_tamanho(subida.config.pacotes, carregada.config.pacotes.size(), "terminais atravessam")
+	afirmar_igual(subida.config.mapa.linhas, carregada.config.mapa.linhas,
+		"o labirinto e identico do outro lado")
+
+
+func teste_subir_arquivo_invalido_e_recusado() -> void:
+	var ruim: String = caminho_temporario("nao-e-fase.json")
+	var arquivo: FileAccess = FileAccess.open(ruim, FileAccess.WRITE)
+	arquivo.store_string('{"titulo": "", "terminais": []}')
+	arquivo.close()
+
+	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(ruim)
+	afirmar_falso(resultado.ok(), "arquivo invalido e recusado na porta, nao depois de copiado")
+	afirmar_verdadeiro(resultado.erros.size() >= 1, "com motivo legivel")

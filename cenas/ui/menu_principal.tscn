@@ -55,6 +55,10 @@ text = "escolher fase"
 theme_override_font_sizes/font_size = 10
 text = "criar fase"
 
+[node name="SubirFase" type="Button" parent="Coluna/Botoes"]
+theme_override_font_sizes/font_size = 10
+text = "subir fase"
+
 [node name="Telemetria" type="Button" parent="Coluna/Botoes"]
 theme_override_font_sizes/font_size = 10
 text = "telemetria"
@@ -62,3 +66,18 @@ text = "telemetria"
 [node name="Sair" type="Button" parent="Coluna/Botoes"]
 theme_override_font_sizes/font_size = 10
 text = "sair"
+
+[node name="DialogoDeImportacao" type="FileDialog" parent="."]
+title = "subir fase (.json)"
+initial_position = 2
+size = Vector2i(460, 300)
+ok_button_text = "abrir"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.json ; fase do Purr Bytes")
+
+[node name="Aviso" type="AcceptDialog" parent="."]
+title = "subir fase"
+initial_position = 2
+size = Vector2i(360, 160)
+dialog_autowrap = true
