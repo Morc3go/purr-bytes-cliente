@@ -125,15 +125,15 @@ func _gerar_config() -> void:
 	desafio2.pontos_acerto_de_primeira = 150
 	desafio2.custo_da_dica = 25
 
-	# Desafio de revisao em CESAR: e ele que da ao jogador a cifra verde dentro
-	# de uma fase de Vigenere, e portanto o que torna o cachorro verde
-	# enganavel aqui (FaseConfig.problemas() recusa a fase se faltar). Vem por
-	# ultimo porque a fase ensina Vigenere primeiro; o ciclo de desafios de
-	# fase_base.gd deixa o jogador voltar a ele sempre que precisar.
+	# Desafio de revisao em CESAR: e ele que da ao jogador a cifra que o
+	# cachorro de Cesar exige dentro de uma fase de Vigenere, e portanto o que
+	# torna esse cachorro enganavel aqui (FaseConfig.problemas() recusa a fase
+	# se faltar). Vem por ultimo porque a fase ensina Vigenere primeiro; o
+	# ciclo de desafios de fase_base.gd deixa o jogador voltar a ele sempre
+	# que precisar.
 	var desafio3 := DesafioConfig.new()
 	desafio3.identificador = "cesar-revisao"
-	desafio3.enunciado = ("um pacote antigo, em Cesar, ainda circula: cifrar chave chave=5. "
-		+ "e essa cifra que engana o cachorro verde.")
+	desafio3.enunciado = "um pacote antigo, em Cesar, ainda circula: cifrar chave chave=5."
 	desafio3.texto_claro = "chave"
 	desafio3.chave_esperada = "5"
 	desafio3.verbo_esperado = "cifrar"
@@ -145,11 +145,11 @@ func _gerar_config() -> void:
 
 	config.desafios = [desafio1, desafio2, desafio3]
 
-	# Aqui a cor comeca a valer de verdade: o jogador chega a fase 2 sabendo
-	# Cesar (fase 1) e aprendendo Vigenere, entao os dois cachorros exigem
-	# cifras que ele consegue produzir -- e a cifra de Cesar que o salvou na
-	# fase 1 NAO funciona contra o azul. E a primeira vez que "cifrei" e
-	# "cifrei certo" deixam de ser a mesma coisa.
+	# Aqui a escolha comeca a valer de verdade: o jogador chega a fase 2
+	# sabendo Cesar (fase 1) e aprendendo Vigenere, entao os dois cachorros
+	# exigem cifras que ele consegue produzir -- e a cifra de Cesar que o
+	# salvou na fase 1 NAO funciona contra o segundo. E a primeira vez que
+	# "cifrei" e "cifrei certo" deixam de ser a mesma coisa.
 	#
 	# Esta fase tem Diretor (Marcadores/Regioes), entao as ancoras so entram em
 	# cena se as regioes forem removidas: com Diretor, o alvo dos dois vem da
@@ -169,18 +169,21 @@ func _gerar_config() -> void:
 
 	# Na fase 2 as perguntas ja cobram ESCOLHA entre duas cifras que o jogador
 	# tem na mao, que e a competencia que a fase inteira treina.
-	# APLICACAO -- a pergunta que a fase 2 existe para fazer: a fase e de
-	# Vigenere, mas quem esta no corredor e VERDE. Resposta = Cesar. E a unica
-	# forma de o jogador descobrir que o interceptador manda, e nao a fase.
+	# APLICACAO -- a pergunta que a fase 2 existe para fazer, sem depender de
+	# identificar o interceptador por cor (nao ha legenda de interface para
+	# isso): o jogador ja tentou a cifra nova e ainda foi pego, entao a
+	# resposta so pode ser a outra. E a unica forma de descobrir que o
+	# interceptador manda, e nao a fase.
 	var pacote_aplicacao := PacoteConfig.new()
 	pacote_aplicacao.identificador = "f2-aplicacao"
 	pacote_aplicacao.tipo = "APLICACAO"
-	pacote_aplicacao.enunciado = ("o cachorro que patrulha esta passagem e VERDE. qual "
-		+ "ferramenta protege o pacote dele?")
+	pacote_aplicacao.enunciado = ("um vigia continua te alcancando mesmo depois de voce cifrar "
+		+ "com a ferramenta nova desta fase. qual das duas cifras que voce ja conhece resta "
+		+ "tentar?")
 	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE"])
 	pacote_aplicacao.resposta_correta = "CESAR"
-	pacote_aplicacao.explicacao_correta = ("este interceptador continua pedindo a mesma cifra de "
-		+ "sempre, mesmo numa fase nova: quem manda e ele, nao a fase.")
+	pacote_aplicacao.explicacao_correta = ("isso. cada vigia so e enganado por UMA cifra fixa -- "
+		+ "nem sempre a mais nova que voce aprendeu. se uma nao funciona, e a outra.")
 
 	# CONCEITO -- o que a palavra-chave muda em relacao a um numero fixo.
 	var pacote_conceito := PacoteConfig.new()

@@ -121,14 +121,13 @@ func _gerar_desafios() -> Array[DesafioConfig]:
 	desafio2.custo_da_dica = 25
 
 	# Revisoes das duas fases anteriores. Nao sao enfeite: sao o que permite a
-	# fase final ter os TRES cachorros (verde, azul e roxo) sem nenhum deles ser
+	# fase final ter TRES cachorros (um por algoritmo) sem nenhum deles ser
 	# impossivel de enganar -- e, de quebra, e a unica fase em que o jogador
-	# precisa escolher entre tres cifras olhando a cor de quem esta vindo, que e
-	# o exercicio final da mecanica.
+	# precisa escolher entre tres cifras conhecendo so o interceptador que tem
+	# na frente, que e o exercicio final da mecanica.
 	var desafio3 := DesafioConfig.new()
 	desafio3.identificador = "vigenere-revisao"
-	desafio3.enunciado = ("pacote em Vigenere no meio do caminho: cifrar rede chave=gato. "
-		+ "e a cifra que engana o cachorro azul.")
+	desafio3.enunciado = "pacote em Vigenere no meio do caminho: cifrar rede chave=gato."
 	desafio3.texto_claro = "rede"
 	desafio3.chave_esperada = "gato"
 	desafio3.verbo_esperado = "cifrar"
@@ -140,8 +139,7 @@ func _gerar_desafios() -> Array[DesafioConfig]:
 
 	var desafio4 := DesafioConfig.new()
 	desafio4.identificador = "cesar-revisao"
-	desafio4.enunciado = ("pacote antigo em Cesar: cifrar chave chave=7. "
-		+ "e a cifra que engana o cachorro verde.")
+	desafio4.enunciado = "pacote antigo em Cesar: cifrar chave chave=7."
 	desafio4.texto_claro = "chave"
 	desafio4.chave_esperada = "7"
 	desafio4.verbo_esperado = "cifrar"
@@ -180,8 +178,9 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 	config.texto_exemplo_demonstracao = "exemplo"
 	config.desafios = desafios
 
-	# Fase final: as tres cores em cena ao mesmo tempo. Cada uma so e enganada
-	# pela cifra correspondente, e as tres estao disponiveis nos desafios acima.
+	# Fase final: os tres interceptadores em cena ao mesmo tempo. Cada um so e
+	# enganado pela cifra correspondente, e as tres estao disponiveis nos
+	# desafios acima.
 	var cachorro_roxo := CachorroConfig.new()
 	cachorro_roxo.identificador = "roxo-norte"
 	cachorro_roxo.algoritmo_exigido = "SHA256"
@@ -202,17 +201,20 @@ func _gerar_config(desafios: Array[DesafioConfig]) -> void:
 
 	# Fase final: as perguntas separam cifra de hash, que e a confusao que a
 	# fase 3 existe para desfazer.
-	# APLICACAO -- tres cores em cena, e a resposta e a que o jogador acabou de
-	# aprender na fase 2: a fase nova nao cancela a regra antiga.
+	# APLICACAO -- tres interceptadores em cena, cada um preso a uma cifra
+	# fixa; a pergunta testa se o jogador sabe que a ferramenta nova desta
+	# fase (hash) nunca protege contra interceptacao, sem precisar identificar
+	# ninguem por cor.
 	var pacote_aplicacao := PacoteConfig.new()
 	pacote_aplicacao.identificador = "f3-aplicacao"
 	pacote_aplicacao.tipo = "APLICACAO"
-	pacote_aplicacao.enunciado = ("um cachorro AZUL apareceu no corredor de baixo. qual das "
-		+ "tres ferramentas protege o pacote dele?")
+	pacote_aplicacao.enunciado = ("um vigia intercepta o pacote mesmo depois de voce aplicar "
+		+ "hash nele. qual das duas cifras que voce aprendeu antes desta fase protege o "
+		+ "conteudo dele?")
 	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
 	pacote_aplicacao.resposta_correta = "VIGENERE"
-	pacote_aplicacao.explicacao_correta = ("isso. e repare: a ferramenta nova desta fase nao "
-		+ "esconde nada, entao ela nao serviria aqui.")
+	pacote_aplicacao.explicacao_correta = ("isso. hash nao esconde nada -- por isso ele nunca "
+		+ "protege contra um vigia; a ferramenta certa e uma das duas cifras que voce ja usava.")
 
 	# CONCEITO -- o que o resumo e, sem nomear a ferramenta que o produz.
 	var pacote_conceito := PacoteConfig.new()

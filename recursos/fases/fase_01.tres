@@ -42,16 +42,16 @@ linhas = PackedStringArray("#########################", "#P........#.....#......
 [sub_resource type="Resource" id="Resource_hcn5s"]
 script = ExtResource("4_36ouy")
 identificador = "f1-aplicacao"
-enunciado = "um cachorro VERDE ronda o corredor por onde este pacote precisa passar. qual ferramenta protege o conteudo dele?"
+enunciado = "um vigia patrulha o corredor por onde este pacote precisa passar, farejando texto legivel. o que protege o conteudo dele para atravessar sem ser lido?"
 opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
-explicacao_correta = "isso. cada interceptador le uma cifra so, e a tela de captura diz qual quando ele te pega."
+explicacao_correta = "isso. cada interceptador so e enganado por uma cifra, e a tela de captura diz qual quando ele te pega."
 
 [sub_resource type="Resource" id="Resource_tf0sd"]
 script = ExtResource("4_36ouy")
 identificador = "f1-conceito"
 enunciado = "no comando 'cifrar pacote chave=3', o que e o 3?"
 tipo = "CONCEITO"
-opcoes = PackedStringArray("quantas casas cada letra anda no alfabeto", "a cor do cachorro que esta perseguindo", "quantos pacotes ainda faltam coletar")
+opcoes = PackedStringArray("quantas casas cada letra anda no alfabeto", "quantas vidas o jogador ainda tem", "quantos pacotes ainda faltam coletar")
 resposta_correta = "quantas casas cada letra anda no alfabeto"
 explicacao_correta = "exato. a CHAVE e o segredo que faz a cifra funcionar -- nao se confunde com a cifra em si."
 

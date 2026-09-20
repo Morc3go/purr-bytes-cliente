@@ -38,7 +38,7 @@ pontos_acerto_de_primeira = 150
 [sub_resource type="Resource" id="Resource_ri1oo"]
 script = ExtResource("2_5oi4k")
 identificador = "cesar-revisao"
-enunciado = "um pacote antigo, em Cesar, ainda circula: cifrar chave chave=5. e essa cifra que engana o cachorro verde."
+enunciado = "um pacote antigo, em Cesar, ainda circula: cifrar chave chave=5."
 texto_claro = "chave"
 chave_esperada = "5"
 algoritmo = "CESAR"
@@ -53,9 +53,9 @@ linhas = PackedStringArray("#####################", "#P......#.......o.#.#", "#.
 [sub_resource type="Resource" id="Resource_y6cny"]
 script = ExtResource("4_opoan")
 identificador = "f2-aplicacao"
-enunciado = "o cachorro que patrulha esta passagem e VERDE. qual ferramenta protege o pacote dele?"
+enunciado = "um vigia continua te alcancando mesmo depois de voce cifrar com a ferramenta nova desta fase. qual das duas cifras que voce ja conhece resta tentar?"
 opcoes = PackedStringArray("CESAR", "VIGENERE")
-explicacao_correta = "este interceptador continua pedindo a mesma cifra de sempre, mesmo numa fase nova: quem manda e ele, nao a fase."
+explicacao_correta = "isso. cada vigia so e enganado por UMA cifra fixa -- nem sempre a mais nova que voce aprendeu. se uma nao funciona, e a outra."
 
 [sub_resource type="Resource" id="Resource_asqx5"]
 script = ExtResource("4_opoan")

@@ -132,12 +132,13 @@ func _gerar_config() -> void:
 
 	config.desafios = [desafio1, desafio2]
 
-	# Dois cachorros VERDES: nesta fase o jogador so aprendeu Cesar, entao so
-	# existe interceptador de Cesar. Colocar aqui um cachorro azul (Vigenere)
-	# seria uma captura impossivel de evitar com o que a fase ensinou -- a cor
-	# so entra em jogo quando o jogador ja tem a cifra correspondente na mao
-	# (fase 2 ganha o azul, fase 3 o roxo). O que a fase 1 ensina e a leitura da
-	# cor; a escolha entre cores comeca na fase 2.
+	# Dois cachorros verdes: nesta fase o jogador so aprendeu Cesar, entao so
+	# existe interceptador de Cesar. Colocar aqui um cachorro que exigisse
+	# Vigenere seria uma captura impossivel de evitar com o que a fase ensinou
+	# -- cada cachorro so aparece numa fase depois que a cifra dele foi
+	# ensinada. A cor aqui e so identidade visual (CachorroConfig.cor); nao ha
+	# legenda de interface que a associe a um algoritmo, entao nenhuma pergunta
+	# da fase depende do jogador ter lido essa associacao em algum lugar.
 	#
 	# As ancoras sao celulas do MAPA acima, escolhidas nos corredores que ligam
 	# entrada, pacotes e porta: o jogador cruza com os dois no caminho natural,
@@ -159,19 +160,21 @@ func _gerar_config() -> void:
 	# passa pelas duas rotas de patrulha, que e o que obriga a explorar o mapa
 	# novo em vez de correr direto para a porta.
 	#
-	# As perguntas da fase 1 sao de LEITURA da legenda de cores, nao de teoria:
-	# o jogador acabou de ver a tabela no menu e tem cachorros verdes na tela.
-	# APLICACAO -- a associacao cor -> ferramenta. O enunciado descreve a ameaca
-	# pela COR e nunca nomeia a cifra: nomea-la entregaria a resposta.
+	# As perguntas da fase 1 sao autocontidas: respondiveis so com o que a fase
+	# ja ensinou ate aqui, sem depender de nenhuma legenda de interface (nao
+	# ha mais nenhuma -- ver docs/conformidade-monografia.md, desvio 1).
+	# APLICACAO -- o enunciado descreve a ameaca (interceptador que fareja
+	# texto legivel) sem nomear a cifra, que entregaria a resposta.
 	var pacote_aplicacao := PacoteConfig.new()
 	pacote_aplicacao.identificador = "f1-aplicacao"
 	pacote_aplicacao.tipo = "APLICACAO"
-	pacote_aplicacao.enunciado = ("um cachorro VERDE ronda o corredor por onde este pacote "
-		+ "precisa passar. qual ferramenta protege o conteudo dele?")
+	pacote_aplicacao.enunciado = ("um vigia patrulha o corredor por onde este pacote precisa "
+		+ "passar, farejando texto legivel. o que protege o conteudo dele para atravessar sem "
+		+ "ser lido?")
 	pacote_aplicacao.opcoes = PackedStringArray(["CESAR", "VIGENERE", "SHA256"])
 	pacote_aplicacao.resposta_correta = "CESAR"
-	pacote_aplicacao.explicacao_correta = ("isso. cada interceptador le uma cifra so, e a tela "
-		+ "de captura diz qual quando ele te pega.")
+	pacote_aplicacao.explicacao_correta = ("isso. cada interceptador so e enganado por uma cifra, "
+		+ "e a tela de captura diz qual quando ele te pega.")
 
 	# CONCEITO -- ataca de frente a confusao "chave x ferramenta": a pergunta e
 	# sobre o numero digitado, e nenhuma opcao e nome de algoritmo.
@@ -181,7 +184,7 @@ func _gerar_config() -> void:
 	pacote_conceito.enunciado = "no comando 'cifrar pacote chave=3', o que e o 3?"
 	pacote_conceito.opcoes = PackedStringArray([
 		"quantas casas cada letra anda no alfabeto",
-		"a cor do cachorro que esta perseguindo",
+		"quantas vidas o jogador ainda tem",
 		"quantos pacotes ainda faltam coletar",
 	])
 	pacote_conceito.resposta_correta = "quantas casas cada letra anda no alfabeto"

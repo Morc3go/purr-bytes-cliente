@@ -47,7 +47,7 @@ pontos_acerto_de_primeira = 150
 [sub_resource type="Resource" id="Resource_hyxck"]
 script = ExtResource("2_5841i")
 identificador = "vigenere-revisao"
-enunciado = "pacote em Vigenere no meio do caminho: cifrar rede chave=gato. e a cifra que engana o cachorro azul."
+enunciado = "pacote em Vigenere no meio do caminho: cifrar rede chave=gato."
 texto_claro = "rede"
 chave_esperada = "gato"
 algoritmo = "VIGENERE"
@@ -58,7 +58,7 @@ pontos_acerto_de_primeira = 120
 [sub_resource type="Resource" id="Resource_jahtl"]
 script = ExtResource("2_5841i")
 identificador = "cesar-revisao"
-enunciado = "pacote antigo em Cesar: cifrar chave chave=7. e a cifra que engana o cachorro verde."
+enunciado = "pacote antigo em Cesar: cifrar chave chave=7."
 texto_claro = "chave"
 chave_esperada = "7"
 algoritmo = "CESAR"
@@ -73,10 +73,10 @@ linhas = PackedStringArray("#####################", "#P..............o...#", "#.
 [sub_resource type="Resource" id="Resource_c6um6"]
 script = ExtResource("4_vle6f")
 identificador = "f3-aplicacao"
-enunciado = "um cachorro AZUL apareceu no corredor de baixo. qual das tres ferramentas protege o pacote dele?"
+enunciado = "um vigia intercepta o pacote mesmo depois de voce aplicar hash nele. qual das duas cifras que voce aprendeu antes desta fase protege o conteudo dele?"
 opcoes = PackedStringArray("CESAR", "VIGENERE", "SHA256")
 resposta_correta = "VIGENERE"
-explicacao_correta = "isso. e repare: a ferramenta nova desta fase nao esconde nada, entao ela nao serviria aqui."
+explicacao_correta = "isso. hash nao esconde nada -- por isso ele nunca protege contra um vigia; a ferramenta certa e uma das duas cifras que voce ja usava."
 
 [sub_resource type="Resource" id="Resource_6mcfx"]
 script = ExtResource("4_vle6f")
