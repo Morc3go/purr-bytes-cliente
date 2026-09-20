@@ -651,3 +651,110 @@ terminal quando nenhum vigia depende de cifra — as fases do TCC seguem exigind
 7. **Telemetria:** menu → *telemetria*. A fase criada deve aparecer na tabela pelo título, com
    o `id_fase` ligando os eventos. Confirme que nenhuma tela (editor, seleção, dashboard,
    terminal, puzzle) deixa o fundo aparecer através do painel.
+
+---
+---
+
+# Editor em abas, passe visual e perguntas sem cor
+
+**Data:** 2026-09-20 · **Branch:** `feature/editor-abas-e-limpeza` (3 commits, um por parte)
+
+Não havia `.git` neste diretório (só `.gitattributes`/`.gitignore`) — o histórico começa
+com um commit `chore: estado inicial do cliente Godot (baseline)` antes desta tarefa, para
+toda mudança real ficar em commits separados e revisáveis.
+
+## 1. Editor em abas
+
+`editor_de_fase.tscn` trocou o scroll vertical único por um `TabContainer` (geral /
+cachorros / perguntas), com a área de erros e os botões salvar/salvar e jogar/voltar fixos
+fora das abas — o erro de validação aparece não importa em qual aba o professor esteja.
+`montar_dicionario()`, `_salvar()`, `_carregar()`, `_mostrar_erros()` não mudaram, só os
+`NodePath` dos campos. Troca de aba foca o primeiro campo relevante (título; comando do
+primeiro vigia; enunciado do primeiro terminal). Teste novo
+(`teste_trocar_de_aba_nao_perde_dado_digitado`) passeia pelas três abas com dados
+preenchidos e confere que nada se perde — é o risco central desta mudança.
+
+## 2. Passe visual
+
+O levantamento mostrou que o bug histórico de painel transparente **já não existe em
+nenhuma tela** — todas já eram opacas e a paleta escura já era consistente. O trabalho real
+foi diferenciar botões destrutivos (remover vigia/opção/terminal no editor, "excluir" na
+seleção de fases) com a mesma cor de alerta do painel de erros, e separadores marcando
+fronteira de seção. Para não depender de inspeção visual manual daqui pra frente,
+`tests/teste_telas_opacas.gd` varre toda cena por inteiro (não caminhos fixos de nó) e
+falha se algum painel de conteúdo perder a opacidade — distinguindo telas de página inteira
+de overlays de jogo (`tela_captura`, `caixa_puzzle`), cujo `ColorRect` de fundo é um véu
+translúcido *de propósito* sobre o labirinto ainda rodando.
+
+## 3. Perguntas sem cor (pendência 5 do doc de conformidade)
+
+Quatro textos das fases 1–3 ainda dependiam da legenda cor→cifra removida da interface:
+duas perguntas de múltipla escolha identificavam o interceptador pela cor
+(`"um cachorro VERDE ronda..."`, opção `"a cor do cachorro que está perseguindo"`) e dois
+desafios de revisão citavam a cor como flavor text. Reescritos para serem respondíveis só
+com o que a fase já ensinou até aquele ponto (ex.: a pergunta de aplicação da fase 2 vira
+"você já tentou a cifra nova e ainda foi pego — qual das duas cifras que você conhece resta
+tentar?", em vez de identificar o vigia pela cor). `tools/gerar_fase_0{1,2,3}.gd` e os
+`.tres` publicados foram editados em conjunto — o `.tres` é texto puro, então deu para
+manter os dois sincronizados sem reabrir o editor Godot. `pacote_config.gd` tinha um
+comentário desatualizado dizendo que os botões de resposta saem coloridos; corrigido —
+`caixa_puzzle.gd` já garantia o contrário de propósito ("nenhuma opção é colorida, nem
+quando é nome de algoritmo"). `tests/teste_perguntas_sem_cor.gd` varre os três `.tres`
+publicados e falha se qualquer campo de texto voltado ao jogador citar nome de cor.
+
+## 4. Verificação geral
+
+- **Fluxos de navegação:** seleção de fases, editor, menu e dashboard já tinham volta e
+  ação completas antes desta tarefa; nenhum botão morto ou sinal desconectado nesses
+  caminhos.
+- **Sinais declarados sem nenhum listener em lugar nenhum do repositório** (produção ou
+  teste): `Cachorro.destino_alcancado`, `Jogador.protecao_expirou`,
+  `FaseBase.fase_concluida`/`fase_abandonada`, `PainelCifra.aberto`/`fechado`. Não removidos
+  — podem ser API pública intencional (ex.: para um `RemoteTrigger`/agente de RL futuro) —
+  mas ficam listados para quem quiser confirmar se ainda fazem sentido.
+- **Fase de exemplo:** `CarregadorFaseJson.semear_exemplo()` só grava se a pasta estiver
+  vazia; a lista nunca abre vazia. Sem mudança necessária.
+- **`print()` solto:** nenhum fora de `scripts/nucleo/registro.gd` (o próprio logger).
+- **Suíte de testes — achado fora do escopo desta tarefa:** rodando neste ambiente (Godot
+  4.6.2.stable, primeira importação, sem `.godot/` prévio) aparecem falhas que **já
+  existiam no commit anterior a esta tarefa** (confirmado rodando a mesma suíte, sem
+  nenhuma mudança, nesse commit): `teste_astar` (55/100 mapas com custo divergente entre
+  `AStarGrid2D` e a referência), `teste_cenas::teste_tileset_tem_a_camada_solido`
+  (`labirinto.tres` não carrega), e falhas de timing em `teste_fase_01_integracao`,
+  `teste_fase_02_integracao` e `teste_modo_humano`. Nenhuma delas é causada pelo editor em
+  abas, pelo passe de estilo ou pela correção das perguntas — nada nesta tarefa toca
+  `scripts/ia/` nem os `.tres` de tileset. Hipótese mais provável: descompasso entre a
+  versão de Godot usada quando a suíte foi medida em "254 testes, 0 falhas" (sessão de
+  2026-09-16) e o 4.6.2 usado agora. Não investigado por estar fora do escopo — registrado
+  em `docs/conformidade-monografia.md`, pendência 6.
+- **Teste de integração HTTP:** ao contrário do que o doc de conformidade dizia, `python`
+  **está** disponível nesta máquina, e `teste_transporte_http.gd` +
+  `teste_resiliencia_http.gd` passam quando rodados isoladamente. Rodar a suíte inteira
+  numa única invocação do runner travou sem terminar (processo parado, sem progredir) tanto
+  antes quanto depois desta tarefa — não isolei a causa (suspeita: estado deixado por um
+  arquivo anterior não é limpo antes do próximo, algo que só aparece rodando todos os ~34
+  arquivos em sequência no mesmo processo). Todos os arquivos passam quando rodados um a
+  um; ver `docs/conformidade-monografia.md`, pendência 2.
+
+Todos os arquivos de teste que este trabalho tocou ou criou passam limpos, rodados
+isoladamente: `teste_editor_de_fase` (9/34), `teste_telas_opacas` (2/12),
+`teste_perguntas_sem_cor` (1/483), `teste_selecao_de_fases` (7/32) — nenhuma regressão nos
+outros 25 arquivos de teste do projeto.
+
+## 5. Como testar à mão
+
+1. **Abas:** menu → *criar fase*. Confirme as três abas (geral/cachorros/perguntas), que
+   trocar de aba não apaga o que foi digitado nas outras, e que o foco cai no primeiro
+   campo relevante de cada aba. Tente salvar sem título: o erro aparece embaixo **não
+   importa em qual aba você esteja**.
+2. **Botões destrutivos:** confirme visualmente que "x" (remover vigia/opção), "remover
+   terminal" e "excluir" (seleção de fases) saem na cor de alerta, distintos dos botões
+   neutros.
+3. **Round-trip:** monte uma fase com dois vigias e dois terminais, salve, edite de novo —
+   nada deve faltar.
+4. **Perguntas sem cor:** jogue as fases 1, 2 e 3 do TCC até os pacotes de aplicação; leia
+   os enunciados — nenhum deve citar cor de cachorro, e todos devem ser respondíveis com o
+   que a fase já ensinou até ali.
+5. **Opacidade:** confirme visualmente que nenhuma tela deixa o fundo aparecer através do
+   painel (checagem automatizada em `teste_telas_opacas.gd`, mas vale conferir também no
+   editor rodando).

@@ -50,13 +50,18 @@ cor e comando livremente.
 validação de justiça também continua: `FaseConfig.problemas()` recusa a fase cujo cachorro
 exija uma cifra que ela não ensina.
 
-**Consequência a resolver antes da coleta:** com o tutorial fora, o único lugar onde o
-jogador descobre qual cifra engana qual interceptador é a **tela de captura** (ela nomeia
-o algoritmo exigido) — ou seja, ele precisa ser pego uma vez para aprender. Três perguntas
-de pacote ainda identificam o interceptador pela cor (`"um cachorro VERDE ronda..."`) e
-pressupõem a legenda que saiu. **Recomendação:** ou a ferramenta de autoria traz a legenda
-de volta como dado da fase, ou essas três perguntas passam a identificar o interceptador
-por outro traço. Está listado, não corrigido em silêncio.
+**Consequência que ficava em aberto:** com o tutorial fora, o único lugar onde o jogador
+descobre qual cifra engana qual interceptador é a **tela de captura** (ela nomeia o
+algoritmo exigido) — ou seja, ele precisa ser pego uma vez para aprender. Até
+2026-09-20, quatro textos das fases 1 a 3 ainda pressupunham a legenda removida: duas
+perguntas de pacote identificavam o interceptador pela cor (`"um cachorro VERDE
+ronda..."`, opção `"a cor do cachorro que está perseguindo"`) e dois desafios de revisão
+citavam a cor como flavor text (`"...engana o cachorro verde/azul"`). **Resolvido**
+(pendência 5): os quatro foram reescritos para serem respondíveis só com o que a fase já
+ensinou até aquele ponto — a pergunta de aplicação descreve a AMEAÇA (interceptador que
+fareja texto legível, ou que resiste a uma cifra já tentada) em vez do interceptador por
+cor. `tests/teste_perguntas_sem_cor.gd` varre os três `.tres` publicados e falha se algum
+campo de texto voltado ao jogador citar nome de cor.
 
 ### 2. `id_fase` substitui o número da fase como identidade
 
@@ -79,10 +84,33 @@ derivam dele. Um mapa incoerente (pacote ilhado, porta inalcançável, cachorro 
 1. **Fase 4 (AES)** — fora de escopo declarado; entra por configuração quando for a hora.
 2. **Rotas REST do back-end** — não existem em produção; o cliente está validado contra
    `tools/servidor_eco.py`. Os dois testes de HTTP (`teste_transporte_http.gd`,
-   `teste_resiliencia_http.gd`) precisam de `python` instalado e **não rodam** na máquina
-   de desenvolvimento atual.
+   `teste_resiliencia_http.gd`) sobem `tools/servidor_eco.py` como subprocesso `python`
+   real; com `python` no PATH os dois passam (confirmado em 2026-09-20). Numa máquina sem
+   `python`, eles **falham** (não são pulados) — `ApoioServidorEco.aguardar_pronto()`
+   nunca fica pronto e a asserção correspondente marca a suíte como vermelha.
 3. **Travessia completa menu → fase 1 → 2 → 3 → menu** sem teste automatizado
    (`change_scene_to_file` dentro do processo compartilhado da suíte). Precisa de uma
    partida manual antes da coleta.
 4. **Pré/pós-teste e TCLE** acontecem fora do jogo, por decisão de escopo.
-5. **Legenda cor → cifra** (ver desvio 1): decidir o destino antes de rodar o experimento.
+5. ~~**Legenda cor → cifra** (ver desvio 1): decidir o destino antes de rodar o
+   experimento.~~ **Resolvido em 2026-09-20** — ver desvio 1: os textos que dependiam da
+   legenda removida foram reescritos para serem autocontidos, e um teste impede a
+   regressão.
+6. **Suspeita de descompasso de versão do Godot** — rodando a suíte nesta máquina (Godot
+   4.6.2.stable, a primeira vez que o projeto é importado nela — sem `.godot/` prévio)
+   aparecem falhas que **não existem no commit-base anterior a esta tarefa** (confirmado
+   rodando a mesma suíte, sem nenhuma mudança, no commit `88e8605`):
+   - `teste_astar`: 55 dos 100 mapas aleatórios têm custo de caminho divergente entre
+     `AStarGrid2D` e `astar_referencia.gd`, e dois outros casos não encontram caminho que
+     deveriam encontrar.
+   - `teste_cenas::teste_tileset_tem_a_camada_solido` — `recursos/tilesets/labirinto.tres`
+     não carrega como `TileSet` (`nao deveria ser null` falha).
+   - `teste_fase_01_integracao`, `teste_fase_02_integracao`, `teste_modo_humano` — falhas de
+     replanejamento de A\*, detecção de captura e pausa do terminal.
+   `RELATORIO_CLAUDE_CODE.md` registra "254 testes, 1347 verificações, 0 falhas" numa sessão
+   anterior (2026-09-16); nenhuma dessas falhas é nova desta tarefa (o editor em abas, o
+   passe de estilo e a correção das perguntas não tocam `scripts/ia/` nem os `.tres` de
+   tileset), e a hipótese mais provável é o `TileSet`/`AStarGrid2D` se comportando diferente
+   entre a versão de Godot usada então e o 4.6.2 usado agora. **Não investigado nem corrigido
+   por estar fora do escopo desta tarefa** — registrado aqui para quem for rodar a suíte
+   antes da coleta confirmar a versão do Godot primeiro.

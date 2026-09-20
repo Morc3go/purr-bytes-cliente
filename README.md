@@ -145,8 +145,10 @@ cachorro, na cor dele · `ESC` sai da fase (ou fecha o terminal/puzzle).
 
 ### Criando uma fase pelo editor (o caminho do professor)
 
-Menu -> **criar fase**. A tela pede titulo, briefing, vidas e o tamanho do mapa, e traz duas
-listas que crescem conforme voce adiciona:
+Menu -> **criar fase**. A tela e organizada em tres abas -- **geral** (titulo, briefing,
+vidas, mapa), **cachorros** e **perguntas** -- com a area de erros e os botoes salvar/salvar
+e jogar/voltar sempre visiveis embaixo, fora das abas, para o erro de validacao aparecer
+não importa em qual aba voce esteja. As duas listas que crescem conforme voce adiciona:
 
 - **vigias** — cor (identidade visual) e o **comando que bloqueia** aquele vigia. O jogador
   precisa digitar esse comando **exatamente** assim no terminal. Comando em branco = o vigia
