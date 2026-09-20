@@ -20,15 +20,23 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 const CENA_DA_SELECAO: String = "res://cenas/ui/selecao_de_fases.tscn"
 
 const _COR_PADRAO_DO_VIGIA: Color = Color(0.40, 0.66, 1.0)
+## Mesmo vermelho ja usado no painel de erros: uma so cor de alerta em toda a
+## tela, para "isto remove algo" ser reconhecivel de relance.
+const _COR_BOTAO_DESTRUTIVO: Color = Color(1, 0.62, 0.6, 1)
 
-@onready var _campo_titulo: LineEdit = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/CampoTitulo
-@onready var _campo_vidas: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/CampoVidas
-@onready var _campo_largura: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/LinhaMapa/CampoLargura
-@onready var _campo_altura: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/LinhaMapa/CampoAltura
-@onready var _campo_semente: SpinBox = $Raiz/Margem/Coluna/Rolagem/Conteudo/Geral/CampoSemente
-@onready var _campo_briefing: TextEdit = $Raiz/Margem/Coluna/Rolagem/Conteudo/CampoBriefing
-@onready var _vigias: VBoxContainer = $Raiz/Margem/Coluna/Rolagem/Conteudo/Vigias
-@onready var _terminais: VBoxContainer = $Raiz/Margem/Coluna/Rolagem/Conteudo/Terminais
+const _GERAL: String = "Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"
+const _CACHORROS: String = "Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"
+const _PERGUNTAS: String = "Raiz/Margem/Coluna/Abas/Perguntas/Margem/Coluna"
+
+@onready var _abas: TabContainer = $Raiz/Margem/Coluna/Abas
+@onready var _campo_titulo: LineEdit = get_node(_GERAL + "/CamposGerais/CampoTitulo")
+@onready var _campo_vidas: SpinBox = get_node(_GERAL + "/CamposGerais/CampoVidas")
+@onready var _campo_largura: SpinBox = get_node(_GERAL + "/CamposGerais/LinhaMapa/CampoLargura")
+@onready var _campo_altura: SpinBox = get_node(_GERAL + "/CamposGerais/LinhaMapa/CampoAltura")
+@onready var _campo_semente: SpinBox = get_node(_GERAL + "/CamposGerais/CampoSemente")
+@onready var _campo_briefing: TextEdit = get_node(_GERAL + "/CampoBriefing")
+@onready var _vigias: VBoxContainer = get_node(_CACHORROS + "/RolagemVigias/Vigias")
+@onready var _terminais: VBoxContainer = get_node(_PERGUNTAS + "/RolagemTerminais/Terminais")
 @onready var _erros: RichTextLabel = $Raiz/Margem/Coluna/Erros
 @onready var _titulo_da_tela: Label = $Raiz/Margem/Coluna/Titulo
 
@@ -41,19 +49,50 @@ var _id_fase: String = ""
 
 
 func _ready() -> void:
-	$Raiz/Margem/Coluna/Rolagem/Conteudo/AdicionarVigia.pressed.connect(
+	get_node(_CACHORROS + "/AdicionarVigia").pressed.connect(
 		func() -> void: _adicionar_vigia())
-	$Raiz/Margem/Coluna/Rolagem/Conteudo/AdicionarTerminal.pressed.connect(
+	get_node(_PERGUNTAS + "/AdicionarTerminal").pressed.connect(
 		func() -> void: _adicionar_terminal())
 	$Raiz/Margem/Coluna/Acoes/Salvar.pressed.connect(func() -> void: _salvar(false))
 	$Raiz/Margem/Coluna/Acoes/SalvarEJogar.pressed.connect(func() -> void: _salvar(true))
 	$Raiz/Margem/Coluna/Acoes/Voltar.pressed.connect(_ao_voltar)
+
+	# Titulos em minuscula, no mesmo tom do resto da interface -- os nomes dos
+	# nos ficam em PascalCase (convencao do projeto), o texto visivel nao.
+	_abas.set_tab_title(0, "geral")
+	_abas.set_tab_title(1, "cachorros")
+	_abas.set_tab_title(2, "perguntas")
+	_abas.tab_changed.connect(_ao_trocar_aba)
 
 	var caminho: String = EditorDeFaseEstado.consumir_caminho()
 	if caminho.is_empty():
 		_preparar_fase_nova()
 	else:
 		_carregar(caminho)
+
+	_focar_aba(_abas.current_tab)
+
+
+## Foco inicial coerente ao entrar em cada aba: o primeiro campo que faz
+## sentido preencher, nao "o que sobrou" de onde o mouse estava.
+func _ao_trocar_aba(indice: int) -> void:
+	_focar_aba(indice)
+
+
+func _focar_aba(indice: int) -> void:
+	match indice:
+		0:
+			_campo_titulo.grab_focus()
+		1:
+			if _vigias.get_child_count() > 0:
+				(_vigias.get_child(0).get_node("Comando") as LineEdit).grab_focus()
+			else:
+				get_node(_CACHORROS + "/AdicionarVigia").grab_focus()
+		2:
+			if _terminais.get_child_count() > 0:
+				(_terminais.get_child(0).get_node("Enunciado") as LineEdit).grab_focus()
+			else:
+				get_node(_PERGUNTAS + "/AdicionarTerminal").grab_focus()
 
 
 func _preparar_fase_nova() -> void:
@@ -119,6 +158,7 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "") -
 	var remover := Button.new()
 	remover.text = "x"
 	remover.add_theme_font_size_override("font_size", 9)
+	_estilizar_botao_destrutivo(remover)
 	remover.pressed.connect(func() -> void:
 		_vigias.remove_child(linha)
 		linha.queue_free())
@@ -170,6 +210,7 @@ func _adicionar_terminal(enunciado: String = "", opcoes: PackedStringArray = Pac
 	var remover := Button.new()
 	remover.text = "remover terminal"
 	remover.add_theme_font_size_override("font_size", 8)
+	_estilizar_botao_destrutivo(remover)
 	remover.pressed.connect(func() -> void:
 		_terminais.remove_child(bloco)
 		bloco.queue_free())
@@ -214,6 +255,7 @@ func _adicionar_opcao(lista: VBoxContainer, grupo: ButtonGroup, texto: String,
 	var remover := Button.new()
 	remover.text = "x"
 	remover.add_theme_font_size_override("font_size", 8)
+	_estilizar_botao_destrutivo(remover)
 	remover.pressed.connect(func() -> void:
 		lista.remove_child(linha)
 		linha.queue_free())
@@ -221,6 +263,12 @@ func _adicionar_opcao(lista: VBoxContainer, grupo: ButtonGroup, texto: String,
 
 	lista.add_child(linha)
 	return linha
+
+
+func _estilizar_botao_destrutivo(botao: Button) -> void:
+	botao.add_theme_color_override("font_color", _COR_BOTAO_DESTRUTIVO)
+	botao.add_theme_color_override("font_hover_color", _COR_BOTAO_DESTRUTIVO)
+	botao.add_theme_color_override("font_pressed_color", _COR_BOTAO_DESTRUTIVO)
 
 
 # ---------------------------------------------------------------------------
