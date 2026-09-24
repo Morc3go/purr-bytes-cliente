@@ -189,45 +189,27 @@ subir — e ele que liga a fase a telemetria ja coletada.
 Uma fase de exemplo ("Senhas fortes") e criada em `user://fases/` no primeiro boot, e so se
 a pasta estiver vazia.
 
-### Criando uma fase por codigo (as tres fases do TCC)
+### Validação do labirinto
 
-O labirinto é **texto**, não desenho. Ele vive no `MAPA` do gerador da fase
-(`tools/gerar_fase_0N.gd`) e vira um `MapaConfig` dentro do `.tres`:
+O mapa gerado passa por `MapaConfig.problemas()` antes de virar jogo — jogador,
+porta, pacotes e cachorros alcançáveis, borda fechada, contagens coerentes. O
+`TileMapLayer` e o `AStarGrid2D` são **derivados** desse mesmo dado, então o mapa
+jogável não diverge do que foi validado. As fases fixas do TCC e seus geradores
+saíram do projeto ([ADR 0012](docs/decisoes/0012-ferramenta-de-autoria-sem-fases-fixas.md)).
 
+### Arte
+
+Gato (jogador) e cachorros usam `AnimatedSprite2D` com `SpriteFrames`
+(andar em 4 direções + sentado). Para refazer a arte:
+
+```powershell
+python tools/arte/extrair_gato.py          # folha original -> recursos/arte/gato.png
+python tools/arte/desenhar_cachorro.py     # -> recursos/arte/cachorro.png
+& $godot --headless --path . --import
+& $godot --headless --path . --script res://tools/gerar_sprite_frames.gd
 ```
-#########
-#..P..o.#
-#.###.#.#
-#.o.#...#
-#.#.###.#
-#...D..S#
-#########
-```
 
-| símbolo | significado |
-|---|---|
-| `#` | parede |
-| `.` | caminho livre |
-| `P` | onde o jogador começa (exatamente um) |
-| `S` | a porta de saída (exatamente uma) |
-| `o` | um pacote — um por `PacoteConfig` da fase, na **ordem de leitura** |
-| `D` | um cachorro — um por `CachorroConfig` da fase, na **ordem de leitura** |
-
-Passo a passo:
-
-1. Edite o `MAPA` no gerador (ou copie um dos existentes e mude).
-2. Rode `& $godot --headless --path . --script res://tools/gerar_fase_0N.gd`.
-3. Se o desenho estiver incoerente, **o gerador falha e diz o porquê** — mapa não
-   retangular, borda aberta, caractere fora da legenda, pacote/porta/cachorro
-   inalcançável a partir do `P`, cachorro nascendo preso, âncora de patrulha em
-   parede, ou contagem de `o`/`D` diferente da lista da fase.
-4. Verde? A fase está pronta. O `TileMapLayer` da cena e o `AStarGrid2D` são
-   **derivados** desse texto, então não há como o mapa jogável divergir do que
-   foi validado.
-
-O mesmo validador roda ao carregar a fase (`FaseConfig.problemas()`), então um
-`.tres` editado à mão também é recusado com mensagem clara em vez de abrir um
-labirinto quebrado.
+Detalhe em [ADR 0013](docs/decisoes/0013-arte-dos-personagens.md).
 
 ### Modo de treino (agente de RL)
 
@@ -255,6 +237,8 @@ Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
 | Evolução de gameplay (modo humano) | ✅ concluído — [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md), [relatório](RELATORIO_CLAUDE_CODE.md) |
 | Tutorial de cores removido · telemetria global (`id_fase`) · Dashboard | ✅ concluído — [conformidade](docs/conformidade-monografia.md) |
 | Editor visual de fases · fases como JSON | ✅ concluído — [ADR 0011](docs/decisoes/0011-editor-visual-de-fases.md) |
+| Fases fixas removidas · menu de pause (ESC) | ✅ concluído — [ADR 0012](docs/decisoes/0012-ferramenta-de-autoria-sem-fases-fixas.md) |
+| Pixel art do gato e dos cachorros (animada) | ✅ concluído — [ADR 0013](docs/decisoes/0013-arte-dos-personagens.md) |
 
 ### Pendências conhecidas da evolução de gameplay
 
@@ -320,4 +304,5 @@ Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
   campo de prazo por desafio especificado no briefing. `ABANDONO` tem gatilho
   real (abandonar a fase com desafio ativo). Detalhe na
   [ADR 0007](docs/decisoes/0007-marco1-cachorro-e-desafios.md).
-- Arte é placeholder gerado (`recursos/arte/*_placeholder.png`), esperando a pixel art.
+- Personagens já têm pixel art animada (ADR 0013); os tiles do labirinto ainda são
+  placeholder (`recursos/arte/tiles_placeholder.png`).

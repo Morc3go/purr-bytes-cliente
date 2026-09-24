@@ -54,7 +54,7 @@ var _cor: Color = Color(0.85, 0.85, 0.85)
 
 @onready var _area_de_contato: Area2D = $AreaDeContato
 @onready var _linha_de_visao: RayCast2D = $LinhaDeVisao
-@onready var _sprite: Sprite2D = $Sprite
+@onready var _sprite: AnimadorDirecional = $Sprite
 
 
 func _ready() -> void:
@@ -67,9 +67,9 @@ func definir_algoritmo(algoritmo: String) -> void:
 	algoritmo_exigido = algoritmo
 
 
-## modulate sobre o mesmo sprite placeholder, e nao uma textura por cor: quando
-## a arte definitiva entrar, um cachorro colorido continua sendo o mesmo desenho
-## tingido -- nao um arquivo de imagem por cor para manter em sincronia.
+## modulate sobre a mesma folha em tons de cinza (recursos/arte/cachorro.png),
+## e nao uma folha por cor: um cachorro colorido e o mesmo desenho tingido --
+## nao um arquivo de imagem por cor para manter em sincronia.
 func definir_cor(nova_cor: Color) -> void:
 	_cor = nova_cor
 	if _sprite != null:
@@ -81,6 +81,13 @@ func cor() -> Color:
 
 
 func _physics_process(_delta: float) -> void:
+	_seguir_caminho()
+	# velocity depois do move_and_slide e a velocidade real (ja com o deslize na
+	# parede), entao o desenho vira para onde o corpo de fato anda.
+	_sprite.atualizar(velocity)
+
+
+func _seguir_caminho() -> void:
 	if _indice >= _caminho.size():
 		velocity = Vector2.ZERO
 		move_and_slide()

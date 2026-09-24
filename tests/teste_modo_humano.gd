@@ -90,7 +90,7 @@ func teste_o_tutorial_saiu_mas_a_cor_e_o_aviso_de_protecao_ficaram() -> void:
 	await get_tree().process_frame
 
 	for cachorro: Cachorro in _fase.cachorros:
-		var pintada: Color = (cachorro.get_node("Sprite") as Sprite2D).modulate
+		var pintada: Color = (cachorro.get_node("Sprite") as AnimatedSprite2D).modulate
 		afirmar_igual(pintada, cachorro.cor(), "o cachorro continua pintado com a cor dele")
 		afirmar_verdadeiro(pintada.a > 0.0, "e a cor e visivel, nao transparente")
 

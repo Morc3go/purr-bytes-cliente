@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://2i6rxsn38t55"
-path="res://.godot/imported/cachorro_placeholder.png-6afd7af1ec5d6782a96d1c15ec80d319.ctex"
+uid="uid://btua6xwvfxdfs"
+path="res://.godot/imported/cachorro.png-464b52e785ef3b68f4e9d0e54b32bbe8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://recursos/arte/cachorro_placeholder.png"
-dest_files=["res://.godot/imported/cachorro_placeholder.png-6afd7af1ec5d6782a96d1c15ec80d319.ctex"]
+source_file="res://recursos/arte/cachorro.png"
+dest_files=["res://.godot/imported/cachorro.png-464b52e785ef3b68f4e9d0e54b32bbe8.ctex"]
 
 [params]
 

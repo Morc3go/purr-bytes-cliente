@@ -16,6 +16,7 @@
 size = Vector2(14, 14)
 
 [node name="FaseBase" type="Node2D"]
+y_sort_enabled = true
 script = ExtResource("1_fase")
 
 [node name="Labirinto" type="TileMapLayer" parent="."]

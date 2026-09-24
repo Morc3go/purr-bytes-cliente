@@ -35,6 +35,8 @@ var algoritmo_protegido: String = ""
 var comando_protegido: String = ""
 
 var _restante_de_protecao_s: float = 0.0
+
+@onready var _sprite: AnimadorDirecional = $Sprite
 var _entrada_habilitada: bool = true
 
 
@@ -57,6 +59,7 @@ func _physics_process(delta: float) -> void:
 
 	velocity = velocity.lerp(direcao * velocidade, clampf(resposta * delta, 0.0, 1.0))
 	move_and_slide()
+	_sprite.atualizar(velocity)
 
 
 ## Chamado pela fase quando um comando de cifra e aceito. A duracao vem do

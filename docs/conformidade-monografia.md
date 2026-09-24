@@ -1,6 +1,6 @@
 # Conformidade com a monografia — estado do cliente
 
-**Atualizado em:** 2026-09-14 · Este documento existe para a defesa: para cada requisito
+**Atualizado em:** 2026-09-24 · Este documento existe para a defesa: para cada requisito
 declarado na monografia, o que o cliente **tem hoje**, onde isso vive no código, e o que
 ainda falta. Requisito que mudou de forma está marcado com o porquê.
 
@@ -10,7 +10,7 @@ ainda falta. Requisito que mudou de forma está marcado com o porquê.
 
 | Requisito | Estado | Onde |
 |---|---|---|
-| Quatro fases, uma por algoritmo (César, Vigenère, SHA-256, AES) | **Parcial** — três jogáveis; AES fora de escopo por decisão (seção 11 do `CLAUDE.md`) | `cenas/fases/fase_0{1,2,3}.tscn` |
+| Quatro fases, uma por algoritmo (César, Vigenère, SHA-256, AES) | **Adaptado** — virou ferramenta de autoria: o professor monta fases com qualquer cifra; AES fora de escopo (seção 11 do `CLAUDE.md`) | `scripts/geracao/`, `cenas/ui/editor_de_fase.tscn`, ADR 0012 |
 | Labirinto como topologia de rede, com pacote a transportar | ✅ | `cenas/base/fase_base.gd`, `scripts/dominio/mapa_config.gd` |
 | Interceptador (cachorro) com IA de perseguição | ✅ A\* real, patrulha, linha de visão | `scripts/ia/navegacao.gd`, `cenas/base/cachorro.gd` |
 | Informação imperfeita (Diretor, dois cérebros) | ✅ fases 2 e 3 | `scripts/ia/diretor.gd`, ADR 0002 |
@@ -25,8 +25,9 @@ ainda falta. Requisito que mudou de forma está marcado com o porquê.
 
 | Requisito | Estado | Observação |
 |---|---|---|
-| Arquitetura modular; fase nova = dado, não código | ✅ | `FaseConfig` + `MapaConfig` + `.tres`; as cenas de fase não têm script |
+| Arquitetura modular; fase nova = dado, não código | ✅ | fase é um JSON que vira `FaseConfig`; `fase_base.tscn` é a única cena de fase |
 | Rodar em hardware escolar padrão | ✅ por construção | renderizador Mobile, 640×360, `AMOSTRA_DESEMPENHO` a cada 30 s |
+| Estética pixel art 2D | ✅ | gato e cachorros animados (`AnimatedSprite2D` + `SpriteFrames`), filtro Nearest; tiles ainda placeholder — ADR 0013 |
 | Nenhum dado pessoal sai do cliente | ✅ | só `id_sujeito` (UUID), `id_sessao`, `id_fase`; texto livre truncado em 240 |
 | Evento perdido = dado de pesquisa perdido | ✅ reforçado | o descarte por número de fase **acabou** (ver abaixo) |
 | Comportamento auditável na tela | ✅ | `F3` desenha o A\*, dashboard mostra a coleta, painel de diagnóstico mostra a fila |
@@ -88,9 +89,10 @@ derivam dele. Um mapa incoerente (pacote ilhado, porta inalcançável, cachorro 
    real; com `python` no PATH os dois passam (confirmado em 2026-09-20). Numa máquina sem
    `python`, eles **falham** (não são pulados) — `ApoioServidorEco.aguardar_pronto()`
    nunca fica pronto e a asserção correspondente marca a suíte como vermelha.
-3. **Travessia completa menu → fase 1 → 2 → 3 → menu** sem teste automatizado
-   (`change_scene_to_file` dentro do processo compartilhado da suíte). Precisa de uma
-   partida manual antes da coleta.
+3. ~~**Travessia completa menu → fase 1 → 2 → 3 → menu**~~ — as fases fixas saíram
+   (ADR 0012). O fluxo atual **menu → escolher fase → jogar** foi exercitado com
+   renderização real (Godot 4.6 + Xvfb) em 2026-09-24: a fase abre com sessão de
+   telemetria ativa. Continua valendo uma partida manual completa antes da coleta.
 4. **Pré/pós-teste e TCLE** acontecem fora do jogo, por decisão de escopo.
 5. ~~**Legenda cor → cifra** (ver desvio 1): decidir o destino antes de rodar o
    experimento.~~ **Resolvido em 2026-09-20** — ver desvio 1: os textos que dependiam da
@@ -114,3 +116,9 @@ derivam dele. Um mapa incoerente (pacote ilhado, porta inalcançável, cachorro 
    entre a versão de Godot usada então e o 4.6.2 usado agora. **Não investigado nem corrigido
    por estar fora do escopo desta tarefa** — registrado aqui para quem for rodar a suíte
    antes da coleta confirmar a versão do Godot primeiro.
+
+   **Atualização 2026-09-24:** com importação limpa (sem `.godot/`) no Godot
+   4.6.stable oficial, a suíte inteira passou — 223 testes, 0 falhas, incluindo
+   `teste_astar` (100 mapas) e `teste_tileset_tem_a_camada_solido`. As falhas acima não
+   se reproduziram; a hipótese mais provável passa a ser cache `.godot/` antigo na
+   máquina onde apareceram.

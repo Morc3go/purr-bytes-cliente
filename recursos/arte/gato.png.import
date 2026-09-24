@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bpfhtakdqigmb"
-path="res://.godot/imported/jogador_placeholder.png-c9608dcf4e6fbfa19081c5ebf9d47ab3.ctex"
+uid="uid://hg5wqhj6gsd4"
+path="res://.godot/imported/gato.png-6896a74fb5f9eb9572b04f16261be082.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://recursos/arte/jogador_placeholder.png"
-dest_files=["res://.godot/imported/jogador_placeholder.png-c9608dcf4e6fbfa19081c5ebf9d47ab3.ctex"]
+source_file="res://recursos/arte/gato.png"
+dest_files=["res://.godot/imported/gato.png-6896a74fb5f9eb9572b04f16261be082.ctex"]
 
 [params]
 
