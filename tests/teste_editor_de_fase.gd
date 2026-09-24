@@ -79,6 +79,29 @@ func teste_a_tela_do_editor_e_opaca() -> void:
 	afirmar_igual(estilo.bg_color.a, 1.0, "e opaco")
 
 
+func teste_trocar_de_aba_nao_perde_dado_digitado() -> void:
+	var tela: Control = await _abrir_editor()
+	_preencher(tela, "Fase entre abas")
+
+	var abas: TabContainer = tela._abas
+	afirmar_igual(abas.get_tab_count(), 3, "geral, cachorros e perguntas")
+
+	# Passeia por todas as abas -- e o TabContainer so esconde paginas, nao as
+	# esvazia, entao nada deveria mudar no dado por baixo.
+	abas.current_tab = 1
+	abas.current_tab = 2
+	abas.current_tab = 0
+
+	var dados: Dictionary = tela.montar_dicionario()
+	afirmar_igual(String(dados["titulo"]), "Fase entre abas", "titulo sobrevive a troca de aba")
+	afirmar_tamanho(dados["cachorros"], 2, "vigias sobrevivem a troca de aba")
+	afirmar_igual(String(dados["cachorros"][0]["comando_para_bloquear"]), "trocar senha",
+		"comando do vigia sobrevive a troca de aba")
+	afirmar_tamanho(dados["terminais"], 1, "terminal sobrevive a troca de aba")
+	afirmar_igual(String(dados["terminais"][0]["correta"]), "uma frase longa",
+		"resposta marcada sobrevive a troca de aba")
+
+
 func teste_fase_sem_titulo_nao_salva_e_mostra_o_erro() -> void:
 	var tela: Control = await _abrir_editor()
 	tela._salvar(false)

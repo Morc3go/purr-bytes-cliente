@@ -15,10 +15,8 @@ const CENAS: PackedStringArray = [
 	"res://cenas/ui/hud.tscn",
 	"res://cenas/ui/tela_captura.tscn",
 	"res://cenas/ui/menu_principal.tscn",
-	"res://cenas/fases/fase_01.tscn",
-	"res://cenas/fases/fase_02.tscn",
-	"res://cenas/fases/fase_03.tscn",
 	"res://cenas/base/painel_cifra.tscn",
+	"res://cenas/base/painel_pause.tscn",
 ]
 
 var _nivel_original: String
@@ -50,7 +48,8 @@ func teste_arvore_da_cena_pai() -> void:
 	for caminho: String in [
 		"Labirinto", "Marcadores", "Marcadores/PontoDeEntrada", "Marcadores/PontoDeSaida",
 		"Marcadores/Regioes", "Jogador", "Cachorro", "CameraJogador", "Hud", "Terminal",
-		"PainelCifra", "TelaCaptura", "AvisoDeConfiguracao", "AvisoDeConfiguracao/Fundo/Texto",
+		"PainelCifra", "TelaCaptura", "PainelDePause", "AvisoDeConfiguracao",
+		"AvisoDeConfiguracao/Fundo/Texto",
 	]:
 		afirmar_nao_nulo(fase.get_node_or_null(caminho), "fase_base tem o no %s" % caminho)
 

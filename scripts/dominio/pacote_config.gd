@@ -22,23 +22,26 @@ extends Resource
 
 ## Arquetipo da pergunta. Nao e enfeite: ele decide o QUE sao as opcoes.
 ##
-##   APLICACAO    -- "qual ferramenta protege deste cachorro?": as opcoes sao
-##                   codigos de algoritmo, e os botoes saem na cor de cada um.
-##                   Ensina a associacao cor -> ferramenta.
+##   APLICACAO    -- "qual ferramenta protege deste vigia?": as opcoes sao
+##                   codigos de algoritmo, exibidos como texto (nome do
+##                   algoritmo, via LegendaCores.nome()) -- NUNCA como cor.
+##                   Cor e identidade visual do cachorro na cena, nao pista de
+##                   resposta; o enunciado tem que ser respondivel sem ela
+##                   (ver caixa_puzzle.gd e docs/conformidade-monografia.md).
 ##   CONCEITO     -- "o que essa ferramenta faz com cada letra?": as opcoes sao
 ##                   frases. Ensina o mecanismo.
 ##   DISCERNIMENTO -- "qual destas NAO serve para X?": tambem frases. Ensina
 ##                   limite e comparacao (e onde mora a diferenca cifra x hash).
 ##
 ## Uma fase mistura os tres de proposito: so APLICACAO ensinaria o jogador a
-## repetir a cor sem entender o que ela significa.
+## decorar um rotulo sem entender o que ele significa.
 @export_enum("APLICACAO", "CONCEITO", "DISCERNIMENTO") var tipo: String = "APLICACAO"
 
 ## Opcoes oferecidas. Em APLICACAO sao codigos de algoritmo (os mesmos de
-## LegendaCores), e ai cada botao sai na cor do cachorro correspondente,
-## reforcando a associacao do resto do jogo. Nos outros tipos sao frases curtas,
-## exibidas como estao -- misturar conceito e nome de algoritmo nas opcoes da
-## MESMA pergunta so confundiria quem ainda esta aprendendo a diferenca.
+## LegendaCores), exibidos como botao de texto com o nome do algoritmo -- nunca
+## colorido (ver caixa_puzzle.gd). Nos outros tipos sao frases curtas, exibidas
+## como estao -- misturar conceito e nome de algoritmo nas opcoes da MESMA
+## pergunta so confundiria quem ainda esta aprendendo a diferenca.
 @export var opcoes: PackedStringArray = ["CESAR", "VIGENERE", "SHA256"]
 
 @export var resposta_correta: String = "CESAR"

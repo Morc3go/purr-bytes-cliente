@@ -44,12 +44,16 @@ func _json_minimo(titulo: String) -> String:
 func teste_menu_tem_as_portas_de_autoria() -> void:
 	var menu: Control = load("res://cenas/ui/menu_principal.tscn").instantiate() as Control
 
-	for caminho: String in ["Coluna/Botoes/Jogar", "Coluna/Botoes/EscolherFase",
-			"Coluna/Botoes/CriarFase", "Coluna/Botoes/Telemetria", "Coluna/Botoes/Sair"]:
+	for caminho: String in ["Coluna/Botoes/EscolherFase", "Coluna/Botoes/CriarFase",
+			"Coluna/Botoes/SubirFase", "Coluna/Botoes/Telemetria", "Coluna/Botoes/Sair"]:
 		afirmar_nao_nulo(menu.get_node_or_null(caminho), "o menu tem o botao %s" % caminho)
 
 	afirmar_nulo(menu.get_node_or_null("Coluna/Botoes/Tutorial"),
 		"o tutorial de cores continua fora -- decisao anterior, nao regressao")
+	# O jogo nao tem fase propria (ADR 0012): "escolher fase" e o unico
+	# caminho para jogar, entao nao ha mais botao "jogar" separado no menu.
+	afirmar_nulo(menu.get_node_or_null("Coluna/Botoes/Jogar"),
+		"nao ha mais atalho para uma fase fixa")
 	menu.free()
 
 

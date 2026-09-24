@@ -8,7 +8,9 @@ extends CasoDeTeste
 ## treino de agente funcionando com o contrato antigo (coleta ao encostar,
 ## qualquer cifra protege).
 ##
-## Monta cenas/fases/fase_01.tscn de verdade, como os demais testes de fase.
+## Monta uma FaseBase com o fixture de tests/apoio_fase_de_teste.gd (nao ha
+## mais fase fixa no projeto -- ADR 0012), na mesma forma que a antiga
+## fase_01.tscn: dois cachorros de Cesar, tres pacotes, um desafio.
 
 var _mock: TransporteMock
 var _fase: FaseBase
@@ -40,8 +42,7 @@ func _preparar_mock(sufixo: String) -> TransporteMock:
 
 func _montar_fase() -> FaseBase:
 	Sessao.iniciar()
-	var cena: PackedScene = load("res://cenas/fases/fase_01.tscn") as PackedScene
-	var fase: FaseBase = cena.instantiate() as FaseBase
+	var fase: FaseBase = ApoioFaseDeTeste.instanciar(ApoioFaseDeTeste.config_cesar())
 	add_child(fase)
 	return fase
 
@@ -50,18 +51,18 @@ func _montar_fase() -> FaseBase:
 # Cachorros coloridos
 # ---------------------------------------------------------------------------
 
-func teste_fase_01_tem_dois_cachorros_com_cor_da_legenda() -> void:
+func teste_fase_tem_dois_cachorros_com_cor_da_legenda() -> void:
 	_preparar_mock("cores")
 	_fase = _montar_fase()
 	await get_tree().process_frame
 
-	afirmar_tamanho(_fase.cachorros, 2, "fase 1 tem dois cachorros")
+	afirmar_tamanho(_fase.cachorros, 2, "a fase de teste tem dois cachorros")
 	afirmar_igual(_fase.cachorros[0], _fase.cachorro,
 		"o cachorro da cena pai continua sendo o numero 1")
 
 	for cachorro: Cachorro in _fase.cachorros:
 		afirmar_igual(cachorro.algoritmo_exigido, "CESAR",
-			"na fase 1 so ha cachorro de Cesar: o jogador ainda nao tem outra cifra")
+			"os dois cachorros do fixture exigem Cesar")
 		afirmar_igual(cachorro.cor(), LegendaCores.cor("CESAR"),
 			"a cor do cachorro vem de LegendaCores, nao de uma tabela paralela")
 		afirmar_igual(cachorro.get_node("Sprite").modulate, LegendaCores.cor("CESAR"),
@@ -89,7 +90,7 @@ func teste_o_tutorial_saiu_mas_a_cor_e_o_aviso_de_protecao_ficaram() -> void:
 	await get_tree().process_frame
 
 	for cachorro: Cachorro in _fase.cachorros:
-		var pintada: Color = (cachorro.get_node("Sprite") as Sprite2D).modulate
+		var pintada: Color = (cachorro.get_node("Sprite") as AnimatedSprite2D).modulate
 		afirmar_igual(pintada, cachorro.cor(), "o cachorro continua pintado com a cor dele")
 		afirmar_verdadeiro(pintada.a > 0.0, "e a cor e visivel, nao transparente")
 
@@ -139,13 +140,15 @@ func teste_cachorro_sem_visao_patrulha_e_nao_persegue_o_jogador() -> void:
 ## ele CHEGASSE ao ponto. Travava para sempre.
 func teste_alvo_de_varredura_nunca_cai_em_parede() -> void:
 	_preparar_mock("varredura")
-	var cena: PackedScene = load("res://cenas/fases/fase_02.tscn") as PackedScene
 	Sessao.iniciar()
-	_fase = cena.instantiate() as FaseBase
+	_fase = ApoioFaseDeTeste.instanciar(ApoioFaseDeTeste.config_cesar())
+	ApoioFaseDeTeste.adicionar_regioes(_fase, [
+		Vector2(48, 48), Vector2(240, 48), Vector2(240, 176), Vector2(48, 176),
+	])
 	add_child(_fase)
 	await get_tree().process_frame
 
-	if not afirmar_nao_nulo(_fase._diretor, "fase 2 tem Diretor (e regioes)"):
+	if not afirmar_nao_nulo(_fase._diretor, "fase com regioes tem Diretor"):
 		return
 
 	var cachorro: Cachorro = _fase.cachorros[0]
@@ -323,7 +326,7 @@ func teste_pacote_abre_a_caixa_e_so_coleta_com_a_resposta_certa() -> void:
 	_fase = _montar_fase()
 	await get_tree().process_frame
 
-	afirmar_tamanho(_fase.pacotes, 3, "fase 1 tem tres pacotes")
+	afirmar_tamanho(_fase.pacotes, 3, "a fase de teste tem tres pacotes")
 	var pacote: Pacote = _fase.pacotes[0]
 
 	_fase._ao_alcancar_pacote(pacote)
@@ -370,37 +373,6 @@ func teste_cancelar_a_caixa_despausa_sem_coletar() -> void:
 
 	afirmar_falso(get_tree().paused, "sair da caixa despausa o jogo")
 	afirmar_falso(pacote.coletado, "sair sem responder nao coleta -- a porta continua trancada")
-
-
-## Regra 3 do banco de perguntas: enunciado que cita o nome da ferramenta que e
-## a propria resposta se responde sozinho. FaseConfig ja recusa a fase nesse
-## caso; este teste confere as tres fases REAIS, que e onde o erro apareceria.
-func teste_nenhum_enunciado_entrega_a_propria_resposta() -> void:
-	for numero: int in [1, 2, 3]:
-		var config: FaseConfig = load("res://recursos/fases/fase_0%d.tres" % numero) as FaseConfig
-		if not afirmar_nao_nulo(config, "fase %d carrega" % numero):
-			continue
-
-		afirmar_igual(config.problemas().size(), 0,
-			"fase %d valida (inclui a checagem de enunciado que entrega a resposta)" % numero)
-
-		var respostas: Dictionary = {}
-		for pacote: PacoteConfig in config.pacotes:
-			respostas[pacote.resposta_correta] = true
-			afirmar_verdadeiro(pacote.opcoes.has(pacote.resposta_correta),
-				"fase %d, pacote '%s': a resposta esta entre as opcoes"
-					% [numero, pacote.identificador])
-
-		# Se todas as perguntas de uma fase tem a mesma resposta, o jogador
-		# aprende a repetir a resposta em vez de pensar -- era o caso da fase 1.
-		afirmar_verdadeiro(respostas.size() >= 2,
-			"fase %d oferece mais de uma resposta correta distinta entre seus pacotes" % numero)
-
-		var tipos: Dictionary = {}
-		for pacote: PacoteConfig in config.pacotes:
-			tipos[pacote.tipo] = true
-		afirmar_verdadeiro(tipos.size() >= 2,
-			"fase %d mistura arquetipos de pergunta, nao so 'qual ferramenta'" % numero)
 
 
 func teste_opcoes_sao_embaralhadas_sem_perder_nem_inventar() -> void:
