@@ -125,21 +125,20 @@ func teste_marcadores_sao_andaveis_e_saem_em_ordem_de_leitura() -> void:
 	afirmar_falso(mapa.e_andavel(Vector2i(0, 0)), "parede nao e andavel")
 
 
-func teste_as_tres_fases_reais_passam_no_validador() -> void:
-	for numero: int in [1, 2, 3]:
-		var config: FaseConfig = load("res://recursos/fases/fase_0%d.tres" % numero) as FaseConfig
-		if not afirmar_nao_nulo(config, "fase %d carrega" % numero):
-			continue
-		if not afirmar_nao_nulo(config.mapa, "fase %d tem MapaConfig" % numero):
-			continue
+func teste_fase_de_exemplo_passa_no_validador() -> void:
+	# Desde o ADR 0012 a unica fase publicada e a de exemplo semeada no primeiro
+	# boot; ela e a fase "real" que precisa passar no mesmo validador.
+	var texto: String = JSON.stringify(CarregadorFaseJson._exemplo())
+	var lido: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_texto(texto)
+	if not afirmar_verdadeiro(lido.ok(), "fase de exemplo carrega: %s" % lido.mensagem()):
+		return
+	var config: FaseConfig = lido.config
+	if not afirmar_nao_nulo(config.mapa, "fase de exemplo tem MapaConfig"):
+		return
 
-		var problemas: PackedStringArray = config.mapa.problemas(config)
-		afirmar_igual(problemas.size(), 0,
-			"mapa da fase %d valido: %s" % [numero, " | ".join(problemas)])
-
-		# A regiao do Diretor manda o cachorro para o CENTRO dela; centro em
-		# parede era o que travava as fases 2 e 3 antes da correcao.
-		afirmar_igual(config.mapa.celulas_de(MapaConfig.CACHORRO).size(), config.cachorros.size(),
-			"fase %d: um 'D' no desenho por cachorro declarado" % numero)
-		afirmar_igual(config.mapa.celulas_de(MapaConfig.PACOTE).size(), config.pacotes.size(),
-			"fase %d: um 'o' no desenho por pacote declarado" % numero)
+	var problemas: PackedStringArray = config.mapa.problemas(config)
+	afirmar_igual(problemas.size(), 0, "mapa da fase de exemplo valido: %s" % " | ".join(problemas))
+	afirmar_igual(config.mapa.celulas_de(MapaConfig.CACHORRO).size(), config.cachorros.size(),
+		"um 'D' no desenho por cachorro declarado")
+	afirmar_igual(config.mapa.celulas_de(MapaConfig.PACOTE).size(), config.pacotes.size(),
+		"um 'o' no desenho por pacote declarado")

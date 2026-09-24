@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://cenas/base/fase_base.gd" id="1_fase"]
 [ext_resource type="TileSet" path="res://recursos/tilesets/labirinto.tres" id="2_tileset"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://cenas/base/painel_cifra.tscn" id="8_painel_cifra"]
 [ext_resource type="PackedScene" path="res://cenas/base/caixa_puzzle.tscn" id="9_caixa"]
 [ext_resource type="Script" path="res://cenas/base/porta.gd" id="10_porta"]
+[ext_resource type="PackedScene" path="res://cenas/base/painel_pause.tscn" id="11_pause"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_saida"]
 size = Vector2(14, 14)
@@ -57,6 +58,8 @@ position_smoothing_speed = 8.0
 [node name="CaixaPuzzle" parent="." instance=ExtResource("9_caixa")]
 
 [node name="TelaCaptura" parent="." instance=ExtResource("7_captura")]
+
+[node name="PainelDePause" parent="." instance=ExtResource("11_pause")]
 
 [node name="AvisoDeConfiguracao" type="CanvasLayer" parent="."]
 layer = 4

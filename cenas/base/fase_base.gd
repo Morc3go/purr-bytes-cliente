@@ -18,15 +18,6 @@ signal fase_abandonada(numero: int)
 
 const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 
-## Concluir uma fase encadeia direto para a proxima, em vez de voltar ao menu
-## a cada uma -- e o que faz "as tres fases jogaveis em sequencia" (criterio
-## de aceite do Marco 3) acontecer sem o jogador precisar clicar em "jogar"
-## de novo a cada fase. So a ultima fase (sem entrada aqui) volta ao menu.
-const _PROXIMA_CENA_POR_FASE: Dictionary = {
-	1: "res://cenas/fases/fase_02.tscn",
-	2: "res://cenas/fases/fase_03.tscn",
-}
-
 ## O unico ponto de configuracao de uma fase. Sem ele a cena nao roda -- e isso
 ## e proposital: fase_base.tscn aberta direto no editor tem que falhar com
 ## mensagem clara, nao rodar meio funcionando.
@@ -50,6 +41,7 @@ const _PROXIMA_CENA_POR_FASE: Dictionary = {
 @onready var painel_cifra: PainelCifra = $PainelCifra
 @onready var caixa_puzzle: CaixaPuzzle = $CaixaPuzzle
 @onready var tela_captura: TelaCaptura = $TelaCaptura
+@onready var painel_pause: PainelDePause = $PainelDePause
 @onready var aviso: CanvasLayer = $AvisoDeConfiguracao
 @onready var _rotulo_do_aviso: Label = $AvisoDeConfiguracao/Fundo/Texto
 
@@ -83,9 +75,10 @@ var _pacote_em_puzzle: Pacote = null
 var _tentativas_por_pacote: Dictionary = {}   # identificador -> int
 
 ## Diretor de IA (Marco 2, scripts/ia/diretor.gd). Null quando a fase nao tem
-## nenhuma regiao em Marcadores/Regioes (caso do Marco 1: fase_01.tscn) -- sem
-## Diretor, o cachorro continua perseguindo a posicao real sempre, exatamente
-## o comportamento original do Marco 1 (docs/decisoes/0007, decisao 1).
+## nenhuma regiao em Marcadores/Regioes (o caso comum de uma fase de autoria,
+## que nunca declara regiao) -- sem Diretor, o cachorro continua perseguindo
+## a posicao real sempre, exatamente o comportamento original do Marco 1
+## (docs/decisoes/0007, decisao 1).
 var _diretor: Diretor = null
 var _temporizador_diretor: Timer = null
 var _regiao_atual_do_jogador: Area2D = null
@@ -223,7 +216,17 @@ func _unhandled_input(evento: InputEvent) -> void:
 		return
 
 	if evento.is_action_pressed("pausar"):
-		abandonar()
+		# So chega aqui quando nada mais pausou a arvore (terminal, puzzle):
+		# enquanto QUALQUER um deles esta aberto, get_tree().paused ja e true
+		# e FaseBase (PAUSABLE, o padrao) simplesmente nao recebe
+		# _unhandled_input -- so nos ALWAYS recebem, e sao eles que tratam a
+		# propria tecla de fechar (ver terminal.gd e painel_pause.gd).
+		#
+		# Em modo de treino (agente de RL) a tecla nao faz nada: o menu de
+		# pause e feito para o jogador humano ler e decidir, e um episodio de
+		# treino nao deve travar esperando uma decisao de UI.
+		if not ConfigJogo.modo_treino:
+			_abrir_pause()
 		get_viewport().set_input_as_handled()
 
 
@@ -243,18 +246,37 @@ func concluir() -> void:
 	}, configuracao.numero)
 	Sessao.sair_da_fase()
 	fase_concluida.emit(configuracao.numero)
-
-	var proxima_cena: String = String(_PROXIMA_CENA_POR_FASE.get(configuracao.numero, ""))
-	if proxima_cena != "":
-		get_tree().change_scene_to_file(proxima_cena)
-	else:
-		_voltar_ao_menu()
+	_voltar_ao_menu()
 
 
 func abandonar() -> void:
 	if _encerrada or not _configurada:
 		return
 	_encerrada = true
+	_registrar_abandono()
+	fase_abandonada.emit(configuracao.numero)
+	_voltar_ao_menu()
+
+
+## Reinicia a fase corrente do zero: recarrega a cena, o que roda _ready() de
+## novo com uma partida nova (vidas, pontuacao de fase, progresso de desafio).
+## Conta como abandono da tentativa em curso -- o jogador esta descartando o
+## que tinha feito nesta partida de proposito, e e essa distincao que separa
+## isto do reinicio silencioso de _ao_esgotar_vidas() (o mesmo intento, sem
+## descartar a tentativa: as vidas voltam mas o progresso do desafio fica).
+func reiniciar() -> void:
+	if _encerrada or not _configurada:
+		return
+	_encerrada = true
+	_registrar_abandono()
+	fase_abandonada.emit(configuracao.numero)
+	get_tree().reload_current_scene()
+
+
+## Telemetria e saida da sessao compartilhadas por abandonar() e reiniciar():
+## as duas fecham a tentativa corrente como ABANDONO, so o destino depois
+## diverge (menu vs. a mesma fase de novo).
+func _registrar_abandono() -> void:
 	_garantir_jogo_despausado()
 
 	# Desafio deixado pra tras sem solucao: registra ABANDONO nessa tentativa
@@ -273,8 +295,6 @@ func abandonar() -> void:
 		"pontuacao": Sessao.pontuacao,
 	}, configuracao.numero)
 	Sessao.sair_da_fase()
-	fase_abandonada.emit(configuracao.numero)
-	_voltar_ao_menu()
 
 
 func _conectar_sinais() -> void:
@@ -290,6 +310,9 @@ func _conectar_sinais() -> void:
 	caixa_puzzle.cancelada.connect(_fechar_puzzle)
 	ponto_de_saida.body_entered.connect(_ao_chegar_na_saida)
 	Sessao.vidas_esgotadas.connect(_ao_esgotar_vidas)
+	painel_pause.continuar_pressionado.connect(_ao_fechar_pause)
+	painel_pause.reiniciar_pressionado.connect(reiniciar)
+	painel_pause.voltar_ao_menu_pressionado.connect(abandonar)
 
 
 ## O terminal pausa o jogo, como a caixa de puzzle.
@@ -876,7 +899,25 @@ func _garantir_jogo_despausado() -> void:
 		caixa_puzzle.fechar()
 	if terminal != null and terminal.esta_aberto():
 		terminal.fechar()
+	if painel_pause != null and painel_pause.esta_aberto():
+		painel_pause.fechar()
 	_pacote_em_puzzle = null
+	get_tree().paused = false
+
+
+# ---------------------------------------------------------------------------
+# Menu de pause
+# ---------------------------------------------------------------------------
+
+func _abrir_pause() -> void:
+	painel_pause.abrir()
+	get_tree().paused = true
+
+
+## "Continuar" ou ESC de novo: so despausa. "Reiniciar" e "voltar ao menu" vao
+## direto para reiniciar()/abandonar(), que ja despausam por conta propria via
+## _registrar_abandono() -> _garantir_jogo_despausado().
+func _ao_fechar_pause() -> void:
 	get_tree().paused = false
 
 
@@ -1046,10 +1087,10 @@ func _alvo_de_varredura(alvo: Cachorro, regiao: Area2D) -> Vector2:
 # Diretor de IA (Marco 2): regioes, pistas e decaimento
 # ---------------------------------------------------------------------------
 
-## Regioes sao dado de cena (Area2D colocados pelo editor em Marcadores/Regioes
-## de cada fase_0N.tscn), nunca hardcoded aqui -- e a mesma logica de
-## "matriz de dados" do FaseConfig. Fase sem nenhuma regiao (fase_01.tscn) fica
-## sem Diretor de proposito: ver _alvo_de_perseguicao.
+## Regioes sao dado de cena (Area2D em Marcadores/Regioes), nunca hardcoded
+## aqui -- e a mesma logica de "matriz de dados" do FaseConfig. Uma fase de
+## autoria nunca declara regiao, entao fica sem Diretor: ver
+## _alvo_de_perseguicao.
 func _configurar_diretor() -> void:
 	var regioes: Array[Area2D] = []
 	for filho: Node in regioes_no.get_children():

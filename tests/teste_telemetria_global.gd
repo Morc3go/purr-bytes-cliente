@@ -74,18 +74,21 @@ func teste_sessao_nao_limita_mais_a_fase_a_quatro() -> void:
 	afirmar_igual(Sessao.titulo_fase, "", "e o titulo")
 
 
-func teste_id_fase_e_estavel_e_anonimo_no_recurso_real() -> void:
-	for numero: int in [1, 2, 3]:
-		var config: FaseConfig = load("res://recursos/fases/fase_0%d.tres" % numero) as FaseConfig
-		if not afirmar_nao_nulo(config, "fase %d carrega" % numero):
-			continue
-
-		afirmar_verdadeiro(Identificador.e_uuid(config.id_fase),
-			"fase %d tem id_fase gravado no recurso (nao gerado a cada execucao)" % numero)
-		# Anonimato (RNF): id tecnico, nada de pessoal.
-		afirmar_falso(config.id_fase.contains("@"), "id_fase nao carrega nada parecido com e-mail")
-		afirmar_igual(config.garantir_id_fase(), config.id_fase,
-			"garantir_id_fase() devolve o id gravado, sem trocar a identidade")
+func teste_id_fase_e_estavel_e_anonimo_na_fase_de_exemplo() -> void:
+	# O id_fase viaja DENTRO do JSON: carregar o mesmo arquivo duas vezes tem
+	# que devolver a mesma identidade, senao a telemetria nao liga as sessoes.
+	var texto: String = JSON.stringify(CarregadorFaseJson._exemplo())
+	var primeira: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_texto(texto)
+	var segunda: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_texto(texto)
+	if not afirmar_verdadeiro(primeira.ok() and segunda.ok(), "fase de exemplo carrega"):
+		return
+	var config: FaseConfig = primeira.config
+	afirmar_verdadeiro(Identificador.e_uuid(config.id_fase), "fase de exemplo tem id_fase UUID")
+	afirmar_igual(segunda.config.id_fase, config.id_fase, "mesmo arquivo, mesmo id_fase")
+	# Anonimato (RNF): id tecnico, nada de pessoal.
+	afirmar_falso(config.id_fase.contains("@"), "id_fase nao carrega nada parecido com e-mail")
+	afirmar_igual(config.garantir_id_fase(), config.id_fase,
+		"garantir_id_fase() devolve o id gravado, sem trocar a identidade")
 
 
 func teste_fase_sem_id_recebe_um_na_carga() -> void:

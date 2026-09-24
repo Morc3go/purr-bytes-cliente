@@ -1,14 +1,17 @@
 extends CasoDeTeste
 
-## Regressao de um bug real: "Jogar" no menu principal ficava preso num
-## placeholder do Marco 0 (so escrevia uma mensagem na tela) e NUNCA
-## carregava fase_01.tscn -- o jogo "nao iniciava" porque nenhum teste
-## exercitava o botao de verdade, so a logica das fases isoladamente.
+## Regressao do mesmo tipo de bug que motivou este arquivo originalmente: um
+## botao do menu preso num placeholder que nunca troca de cena de verdade.
+##
+## O jogo nao tem fase propria embutida (ADR 0012: virou ferramenta de
+## autoria) -- "escolher fase" e o unico caminho para jogar, entao e ele que
+## este teste cobre agora, no lugar do antigo botao "jogar" (que abria
+## fase_01.tscn direto e foi removido).
 ##
 ## Este arquivo instancia cenas/ui/menu_principal.tscn de verdade, aciona o
 ## MESMO caminho que um clique no botao aciona (a funcao conectada ao sinal
-## `pressed`), e confere que a cena ativa da SceneTree realmente vira a fase
-## -- nao só que uma função interna "não lançou erro".
+## `pressed`), e confere que a cena ativa da SceneTree realmente muda -- nao
+## só que uma função interna "não lançou erro".
 
 
 func depois() -> void:
@@ -16,30 +19,26 @@ func depois() -> void:
 		Sessao.encerrar()
 
 
-func teste_botao_jogar_carrega_a_fase_1() -> void:
+func teste_botao_escolher_fase_troca_para_a_tela_de_selecao() -> void:
 	var cena: PackedScene = load("res://cenas/ui/menu_principal.tscn") as PackedScene
 	var menu: Control = cena.instantiate()
 	get_tree().root.add_child(menu)
 	await get_tree().process_frame
 
-	menu._ao_jogar()
+	menu._ao_escolher_fase()
 	# change_scene_to_file() e adiado para o proximo idle frame.
 	await get_tree().process_frame
 	await get_tree().process_frame
 
 	var cena_atual: Node = get_tree().current_scene
-	afirmar_nao_nulo(cena_atual, "current_scene passou a existir depois de 'jogar'")
-	afirmar_verdadeiro(cena_atual is FaseBase, "a cena carregada e uma fase, nao o menu preso")
-	if cena_atual is FaseBase:
-		afirmar_igual((cena_atual as FaseBase).configuracao.numero, 1,
-			"'jogar' sempre comeca pela fase 1")
-
-	afirmar_verdadeiro(Sessao.ativa, "'jogar' abre uma sessao se nenhuma estiver ativa")
+	afirmar_nao_nulo(cena_atual, "current_scene passou a existir depois de 'escolher fase'")
+	afirmar_verdadeiro(cena_atual.get_script() != null
+			and cena_atual.get_script().resource_path.ends_with("selecao_de_fases.gd"),
+		"a cena carregada e a tela de selecao, nao o menu preso")
 
 	# change_scene_to_file() nao gerencia `menu` (adicionada por fora, via
 	# root.add_child) -- sem liberar os dois, `menu` fica orfa sob root,
-	# processando para sempre. Ver o comentario equivalente em
-	# tests/teste_encadeamento_de_fases.gd::_limpar().
+	# processando para sempre.
 	if is_instance_valid(menu) and menu != cena_atual:
 		menu.queue_free()
 	if is_instance_valid(cena_atual):
