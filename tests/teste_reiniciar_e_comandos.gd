@@ -52,7 +52,7 @@ func _cachorro_com_comando(fase: FaseBase, comando: String) -> Cachorro:
 
 func _cachorro_que_so_persegue(fase: FaseBase) -> Cachorro:
 	for alvo: Cachorro in fase.cachorros:
-		if not alvo.bloqueia_por_comando():
+		if fase._apenas_persegue(alvo):
 			return alvo
 	return null
 
@@ -78,7 +78,7 @@ func teste_reiniciar_fase_de_autoria_volta_com_a_mesma_configuracao() -> void:
 	afirmar_falso(nova.aviso.visible,
 		"e nao caiu na tela de 'configuracao invalida' (o bug do reload_current_scene)")
 	afirmar_igual(nova.configuracao.id_fase, config.id_fase, "mesma fase: mesmo id_fase")
-	afirmar_igual(nova.cachorros.size(), 3, "com os vigias da fase")
+	afirmar_igual(nova.cachorros.size(), config.cachorros.size(), "com os vigias da fase")
 	afirmar_igual(Sessao.id_fase, config.id_fase, "a sessao entrou de novo na fase")
 	afirmar_igual(Sessao.vidas, config.vidas_iniciais, "com as vidas cheias")
 
@@ -95,7 +95,7 @@ func teste_fase_de_exemplo_mostra_os_comandos_na_hud() -> void:
 
 	var fase: FaseBase = await _jogar(config)
 	afirmar_igual(fase.hud.comandos_visiveis(),
-		PackedStringArray(["trocar senha", "ativar 2fa", "sem comando: fuja"]),
+		PackedStringArray(["trocar senha", "ativar 2fa", "cifrar senha chave=3", "sem comando: fuja"]),
 		"a legenda da HUD lista o comando de cada vigia, na ordem da fase")
 
 
@@ -165,7 +165,8 @@ func _gravar_exemplo(dados: Dictionary) -> String:
 func teste_exemplo_antigo_ganha_os_comandos_e_mantem_o_id() -> void:
 	var antigo: Dictionary = CarregadorFaseJson._exemplo()
 	antigo.erase("mostrar_comandos")
-	antigo["briefing"] = CarregadorFaseJson._BRIEFING_ANTIGO_DO_EXEMPLO
+	antigo["briefing"] = CarregadorFaseJson._BRIEFINGS_ANTIGOS_DO_EXEMPLO[0]
+	antigo.erase("versao_do_exemplo")
 	var id_original: String = String(antigo["id_fase"])
 	var caminho: String = _gravar_exemplo(antigo)
 
@@ -181,6 +182,7 @@ func teste_exemplo_antigo_ganha_os_comandos_e_mantem_o_id() -> void:
 func teste_exemplo_editado_pelo_professor_nao_e_tocado() -> void:
 	var editado: Dictionary = CarregadorFaseJson._exemplo()
 	editado.erase("mostrar_comandos")
+	editado.erase("versao_do_exemplo")
 	editado["briefing"] = "briefing que o professor reescreveu"
 	var caminho: String = _gravar_exemplo(editado)
 

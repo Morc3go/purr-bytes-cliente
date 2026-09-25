@@ -446,8 +446,13 @@ func _explicacao_da_captura(cachorro_alvo: Cachorro) -> String:
 	var exigido: String = LegendaCores.nome(cachorro_alvo.algoritmo_exigido)
 
 	if not jogador.protecao_ativa:
-		return ("o pacote viajava em texto claro. este interceptador le %s: "
+		var texto: String = ("o pacote viajava em texto claro. este interceptador le %s: "
 			+ "use o terminal para cifrar antes de atravessar.") % exigido
+		var config_do_cachorro: CachorroConfig = _config_por_cachorro.get(cachorro_alvo) as CachorroConfig
+		if configuracao.mostrar_comandos and config_do_cachorro != null \
+				and not config_do_cachorro.comando_da_cifra().is_empty():
+			texto += " comando: %s" % config_do_cachorro.comando_da_cifra()
+		return texto
 
 	return ("a cifra ativa era %s, mas este interceptador so e enganado por %s. "
 		+ "cifrar nao basta: tem que ser a cifra certa para o interceptador certo.") % [
@@ -531,6 +536,7 @@ func _analisar_comando(texto: String, tempo_resposta_ms: int) -> void:
 			_diretor.pista_comando_errado(_regiao_atual_do_jogador)
 		return
 
+	_focar_desafio_do_comando(resultado.ast)
 	var desafio_atual: DesafioConfig = _desafio_atual()
 	var veredicto: VeredictoComando = ResolvedorComando.resolver(
 		configuracao, desafio_atual, _numero_tentativa_do_desafio, resultado)
@@ -629,6 +635,27 @@ func _registrar_tentativa(
 		_numero_tentativa_do_desafio)
 
 
+## Com mais de um vigia de cifra, cada um tem o seu desafio, e o jogador digita
+## o comando do vigia que esta na frente dele -- nao o "proximo da fila". Se o
+## comando corresponde a OUTRO desafio da fase (mesmo verbo, mesma palavra),
+## ele passa a ser o corrente antes da validacao semantica. Comando que nao
+## corresponde a nenhum continua sendo julgado contra o corrente, e o erro
+## semantico sai igual ao de antes.
+func _focar_desafio_do_comando(ast: NoAst) -> void:
+	if ast == null or configuracao.desafios.size() < 2:
+		return
+	var soltos: Array[String] = ast.argumentos_soltos()
+	if soltos.is_empty():
+		return
+	for i: int in configuracao.desafios.size():
+		var desafio: DesafioConfig = configuracao.desafios[i]
+		if desafio.verbo_esperado == ast.verbo and desafio.texto_claro == soltos[0]:
+			if i != _indice_desafio:
+				_indice_desafio = i
+				_numero_tentativa_do_desafio = 1
+			return
+
+
 func _e_tentativa_do_desafio_corrente(desafio_atual: DesafioConfig, verbo: String) -> bool:
 	return desafio_atual != null and verbo == desafio_atual.verbo_esperado
 
@@ -659,8 +686,10 @@ func _avancar_desafio() -> void:
 	if _indice_desafio >= configuracao.desafios.size():
 		_indice_desafio = 0
 		if _desafios_resolvidos.size() >= configuracao.desafios.size():
-			terminal.escrever("todos os pacotes desta fase ja foram resolvidos -- "
-				+ "va ate a porta. os comandos continuam valendo para se proteger no caminho.")
+			# "Desafios", nao "pacotes": a porta depende dos pacotes (perguntas),
+			# e dizer "va ate a porta" aqui mandava o jogador a uma porta trancada.
+			terminal.escrever("todos os desafios de cifra desta fase ja foram resolvidos. "
+				+ "os comandos continuam valendo para se proteger no caminho.")
 
 	var proximo: DesafioConfig = _desafio_atual()
 	if proximo != null:
@@ -812,6 +841,10 @@ func _legenda_de_comandos() -> Array[Dictionary]:
 			itens.append({"cor": alvo.cor(), "texto": alvo.comando_para_bloquear})
 		elif _apenas_persegue(alvo):
 			itens.append({"cor": alvo.cor(), "texto": "sem comando: fuja"})
+		else:
+			var config_do_cachorro: CachorroConfig = _config_por_cachorro.get(alvo) as CachorroConfig
+			if config_do_cachorro != null and not config_do_cachorro.comando_da_cifra().is_empty():
+				itens.append({"cor": alvo.cor(), "texto": config_do_cachorro.comando_da_cifra()})
 	return itens
 
 

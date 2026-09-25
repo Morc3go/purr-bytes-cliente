@@ -55,7 +55,7 @@ func teste_fase_de_exemplo_carrega_configurada_e_jogavel() -> void:
 
 	afirmar_nao_nulo(_fase, "a fase de exemplo entra em cena sem ter .tscn propria")
 	afirmar_falso(_fase.aviso.visible, "a fase de exemplo e valida")
-	afirmar_tamanho(_fase.cachorros, 3, "tres vigias")
+	afirmar_tamanho(_fase.cachorros, 4, "quatro vigias: dois de comando, um de cifra de Cesar e um que so persegue")
 	afirmar_tamanho(_fase.pacotes, 3, "tres terminais viram pacote")
 
 

@@ -131,7 +131,9 @@ func _carregar(caminho: String) -> void:
 	_campo_semente.value = config.semente_do_mapa
 
 	for cachorro: CachorroConfig in config.cachorros:
-		_adicionar_vigia(cachorro.cor_efetiva(), cachorro.comando_para_bloquear)
+		_adicionar_vigia(cachorro.cor_efetiva(), cachorro.comando_para_bloquear,
+			cachorro.modo_de_bloqueio, cachorro.algoritmo_exigido,
+			cachorro.palavra_da_cifra, cachorro.chave_da_cifra)
 	for pacote: PacoteConfig in config.pacotes:
 		_adicionar_terminal(pacote.enunciado, pacote.opcoes, pacote.resposta_correta,
 			pacote.explicacao_correta)
@@ -141,7 +143,20 @@ func _carregar(caminho: String) -> void:
 # Linhas dinamicas
 # ---------------------------------------------------------------------------
 
-func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "") -> HBoxContainer:
+## Tipos de vigia oferecidos no editor, na ordem do seletor. Cada um e o par
+## (modo_de_bloqueio, algoritmo_exigido) que o JSON grava.
+const _TIPOS_DE_VIGIA: Array[Dictionary] = [
+	{"rotulo": "comando livre", "modo": "COMANDO", "algoritmo": "CESAR"},
+	{"rotulo": "cifra de Cesar", "modo": "CIFRA", "algoritmo": "CESAR"},
+	{"rotulo": "cifra de Vigenere", "modo": "CIFRA", "algoritmo": "VIGENERE"},
+	{"rotulo": "hash SHA-256", "modo": "CIFRA", "algoritmo": "SHA256"},
+	{"rotulo": "so persegue", "modo": "NENHUM", "algoritmo": "CESAR"},
+]
+
+
+func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "",
+		modo: String = "COMANDO", algoritmo: String = "CESAR",
+		palavra: String = "", chave: String = "") -> HBoxContainer:
 	var linha := HBoxContainer.new()
 	linha.add_theme_constant_override("separation", 6)
 
@@ -151,6 +166,17 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "") -
 	seletor.name = "Cor"
 	linha.add_child(seletor)
 
+	# OptionButton e nao um campo de texto: o tipo do vigia decide quais campos
+	# fazem sentido, e escolher de uma lista fechada nao deixa o professor
+	# escrever um algoritmo que o jogo nao conhece.
+	var tipo := OptionButton.new()
+	tipo.name = "Tipo"
+	tipo.add_theme_font_size_override("font_size", 9)
+	for item: Dictionary in _TIPOS_DE_VIGIA:
+		tipo.add_item(String(item["rotulo"]))
+	tipo.select(_indice_do_tipo(modo, algoritmo))
+	linha.add_child(tipo)
+
 	var campo := LineEdit.new()
 	campo.name = "Comando"
 	campo.text = comando
@@ -158,6 +184,21 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "") -
 	campo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	campo.add_theme_font_size_override("font_size", 9)
 	linha.add_child(campo)
+
+	var campo_palavra := LineEdit.new()
+	campo_palavra.name = "Palavra"
+	campo_palavra.text = palavra
+	campo_palavra.placeholder_text = "palavra (ex.: senha)"
+	campo_palavra.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	campo_palavra.add_theme_font_size_override("font_size", 9)
+	linha.add_child(campo_palavra)
+
+	var campo_chave := LineEdit.new()
+	campo_chave.name = "Chave"
+	campo_chave.text = chave
+	campo_chave.custom_minimum_size = Vector2(70, 0)
+	campo_chave.add_theme_font_size_override("font_size", 9)
+	linha.add_child(campo_chave)
 
 	var remover := Button.new()
 	remover.text = "x"
@@ -168,8 +209,31 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "") -
 		linha.queue_free())
 	linha.add_child(remover)
 
+	tipo.item_selected.connect(func(_indice: int) -> void: _ajustar_campos_do_vigia(linha))
+	_ajustar_campos_do_vigia(linha)
 	_vigias.add_child(linha)
 	return linha
+
+
+func _indice_do_tipo(modo: String, algoritmo: String) -> int:
+	for i: int in _TIPOS_DE_VIGIA.size():
+		var item: Dictionary = _TIPOS_DE_VIGIA[i]
+		if item["modo"] == modo and (modo != "CIFRA" or item["algoritmo"] == algoritmo):
+			return i
+	return 0
+
+
+## So os campos que o tipo usa ficam visiveis: comando livre pede o comando;
+## cifra pede palavra e chave (SHA-256 nao tem chave); "so persegue", nada.
+func _ajustar_campos_do_vigia(linha: Node) -> void:
+	var item: Dictionary = _TIPOS_DE_VIGIA[(linha.get_node("Tipo") as OptionButton).selected]
+	var modo: String = item["modo"]
+	var algoritmo: String = item["algoritmo"]
+	(linha.get_node("Comando") as Control).visible = modo == "COMANDO"
+	(linha.get_node("Palavra") as Control).visible = modo == "CIFRA"
+	var chave: LineEdit = linha.get_node("Chave") as LineEdit
+	chave.visible = modo == "CIFRA" and algoritmo != "SHA256"
+	chave.placeholder_text = "chave 1-25" if algoritmo == "CESAR" else "palavra-chave"
 
 
 func _adicionar_terminal(enunciado: String = "", opcoes: PackedStringArray = PackedStringArray(),
@@ -285,12 +349,22 @@ func _estilizar_botao_destrutivo(botao: Button) -> void:
 func montar_dicionario() -> Dictionary:
 	var cachorros: Array[Dictionary] = []
 	for linha: Node in _vigias.get_children():
+		var item: Dictionary = _TIPOS_DE_VIGIA[(linha.get_node("Tipo") as OptionButton).selected]
+		var modo: String = item["modo"]
 		var comando: String = (linha.get_node("Comando") as LineEdit).text.strip_edges()
-		cachorros.append({
+		if modo == "COMANDO" and comando.is_empty():
+			modo = "NENHUM"  # comando em branco sempre significou "so persegue"
+		var vigia: Dictionary = {
 			"cor": (linha.get_node("Cor") as ColorPickerButton).color.to_html(false),
-			"comando_para_bloquear": comando,
-			"modo_de_bloqueio": "COMANDO" if not comando.is_empty() else "NENHUM",
-		})
+			"comando_para_bloquear": comando if modo == "COMANDO" else "",
+			"modo_de_bloqueio": modo,
+			"algoritmo_exigido": item["algoritmo"],
+		}
+		if modo == "CIFRA":
+			vigia["palavra"] = (linha.get_node("Palavra") as LineEdit).text.strip_edges().to_lower()
+			vigia["chave"] = (linha.get_node("Chave") as LineEdit).text.strip_edges().to_lower() \
+				if item["algoritmo"] != "SHA256" else ""
+		cachorros.append(vigia)
 
 	var terminais: Array[Dictionary] = []
 	for bloco: Node in _terminais.get_children():
