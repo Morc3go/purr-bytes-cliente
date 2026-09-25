@@ -40,9 +40,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -140.0
-offset_top = -34.0
+offset_top = -40.0
 offset_right = 140.0
-offset_bottom = 34.0
+offset_bottom = 40.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -59,6 +59,12 @@ theme_override_font_sizes/font_size = 8
 text = ""
 horizontal_alignment = 1
 autowrap_mode = 3
+
+[node name="Dica" type="Label" parent="Raiz/Painel/Coluna"]
+modulate = Color(1, 1, 1, 0.6)
+theme_override_font_sizes/font_size = 7
+text = "enter para continuar"
+horizontal_alignment = 1
 
 [node name="Temporizador" type="Timer" parent="."]
 one_shot = true

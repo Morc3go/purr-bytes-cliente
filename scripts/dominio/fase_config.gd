@@ -105,6 +105,12 @@ extends Resource
 ## Duracao da protecao apos um comando correto. Limitada de proposito: o jogador
 ## tem que reaplicar a cifra, e e isso que produz repeticao com intencao.
 @export_range(0.0, 120.0, 0.5) var duracao_cifra_s: float = 12.0
+
+## Depois de uma captura o jogador volta ao inicio e fica este tempo sem poder
+## ser pego de novo (pisca na tela). Sem isso, um cachorro perto da entrada
+## capturava de novo no mesmo instante -- a "morte em sequencia" que nao ensina
+## nada e so frustra.
+@export_range(0.0, 10.0, 0.5) var invulnerabilidade_apos_captura_s: float = 2.0
 @export_range(0, 1000, 5) var penalidade_captura: int = 50
 @export_range(1, 60, 1) var faixa_chave_minima: int = 1
 @export_range(1, 60, 1) var faixa_chave_maxima: int = 26

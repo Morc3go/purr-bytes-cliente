@@ -89,6 +89,26 @@ func definir_entrada_habilitada(habilitada: bool) -> void:
 		velocity = Vector2.ZERO
 
 
+## Pisca durante a invulnerabilidade apos uma captura: o jogador precisa VER
+## que tem alguns segundos para sair de perto. Tween e nao _process: e uma
+## animacao de propriedade com fim, exatamente o que Tween resolve.
+@export_range(0.05, 1.0, 0.05) var intervalo_da_piscada_s: float = 0.15
+
+var _piscada: Tween = null
+
+
+func piscar(duracao_s: float) -> void:
+	if _piscada != null and _piscada.is_valid():
+		_piscada.kill()
+	modulate.a = 1.0
+	if duracao_s <= 0.0:
+		return
+	var vezes: int = maxi(1, int(duracao_s / (intervalo_da_piscada_s * 2.0)))
+	_piscada = create_tween().set_loops(vezes)
+	_piscada.tween_property(self, "modulate:a", 0.3, intervalo_da_piscada_s)
+	_piscada.tween_property(self, "modulate:a", 1.0, intervalo_da_piscada_s)
+
+
 func reposicionar(destino: Vector2) -> void:
 	global_position = destino
 	velocity = Vector2.ZERO

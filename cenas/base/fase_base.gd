@@ -64,6 +64,15 @@ var cachorros: Array[Cachorro] = []
 var _config_por_cachorro: Dictionary = {}   # Cachorro -> CachorroConfig
 var _visao_por_cachorro: Dictionary = {}    # Cachorro -> bool
 var _ancora_por_cachorro: Dictionary = {}   # Cachorro -> int (indice da patrulha)
+var _nascimento_por_cachorro: Dictionary = {}  # Cachorro -> Vector2 (volta aqui apos captura)
+
+## Tela de captura aberta: o mundo esta pausado e nenhum outro contato conta.
+var _em_captura: bool = false
+## Ticks (ms) ate quando o jogador nao pode ser capturado, depois de voltar.
+var _invulneravel_ate_ms: int = 0
+## A invulnerabilidade acabou com um cachorro ja encostado? body_entered nao
+## dispara de novo nesse caso, entao o contato e conferido uma vez a mao.
+var _conferir_contato_pendente: bool = false
 
 const _CENA_DO_CACHORRO: String = "res://cenas/base/cachorro.tscn"
 const _CENA_DO_PACOTE: String = "res://cenas/base/pacote.tscn"
@@ -162,6 +171,7 @@ func _physics_process(_delta: float) -> void:
 	if _camera_segue_jogador:
 		camera.global_position = jogador.global_position
 	_atualizar_deteccao_do_cachorro()
+	_conferir_contato_apos_invulnerabilidade()
 
 
 func _draw() -> void:
@@ -375,7 +385,10 @@ func _porta_trancada() -> bool:
 ## em Cesar e quem veio le Vigenere) tambem intercepta, e essa e a licao nova:
 ## proteger nao e um interruptor, e escolher o algoritmo certo.
 func _ao_encostar_no_jogador(_corpo: Node2D, cachorro_que_encostou: Cachorro) -> void:
-	if _encerrada or _protegido_contra(cachorro_que_encostou):
+	# Uma captura por vez: cercado por dois cachorros, o jogador perdia duas
+	# vidas no mesmo instante (e outra ao voltar, se um deles estava na entrada).
+	if _encerrada or _em_captura or jogador_invulneravel() \
+			or _protegido_contra(cachorro_que_encostou):
 		return
 
 	_capturas += 1
@@ -395,6 +408,11 @@ func _ao_encostar_no_jogador(_corpo: Node2D, cachorro_que_encostou: Cachorro) ->
 	jogador.definir_entrada_habilitada(false)
 	for outro: Cachorro in cachorros:
 		outro.parar()
+	# Congela o mundo enquanto a tela explica: so parar() nao bastava, o
+	# temporizador de replanejamento dava rota nova e os cachorros seguiam
+	# ate o jogador parado. A tela de captura roda em PROCESS_MODE_ALWAYS.
+	_em_captura = true
+	get_tree().paused = true
 	tela_captura.mostrar("pacote interceptado", _explicacao_da_captura(cachorro_que_encostou))
 
 
@@ -459,10 +477,43 @@ func _explicacao_da_captura(cachorro_alvo: Cachorro) -> String:
 			LegendaCores.nome(jogador.algoritmo_protegido), exigido]
 
 
+## Volta ao inicio como no Pac-Man: o jogador na entrada, cada cachorro no
+## ponto onde nasceu, e alguns segundos de invulnerabilidade. Sem devolver os
+## cachorros, quem tinha acabado de pegar o jogador perto da entrada estava
+## em cima dele de novo.
 func _ao_terminar_captura() -> void:
 	jogador.reposicionar(ponto_de_entrada.global_position)
 	jogador.cancelar_protecao()
 	jogador.definir_entrada_habilitada(true)
+
+	for alvo: Cachorro in cachorros:
+		alvo.parar()
+		if _nascimento_por_cachorro.has(alvo):
+			alvo.global_position = _nascimento_por_cachorro[alvo]
+		_ancora_por_cachorro[alvo] = 0
+		_visao_por_cachorro[alvo] = false
+
+	_em_captura = false
+	get_tree().paused = false
+	var duracao_s: float = configuracao.invulnerabilidade_apos_captura_s
+	_invulneravel_ate_ms = Time.get_ticks_msec() + int(duracao_s * 1000.0)
+	_conferir_contato_pendente = duracao_s > 0.0
+	jogador.piscar(duracao_s)
+	_replanejar_caminho_do_cachorro()
+
+
+func jogador_invulneravel() -> bool:
+	return Time.get_ticks_msec() < _invulneravel_ate_ms
+
+
+func _conferir_contato_apos_invulnerabilidade() -> void:
+	if not _conferir_contato_pendente or jogador_invulneravel() or _em_captura:
+		return
+	_conferir_contato_pendente = false
+	for alvo: Cachorro in cachorros:
+		if alvo.esta_encostando(jogador):
+			_ao_encostar_no_jogador(jogador, alvo)
+			return
 
 
 func _ao_esgotar_vidas() -> void:
@@ -817,6 +868,7 @@ func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig, indi
 		alvo.comando_para_bloquear = config_do_cachorro.comando_para_bloquear.strip_edges()
 		alvo.global_position = _mundo_da_celula(
 			_celula_do_mapa(MapaConfig.CACHORRO, indice, config_do_cachorro.celula_inicial))
+	_nascimento_por_cachorro[alvo] = alvo.global_position
 
 	alvo.velocidade = velocidade
 	alvo.alcance_deteccao = alcance
