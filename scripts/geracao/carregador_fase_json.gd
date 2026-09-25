@@ -150,9 +150,11 @@ static func titulos_por_id() -> Dictionary:
 		if typeof(lido) != TYPE_DICTIONARY:
 			continue
 		var dados: Dictionary = lido as Dictionary
-		var id_fase: String = String(dados.get("id_fase", ""))
-		if Identificador.e_uuid(id_fase):
-			titulos[id_fase] = String(dados.get("titulo", "")).strip_edges()
+		var id_fase: Variant = dados.get("id_fase")
+		var titulo: Variant = dados.get("titulo")
+		# Arquivo editado a mao pode trazer null ou numero: pula, nao quebra.
+		if typeof(id_fase) == TYPE_STRING and Identificador.e_uuid(id_fase):
+			titulos[id_fase] = (titulo as String).strip_edges() if typeof(titulo) == TYPE_STRING else ""
 	return titulos
 
 
