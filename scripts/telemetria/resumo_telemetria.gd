@@ -252,9 +252,42 @@ func fase(id_fase: String) -> ResumoDeFase:
 ## pode ter renomeado no editor). O id_fase nao muda, entao a ligacao se mantem.
 func aplicar_titulos(titulos_por_id: Dictionary) -> void:
 	for item: ResumoDeFase in por_fase:
-		var atual: String = String(titulos_por_id.get(item.id_fase, ""))
+		var atual: String = _txt(titulos_por_id.get(item.id_fase))
 		if not atual.is_empty():
 			item.titulo = atual
+
+
+# ---------------------------------------------------------------------------
+# Leitura defensiva
+#
+# O registro local acumula linhas de TODAS as versoes do jogo que ja rodaram na
+# maquina (fases fixas, antes do id_fase, arquivos cortados). Um campo com tipo
+# inesperado -- "dados": null, "payload": [], "tempo_resposta_ms": "abc" --
+# fazia o `as Dictionary` lancar erro e derrubar o painel inteiro. Aqui todo
+# campo lido e dado NAO confiavel: tipo errado vira vazio, nunca erro.
+# ---------------------------------------------------------------------------
+
+static func _dic(valor: Variant) -> Dictionary:
+	return valor as Dictionary if typeof(valor) == TYPE_DICTIONARY else {}
+
+
+static func _txt(valor: Variant) -> String:
+	if typeof(valor) == TYPE_STRING or typeof(valor) == TYPE_STRING_NAME:
+		return String(valor)
+	return ""
+
+
+## JSON devolve numero como float; string numerica tambem e aceita.
+static func _int(valor: Variant, padrao: int = 0) -> int:
+	match typeof(valor):
+		TYPE_INT:
+			return valor as int
+		TYPE_FLOAT:
+			return int(valor as float)
+		TYPE_STRING:
+			var texto: String = valor as String
+			return texto.to_int() if texto.is_valid_int() else padrao
+	return padrao
 
 
 ## Monta o resumo a partir das linhas do JSONL, no formato
@@ -271,14 +304,14 @@ static func de_registros(registros: Array[Dictionary],
 	var partida_aberta: Dictionary = {}  # id_sessao -> Partida em curso
 
 	for registro: Dictionary in registros:
-		var tipo: String = String(registro.get("tipo_registro", ""))
-		var dados: Dictionary = registro.get("dados", {}) as Dictionary
+		var tipo: String = _txt(registro.get("tipo_registro"))
+		var dados: Dictionary = _dic(registro.get("dados"))
 		if dados.is_empty() or (tipo != "tentativa" and tipo != "evento"):
 			continue
 
-		var id_fase: String = String(dados.get("id_fase", ""))
-		var id_sessao: String = String(dados.get("id_sessao", ""))
-		var sem_fase: bool = id_fase.is_empty() and String(dados.get("titulo_fase", "")).is_empty()
+		var id_fase: String = _txt(dados.get("id_fase"))
+		var id_sessao: String = _txt(dados.get("id_sessao"))
+		var sem_fase: bool = id_fase.is_empty() and _txt(dados.get("titulo_fase")).is_empty()
 
 		if not filtro_id_fases.is_empty():
 			if not filtro_id_fases.has(id_fase):
@@ -291,7 +324,7 @@ static func de_registros(registros: Array[Dictionary],
 			continue
 
 		var item: ResumoDeFase = _fase_do_registro(resumo, indice, dados)
-		var quando: String = String(dados.get("ocorrido_em", ""))
+		var quando: String = _txt(dados.get("ocorrido_em"))
 		if quando > item.ultima_vez:
 			item.ultima_vez = quando
 
@@ -312,24 +345,24 @@ static func de_registros(registros: Array[Dictionary],
 
 static func _fase_do_registro(resumo: ResumoTelemetria, indice: Dictionary,
 		dados: Dictionary) -> ResumoDeFase:
-	var chave: String = String(dados.get("id_fase", ""))
+	var chave: String = _txt(dados.get("id_fase"))
 	if chave.is_empty():
-		chave = String(dados.get("titulo_fase", ""))
+		chave = _txt(dados.get("titulo_fase"))
 	if not indice.has(chave):
 		var nova := ResumoDeFase.new()
-		nova.id_fase = String(dados.get("id_fase", ""))
-		nova.titulo = String(dados.get("titulo_fase", ""))
+		nova.id_fase = _txt(dados.get("id_fase"))
+		nova.titulo = _txt(dados.get("titulo_fase"))
 		indice[chave] = nova
 		resumo.por_fase.append(nova)
 	var item: ResumoDeFase = indice[chave]
 	if item.titulo.is_empty():
-		item.titulo = String(dados.get("titulo_fase", ""))
+		item.titulo = _txt(dados.get("titulo_fase"))
 	return item
 
 
 static func _contar_tentativa(resumo: ResumoTelemetria, item: ResumoDeFase,
 		dados: Dictionary) -> void:
-	var resultado: String = String(dados.get("resultado", ""))
+	var resultado: String = _txt(dados.get("resultado"))
 	# ABANDONO e TIMEOUT nao sao nem acerto nem erro de conhecimento: o
 	# jogador nao respondeu. Conta-los como erro inflaria a taxa de erro
 	# com desistencia, que e outro fenomeno.
@@ -341,20 +374,20 @@ static func _contar_tentativa(resumo: ResumoTelemetria, item: ResumoDeFase,
 	else:
 		item.erros += 1
 		resumo.erros += 1
-	item.soma_tempo_ms += maxi(0, int(dados.get("tempo_resposta_ms", 0)))
+	item.soma_tempo_ms += maxi(0, _int(dados.get("tempo_resposta_ms")))
 
 
 static func _contar_evento(item: ResumoDeFase, dados: Dictionary,
 		partida_aberta: Dictionary) -> void:
-	var codigo: String = String(dados.get("tipo_evento", ""))
-	var id_sessao: String = String(dados.get("id_sessao", ""))
-	var payload: Dictionary = dados.get("payload", {}) as Dictionary
+	var codigo: String = _txt(dados.get("tipo_evento"))
+	var id_sessao: String = _txt(dados.get("id_sessao"))
+	var payload: Dictionary = _dic(dados.get("payload"))
 
 	match codigo:
 		CatalogoEventos.FASE_INICIADA:
 			var partida := Partida.new()
 			partida.id_sessao = id_sessao
-			partida.iniciada_em = String(dados.get("ocorrido_em", ""))
+			partida.iniciada_em = _txt(dados.get("ocorrido_em"))
 			item.partidas.append(partida)
 			partida_aberta[id_sessao] = partida
 		CatalogoEventos.FASE_CONCLUIDA, CatalogoEventos.FASE_ABANDONADA:
@@ -366,10 +399,10 @@ static func _contar_evento(item: ResumoDeFase, dados: Dictionary,
 				item.partidas.append(partida)
 			partida.resultado = PARTIDA_CONCLUIDA \
 				if codigo == CatalogoEventos.FASE_CONCLUIDA else PARTIDA_ABANDONADA
-			partida.pontuacao = int(payload.get("pontuacao", 0))
-			partida.capturas = int(payload.get("capturas", partida.capturas))
+			partida.pontuacao = _int(payload.get("pontuacao"))
+			partida.capturas = _int(payload.get("capturas"), partida.capturas)
 			var inicio: int = Relogio.iso_para_unix_ms(partida.iniciada_em)
-			var fim: int = Relogio.iso_para_unix_ms(String(dados.get("ocorrido_em", "")))
+			var fim: int = Relogio.iso_para_unix_ms(_txt(dados.get("ocorrido_em")))
 			if inicio >= 0 and fim >= inicio:
 				partida.duracao_ms = fim - inicio
 			partida_aberta.erase(id_sessao)
@@ -395,9 +428,11 @@ static func ler_jsonl(caminho: String) -> Array[Dictionary]:
 		var linha: String = arquivo.get_line().strip_edges()
 		if linha.is_empty():
 			continue
-		var lido: Variant = JSON.parse_string(linha)
-		if typeof(lido) == TYPE_DICTIONARY:
-			saida.append(lido as Dictionary)
+		# JSON.new().parse() e nao JSON.parse_string(): a ultima linha cortada
+		# por um processo morto e esperada, e parse_string grita push_error.
+		var leitor := JSON.new()
+		if leitor.parse(linha) == OK and typeof(leitor.data) == TYPE_DICTIONARY:
+			saida.append(leitor.data as Dictionary)
 	arquivo.close()
 	return saida
 
@@ -407,8 +442,8 @@ static func ler_jsonl(caminho: String) -> Array[Dictionary]:
 static func registros_da_fase(registros: Array[Dictionary], id_fase: String) -> Array[Dictionary]:
 	var saida: Array[Dictionary] = []
 	for registro: Dictionary in registros:
-		var dados: Dictionary = registro.get("dados", {}) as Dictionary
-		if String(dados.get("id_fase", "")) == id_fase:
+		var dados: Dictionary = _dic(registro.get("dados"))
+		if _txt(dados.get("id_fase")) == id_fase:
 			saida.append(registro)
 	return saida
 

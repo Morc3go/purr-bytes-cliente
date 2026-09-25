@@ -27,7 +27,6 @@ sprite_frames = ExtResource("2_sprite")
 animation = &"parado"
 autoplay = "parado"
 script = ExtResource("3_animador")
-lateral_no_eixo_vertical = true
 
 [node name="Colisao" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_cachorro")

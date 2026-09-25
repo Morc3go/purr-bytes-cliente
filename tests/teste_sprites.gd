@@ -101,20 +101,30 @@ func teste_cor_do_cachorro_vai_para_o_anel_e_nao_tinge_a_arte() -> void:
 	cachorro.free()
 
 
-func teste_cachorro_sem_costas_fica_na_lateral_ao_andar_na_vertical() -> void:
+func teste_cachorro_anda_nas_quatro_direcoes() -> void:
+	# A folha atual do cachorro tem costas e frente: subindo ele mostra as
+	# costas, em vez de andar de lado como a folha anterior obrigava.
 	var cachorro: Cachorro = (load("res://cenas/base/cachorro.tscn") as PackedScene).instantiate() as Cachorro
 	get_tree().root.add_child(cachorro)
 	var sprite: AnimadorDirecional = cachorro.get_node("Sprite") as AnimadorDirecional
-	afirmar_verdadeiro(sprite.lateral_no_eixo_vertical, "folha do cachorro nao tem costas")
-	sprite.atualizar(Vector2(-60, 0))
+	afirmar_falso(sprite.lateral_no_eixo_vertical, "folha com costas: nada de lateral na vertical")
 	sprite.atualizar(Vector2(0, -60))
-	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_ESQUERDA,
-		"subindo depois de ir para a esquerda: continua de lado, virado para a esquerda")
-	sprite.atualizar(Vector2(60, 0))
+	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_CIMA, "subindo: costas")
 	sprite.atualizar(Vector2(0, 60))
-	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_DIREITA, "descendo depois da direita")
+	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_BAIXO, "descendo: frente")
 	cachorro.free()
 
+
+func teste_folha_sem_costas_pode_ficar_na_lateral() -> void:
+	# Recurso do AnimadorDirecional para folhas sem vista de costas.
+	var animador := AnimadorDirecional.new()
+	animador.lateral_no_eixo_vertical = true
+	animador.sprite_frames = load("res://recursos/arte/cachorro_frames.tres") as SpriteFrames
+	animador.atualizar(Vector2(-60, 0))
+	animador.atualizar(Vector2(0, -60))
+	afirmar_igual(animador.animation, AnimadorDirecional.ANDAR_ESQUERDA,
+		"subindo depois de ir para a esquerda: continua de lado")
+	animador.free()
 
 func teste_fase_ordena_personagens_por_altura() -> void:
 	# Sprite de 24px sobre tile de 16 invade a celula de cima: sem y-sort, um

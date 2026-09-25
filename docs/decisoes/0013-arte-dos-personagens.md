@@ -22,13 +22,21 @@ Refazer a arte é rodar o script de novo, não retocar à mão.
 
 *(revisado em 2026-09-25, quando chegou a arte do cachorro)*
 
-`tools/arte/extrair_cachorro.py` normaliza `tools/arte/cachorro_original.webp`.
-Essa folha foi reamostrada com escala fracionária — não há grade de pixel de arte —,
-então cada quadro é reduzido pela mesma escala (7,3 px por pixel do jogo), com a cor
-tirada da mediana do miolo de cada bloco. A folha só tem frente, sentado e lateral
-virada para a esquerda: a lateral direita é a esquerda espelhada, e andando na
-vertical o cachorro continua na última lateral (`lateral_no_eixo_vertical`), porque
-de frente e sentado ele pareceria deslizar.
+`tools/arte/extrair_cachorro.py` normaliza `tools/arte/cachorro_original.webp`
+(folha trocada em 2026-09-25: costas, frente, lateral esquerda e lateral direita —
+a anterior só tinha lateral e o cachorro andava de lado até na vertical, o que
+ficava estranho). A folha foi reamostrada com escala fracionária — não há grade de
+pixel de arte —, então cada quadro é reduzido pela mesma escala (8,5 px por pixel
+do jogo), com a cor tirada da mediana do miolo de cada bloco.
+
+O contorno da arte é preto puro, igual ao fundo, então não dá para separá-los pela
+cor. A silhueta vem da forma: os buracos pretos cercados pelo corpo (olho, nariz,
+linhas internas) são preenchidos e pintados de contorno, e o contorno externo é
+redesenhado com 1 pixel em volta do corpo (a sombra fica sem contorno). A folha não
+tem pose parada: `parado` repete o primeiro quadro de frente.
+
+`AnimadorDirecional.lateral_no_eixo_vertical` continua existindo para folhas sem
+vista de costas, mas o cachorro atual não usa.
 
 A cor de cada vigia é **mecânica** (ADR 0010). Com a arte colorida, tingir o sprite
 por `modulate` escureceria o desenho e misturaria o marrom do cachorro com a cor do

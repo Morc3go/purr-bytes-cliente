@@ -249,3 +249,74 @@ func teste_tela_media_das_selecionadas_e_volta_para_todas() -> void:
 	tela._ao_limpar_filtro()
 	afirmar_contem(cabecalho.text, "todas as fases", "limpar volta para a media geral")
 	afirmar_contem(cabecalho.text, "3 partida(s)", "com todas as partidas")
+
+
+# ---------------------------------------------------------------------------
+# Regressao: registro legado/malformado derrubava o painel inteiro
+# ---------------------------------------------------------------------------
+
+## Linhas que ja existem de verdade no registro local de quem jogou versoes
+## antigas (antes do id_fase), ou que um processo morto cortou. Antes da
+## correcao, "dados": null fazia `as Dictionary` lancar erro, o resumo ficava
+## nulo e o painel parava -- no editor, o jogo travava no depurador.
+func _registros_hostis() -> Array[Dictionary]:
+	var hostis: Array[Dictionary] = [
+		{"tipo_registro": "evento", "dados": null},
+		{"tipo_registro": "evento", "dados": [1, 2, 3]},
+		{"tipo_registro": "evento", "dados": {"id_sessao": null, "tipo_evento": "FASE_INICIADA",
+			"id_fase": null, "titulo_fase": null, "ocorrido_em": null, "payload": null}},
+		{"tipo_registro": "evento", "dados": {"id_sessao": "s9", "tipo_evento": "FASE_CONCLUIDA",
+			"id_fase": FASE_B, "ocorrido_em": 12345, "payload": [1]}},
+		{"tipo_registro": "tentativa", "dados": {"id_sessao": "s9", "id_fase": FASE_B,
+			"resultado": null, "tempo_resposta_ms": "abc"}},
+		{"tipo_registro": "tentativa", "dados": {"id_sessao": "s9", "id_fase": FASE_B,
+			"resultado": "SUCESSO", "tempo_resposta_ms": "1500"}},
+		{"tipo_registro": null, "dados": {}},
+	]
+	return hostis
+
+
+func teste_registro_malformado_nao_derruba_a_agregacao() -> void:
+	var registros: Array[Dictionary] = _registros()
+	registros.append_array(_registros_hostis())
+	var resumo: ResumoTelemetria = ResumoTelemetria.de_registros(registros)
+	if not afirmar_nao_nulo(resumo, "o resumo existe mesmo com lixo no registro"):
+		return
+	afirmar_igual(resumo.fase(FASE_A).partidas.size(), 2, "as fases boas continuam certas")
+	var b: ResumoTelemetria.ResumoDeFase = resumo.fase(FASE_B)
+	afirmar_igual(b.acertos, 2, "tempo como texto numerico ainda conta a resposta")
+	afirmar_igual(b.partidas.size(), 2, "fim sem inicio ainda e uma partida")
+	afirmar_nao_nulo(ResumoTelemetria.de_registros(registros, PackedStringArray([FASE_B])),
+		"o filtro tambem aguenta")
+
+
+func teste_jsonl_com_linha_cortada_e_lixo_e_lido_sem_erro() -> void:
+	var caminho: String = caminho_temporario("registro_hostil.jsonl")
+	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
+	for registro: Dictionary in _registros():
+		arquivo.store_line(JSON.stringify(registro))
+	arquivo.store_line("[1, 2]")
+	arquivo.store_line("texto solto")
+	arquivo.store_string('{"tipo_registro": "evento", "dados": {"id_sess')
+	arquivo.close()
+
+	var lidos: Array[Dictionary] = ResumoTelemetria.ler_jsonl(caminho)
+	afirmar_igual(lidos.size(), _registros().size(), "so as linhas que sao objeto JSON entram")
+
+
+func teste_tela_abre_com_registro_hostil() -> void:
+	var caminho: String = caminho_temporario("tela_hostil.jsonl")
+	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
+	var todos: Array[Dictionary] = _registros()
+	todos.append_array(_registros_hostis())
+	for registro: Dictionary in todos:
+		arquivo.store_line(JSON.stringify(registro))
+	arquivo.close()
+	Telemetria.reiniciar(TransporteMock.new(caminho), caminho_temporario("fila_tela_hostil.json"))
+
+	var tela: Control = await _abrir_tela()
+	afirmar_contem((tela.get_node("Raiz/Margem/Coluna/Cabecalho") as Label).text, "partida(s)",
+		"a visao geral carregou")
+	tela._ao_abrir_fases()
+	var lista: ItemList = tela.get_node("PainelFases/Margem/Coluna/Lista") as ItemList
+	afirmar_igual(lista.item_count, 2, "as duas fases boas aparecem na lista")
