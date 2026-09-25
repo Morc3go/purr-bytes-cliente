@@ -87,6 +87,12 @@ extends Resource
 
 @export_multiline var briefing_pedagogico: String = ""
 
+## Mostra ao jogador o comando que para cada vigia (legenda na HUD e lista no
+## terminal ao entrar). Decisao do professor, por fase: numa fase de
+## APRESENTACAO o comando e o conteudo sendo ensinado e precisa estar a vista;
+## numa fase de AVALIACAO, mostrar entregaria a resposta.
+@export var mostrar_comandos: bool = false
+
 ## Exemplo FIXO usado pelo painel de demonstração (CIFRA_DEMONSTRADA, Marco 2)
 ## -- de propósito independente do desafio corrente: o painel ensina o
 ## MECANISMO da cifra, não é um jeito de espiar a chave que resolve o desafio

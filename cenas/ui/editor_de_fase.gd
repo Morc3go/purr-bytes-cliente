@@ -35,6 +35,9 @@ const _PERGUNTAS: String = "Raiz/Margem/Coluna/Abas/Perguntas/Margem/Coluna"
 @onready var _campo_altura: SpinBox = get_node(_GERAL + "/CamposGerais/LinhaMapa/CampoAltura")
 @onready var _campo_semente: SpinBox = get_node(_GERAL + "/CamposGerais/CampoSemente")
 @onready var _campo_briefing: TextEdit = get_node(_GERAL + "/CampoBriefing")
+## Marcado por padrao numa fase nova: sem ver o comando, quem joga pela
+## primeira vez nao sabe o que digitar. Desmarcar e para fase de avaliacao.
+@onready var _campo_mostrar_comandos: CheckBox = get_node(_GERAL + "/MostrarComandos")
 @onready var _vigias: VBoxContainer = get_node(_CACHORROS + "/RolagemVigias/Vigias")
 @onready var _terminais: VBoxContainer = get_node(_PERGUNTAS + "/RolagemTerminais/Terminais")
 @onready var _erros: RichTextLabel = $Raiz/Margem/Coluna/Erros
@@ -120,6 +123,7 @@ func _carregar(caminho: String) -> void:
 	_campo_titulo.text = config.titulo
 	_campo_vidas.value = config.vidas_iniciais
 	_campo_briefing.text = config.briefing_pedagogico
+	_campo_mostrar_comandos.button_pressed = config.mostrar_comandos
 	_campo_largura.value = config.mapa.largura() if config.mapa != null else 21
 	_campo_altura.value = config.mapa.altura() if config.mapa != null else 15
 	# A semente volta para o campo: sem ela, salvar geraria OUTRO labirinto e a
@@ -311,6 +315,7 @@ func montar_dicionario() -> Dictionary:
 		"titulo": _campo_titulo.text.strip_edges(),
 		"id_fase": _id_fase,
 		"briefing": _campo_briefing.text,
+		"mostrar_comandos": _campo_mostrar_comandos.button_pressed,
 		"vidas": int(_campo_vidas.value),
 		"mapa": {
 			"largura": int(_campo_largura.value),

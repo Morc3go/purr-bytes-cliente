@@ -124,6 +124,11 @@ text = "semente (0 = sortear)"
 [node name="CampoSemente" type="SpinBox" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
 max_value = 999999.0
 
+[node name="MostrarComandos" type="CheckBox" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"]
+theme_override_font_sizes/font_size = 9
+button_pressed = true
+text = "mostrar ao jogador o comando que para cada vigia"
+
 [node name="RotuloBriefing" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"]
 theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
 theme_override_font_sizes/font_size = 9

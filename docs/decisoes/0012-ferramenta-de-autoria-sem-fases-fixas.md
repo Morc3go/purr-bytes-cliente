@@ -61,3 +61,20 @@ interface.
   como escrito; a progressão agora é por fase escolhida.
 - A constraint antiga do banco (`fase BETWEEN 1 AND 4`) precisa ser alinhada com o
   back-end: o cliente identifica a fase por `id_fase` (UUID).
+
+## Correções posteriores (2026-09-25)
+
+- **Reiniciar a fase** usava `reload_current_scene()`, que recarrega
+  `fase_base.tscn` do disco. Fase de autoria não tem `.tscn` própria — a
+  configuração vive em memória —, então a fase voltava sem `FaseConfig` e caía na
+  tela de "configuração inválida". Agora reinicia pelo `IniciadorDeFase`, com a
+  mesma configuração, o mesmo caminho do menu.
+- **Comandos à vista:** `FaseConfig.mostrar_comandos` (JSON `"mostrar_comandos"`)
+  põe na HUD uma legenda "cor do vigia → comando". É decisão do professor por fase:
+  numa fase de apresentação o comando é o conteúdo ensinado; numa de avaliação,
+  mostrar entregaria a resposta. A fase de exemplo liga. O exemplo gravado por
+  versões anteriores é atualizado uma vez (`CarregadorFaseJson.atualizar_exemplo`),
+  só se estiver intocado, preservando o `id_fase`.
+- **Vigia que só persegue** era parado por qualquer cifra: a fase nunca consultava
+  `CachorroConfig.apenas_persegue()` e ele caía na regra da cifra. Agora nada o
+  para, como o editor promete.

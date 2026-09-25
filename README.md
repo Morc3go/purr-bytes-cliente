@@ -172,6 +172,7 @@ O formato:
   "titulo": "Senhas fortes",
   "id_fase": "uuid-v4",
   "briefing": "texto mostrado ao entrar",
+  "mostrar_comandos": true,
   "mapa":   {"largura": 21, "altura": 15, "seed": 20260914},
   "vidas": 3,
   "cachorros": [{"cor": "#4da3ff", "comando_para_bloquear": "trocar senha"}],
@@ -188,6 +189,11 @@ subir — e ele que liga a fase a telemetria ja coletada.
 
 Uma fase de exemplo ("Senhas fortes") e criada em `user://fases/` no primeiro boot, e so se
 a pasta estiver vazia.
+
+`mostrar_comandos` (caixa "mostrar ao jogador o comando que para cada vigia" no editor)
+poe no rodape da fase uma legenda com a cor de cada vigia e o comando que o para. Ligado
+na fase de exemplo e, por padrao, em fase nova; desligue numa fase de avaliacao, em que
+ver o comando entregaria a resposta. Arquivo sem o campo = desligado.
 
 ### Validação do labirinto
 

@@ -14,6 +14,7 @@ extends RefCounted
 ##     "titulo": "Fase do professor",
 ##     "id_fase": "uuid-v4",                  ausente = gerado ao carregar
 ##     "briefing": "texto mostrado ao entrar",
+##     "mostrar_comandos": true,              comandos dos vigias a vista (padrao false)
 ##     "mapa":   {"largura": 21, "altura": 15, "seed": 12345},
 ##     "vidas": 3,
 ##     "cachorros": [
@@ -72,7 +73,7 @@ static func semear_exemplo() -> void:
 	if not listar().is_empty():
 		return
 
-	var caminho: String = "%s/exemplo-senhas-fortes.json" % pasta_das_fases
+	var caminho: String = pasta_das_fases.path_join(NOME_DO_EXEMPLO)
 	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
 	if arquivo == null:
 		Registro.aviso("Fases", "nao foi possivel gravar a fase de exemplo (erro %d)"
@@ -84,13 +85,52 @@ static func semear_exemplo() -> void:
 	Registro.info("Fases", "fase de exemplo criada em %s" % caminho)
 
 
+const NOME_DO_EXEMPLO: String = "exemplo-senhas-fortes.json"
+const BRIEFING_DO_EXEMPLO: String = ("o pacote precisa atravessar a rede ate a porta.\n"
+	+ "abra o terminal (tecla T) e digite o comando do vigia que esta no caminho:\n"
+	+ "  vigia azul: trocar senha\n"
+	+ "  vigia laranja: ativar 2fa\n"
+	+ "o vigia vermelho nao tem comando -- desse voce foge.")
+## Texto do briefing das versoes anteriores do exemplo, que nao dizia os
+## comandos. So um exemplo com ESTE texto e atualizado (ver atualizar_exemplo).
+const _BRIEFING_ANTIGO_DO_EXEMPLO: String = ("o pacote precisa atravessar a rede ate a porta.\n"
+	+ "dois vigias patrulham o caminho: digite no terminal (tecla T) o comando "
+	+ "que desliga cada um. o terceiro so persegue -- desse voce foge.")
+
+
+## A fase de exemplo ja gravada por uma versao anterior nao mostrava os
+## comandos dos vigias -- e o jogador ficava sem saber o que digitar.
+## semear_exemplo() nunca escreve por cima do que existe, entao este passo
+## atualiza SO o exemplo intocado (briefing antigo, sem mostrar_comandos),
+## preservando o id_fase: a telemetria ja coletada continua ligada a ele. Um
+## exemplo que o professor editou fica como esta.
+static func atualizar_exemplo() -> void:
+	var caminho: String = pasta_das_fases.path_join(NOME_DO_EXEMPLO)
+	if not FileAccess.file_exists(caminho):
+		return
+	var lido: Variant = JSON.parse_string(FileAccess.get_file_as_string(caminho))
+	if typeof(lido) != TYPE_DICTIONARY:
+		return
+	var dados: Dictionary = lido as Dictionary
+	if dados.has("mostrar_comandos") or dados.get("briefing") != _BRIEFING_ANTIGO_DO_EXEMPLO:
+		return
+
+	dados["briefing"] = BRIEFING_DO_EXEMPLO
+	dados["mostrar_comandos"] = true
+	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
+	if arquivo == null:
+		return
+	arquivo.store_string(JSON.stringify(dados, "\t"))
+	arquivo.close()
+	Registro.info("Fases", "fase de exemplo atualizada: comandos dos vigias a vista")
+
+
 static func _exemplo() -> Dictionary:
 	return {
 		"titulo": "Senhas fortes",
 		"id_fase": Identificador.uuid_v4(),
-		"briefing": ("o pacote precisa atravessar a rede ate a porta.\n"
-			+ "dois vigias patrulham o caminho: digite no terminal (tecla T) o comando "
-			+ "que desliga cada um. o terceiro so persegue -- desse voce foge."),
+		"briefing": BRIEFING_DO_EXEMPLO,
+		"mostrar_comandos": true,
 		"algoritmo": "CESAR",
 		"vidas": 3,
 		"mapa": {"largura": 21, "altura": 15, "seed": 20260914},
@@ -198,6 +238,7 @@ static func de_texto(texto: String) -> Resultado:
 	config.id_fase = id_lido if Identificador.e_uuid(id_lido) else Identificador.uuid_v4()
 
 	config.briefing_pedagogico = String(dados.get("briefing", ""))
+	config.mostrar_comandos = dados.get("mostrar_comandos", false) == true
 	config.vidas_iniciais = clampi(int(dados.get("vidas", _VIDAS_PADRAO)), 1, 10)
 
 	# Numero so ordena a lista; a identidade e o id_fase. Fase de autoria nao
@@ -349,6 +390,7 @@ static func para_dicionario(config: FaseConfig) -> Dictionary:
 		"titulo": config.titulo,
 		"id_fase": config.id_fase,
 		"briefing": config.briefing_pedagogico,
+		"mostrar_comandos": config.mostrar_comandos,
 		"algoritmo": config.algoritmo,
 		"vidas": config.vidas_iniciais,
 		"mapa": {
