@@ -209,3 +209,53 @@ func teste_semente_sorteada_volta_gravada() -> void:
 
 	afirmar_verdadeiro(tela._campo_semente.value > 0,
 		"a semente sorteada volta para o campo -- senao a proxima abertura sortearia outro mapa")
+
+
+func teste_salvar_e_voltar_ficam_visiveis_em_todas_as_abas() -> void:
+	# A aba "geral" crescia alem dos 360 px da tela e empurrava salvar/voltar
+	# para fora -- a primeira tela de "criar fase" ficava sem saida visivel.
+	var tela: Control = await _abrir_editor()
+	var abas: TabContainer = tela.get_node("Raiz/Margem/Coluna/Abas") as TabContainer
+	var area: Rect2 = tela.get_viewport_rect()
+	for indice: int in abas.get_tab_count():
+		abas.current_tab = indice
+		await get_tree().process_frame
+		await get_tree().process_frame
+		for nome: String in ["Salvar", "SalvarEJogar", "Voltar"]:
+			var botao: Button = tela.get_node("Raiz/Margem/Coluna/Acoes/" + nome) as Button
+			afirmar_verdadeiro(area.encloses(botao.get_global_rect()),
+				"aba %d: '%s' inteiro dentro da tela (%s em %s)"
+					% [indice, botao.text, botao.get_global_rect(), area])
+		var titulo: Label = tela.get_node("Raiz/Margem/Coluna/Titulo") as Label
+		afirmar_verdadeiro(titulo.get_global_rect().position.y >= 0.0,
+			"aba %d: o titulo da tela nao sobe para fora" % indice)
+
+
+func teste_um_botao_por_tipo_de_vigia_inclusive_as_cifras() -> void:
+	var tela: Control = await _abrir_editor()
+	var botoes: Node = tela.get_node(
+		"Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna/AdicionarVigias")
+	var rotulos: Array[String] = []
+	for botao: Node in botoes.get_children():
+		rotulos.append((botao as Button).text)
+	afirmar_igual(rotulos, ["+ comando livre", "+ cifra de Cesar", "+ cifra de Vigenere",
+		"+ hash SHA-256", "+ so persegue"], "as cifras aparecem como botoes, nao escondidas no menu")
+
+	var antes: int = tela._vigias.get_child_count()
+	(botoes.get_child(1) as Button).pressed.emit()  # + cifra de Cesar
+	afirmar_igual(tela._vigias.get_child_count(), antes + 1, "o botao adiciona um vigia")
+	var linha: Node = tela._vigias.get_child(antes)
+	afirmar_igual((linha.get_node("Tipo") as OptionButton).get_item_text(
+		(linha.get_node("Tipo") as OptionButton).selected), "cifra de Cesar", "ja no tipo certo")
+	afirmar_verdadeiro((linha.get_node("Palavra") as Control).visible, "pede a palavra")
+	afirmar_verdadeiro((linha.get_node("Chave") as Control).visible, "e a chave")
+	afirmar_falso((linha.get_node("Comando") as Control).visible, "e nao o comando livre")
+
+	(linha.get_node("Palavra") as LineEdit).text = "senha"
+	(linha.get_node("Chave") as LineEdit).text = "3"
+	var dados: Dictionary = tela.montar_dicionario()
+	var vigia: Dictionary = (dados["cachorros"] as Array)[antes]
+	afirmar_igual(vigia["modo_de_bloqueio"], "CIFRA", "grava como vigia de cifra")
+	afirmar_igual(vigia["algoritmo_exigido"], "CESAR", "de Cesar")
+	afirmar_igual(vigia["palavra"], "senha", "com a palavra")
+	afirmar_igual(vigia["chave"], "3", "e a chave")
