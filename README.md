@@ -1,323 +1,232 @@
 # Purr Bytes — cliente Godot
 
-Jogo educacional 2D de letramento digital e criptografia. Este repositório é o
-**cliente**; o back-end de telemetria (Java 21 + Spring Boot + PostgreSQL) vive em
-`Morc3go/prototipo`, pasta `Protótipo/backend`.
+Jogo educacional 2D em pixel art para o ensino de **letramento digital, criptografia e
+segurança cibernética**. Trabalho de Conclusão de Curso de Ciência da Computação da
+Universidade Positivo (Curitiba, 2026), orientado pelo Prof. Me. Leandro Escobar.
 
-O contexto completo do projeto — restrições, marcos e critérios de aceite — está em
-[`CLAUDE.md`](CLAUDE.md). As decisões tomadas e o porquê de cada uma estão em
-[`docs/decisoes/`](docs/decisoes/).
+Este repositório é o **cliente** (o jogo). O back-end de telemetria fica em
+[`Morc3go/prototipo`](https://github.com/Morc3go/prototipo).
 
-**Godot 4.4+** (testado em 4.6.2 e 4.7.2) · GDScript com tipagem estática ·
-renderizador Mobile · 640×360.
+![Fase de exemplo: o gato atravessa o labirinto com os vigias e a legenda de comandos](docs/imagens/fase.png)
 
----
-
-## Rodando
-
-```powershell
-# ajuste para onde o binário do Godot estiver na sua máquina
-$godot = "$env:LOCALAPPDATA\Programs\godot\Godot_v4.7.2-stable_win64.exe"
-
-# abrir no editor
-& $godot --path .
-
-# importar sem abrir janela (útil depois de git pull)
-& $godot --headless --path . --import
-
-# rodar o jogo headless e sair (checagem de importação limpa)
-& $godot --headless --quit --path .
-```
-
-## Testes
-
-Suíte própria, sem addon (ver [ADR 0005](docs/decisoes/0005-suite-de-testes-nativa.md)):
-
-```powershell
-& $godot --headless --path . --script res://tests/runner.gd
-
-# só um arquivo
-& $godot --headless --path . --script res://tests/runner.gd -- telemetria
-```
-
-Sai com código 0 se verde e 1 se vermelho.
-
-## Sessão de demonstração
-
-Abre e encerra uma sessão em modo MOCK sem abrir janela, e imprime o JSONL resultante.
-É o que gera os exemplos de [`docs/contrato-telemetria.md`](docs/contrato-telemetria.md):
-
-```powershell
-& $godot --headless --path . --script res://tools/sessao_de_demonstracao.gd
-```
-
-## Simulação de queda (demonstração de resiliência)
-
-Dois processos: o primeiro enfileira uma partida com a rede fora e morre sem enviar nada;
-o segundo lê a fila do disco e drena.
-
-```powershell
-& $godot --headless --path . --script res://tools/simular_queda.gd -- encher
-& $godot --headless --path . --script res://tools/simular_queda.gd -- drenar
-```
-
-Resultado esperado: zero evento perdido, zero duplicado, sequência contígua, e a sessão
-interrompida marcada como `ABANDONADA`.
-
-## Servidor de eco (desenvolvimento do transporte HTTP)
-
-As rotas reais de `Morc3go/prototipo` ainda não existem. `tools/servidor_eco.py`
-é um servidor mínimo (biblioteca padrão do Python, sem dependência) que aceita
-qualquer `POST` nas quatro rotas do contrato e responde `202`, gravando o corpo
-recebido em log — é contra ele que `TransporteHttp` foi desenvolvido e testado
-(`tests/teste_transporte_http.gd`, `tests/teste_resiliencia_http.gd`):
-
-```powershell
-python tools/servidor_eco.py 8091 caminho\para\log.jsonl
-```
-
-Para apontar o jogo para ele, `config.cfg`: `modo_telemetria="HTTP"`,
-`url_api="http://127.0.0.1:8091"`.
-
-## Configuração da coleta
-
-O jogo cria `user://config.cfg` no primeiro boot
-(`%APPDATA%\Godot\app_userdata\Purr Bytes\config.cfg` no Windows):
-
-```ini
-[telemetria]
-modo_telemetria="MOCK"        ; MOCK grava em disco, HTTP fala com a API (ver servidor de eco acima)
-url_api="http://localhost:8080"
-chave_api=""                  ; escopo INGESTAO, só escreve
-tamanho_lote=50               ; teto do back-end é 500
-intervalo_envio_s=5.0
-
-[pesquisa]
-id_sujeito=""                 ; UUID do participante; sem ele a sessão fica órfã na análise
-
-[diagnostico]
-nivel_log="INFO"              ; SILENCIO | ERRO | AVISO | INFO | DEPURACAO
-
-[jogo]
-modo_treino=false             ; true desliga as mecânicas de jogador humano (ver abaixo)
-```
-
-**Antes de cada coleta**, preencher `id_sujeito` com o UUID daquele participante. Se o campo
-estiver vazio ou fora do formato UUID, o cliente gera um local e avisa alto — a sessão é
-gravável, mas não pareia com o pré-teste e o pós-teste.
-
-O menu principal → **telemetria** abre o **Dashboard de Telemetria**: acertos × erros,
-tempo de resolução por fase e exportação em JSON. O painel de diagnóstico técnico (modo,
-fila, sequência, descartes) abre por um botão lá dentro — é por ele que se confere, na
-máquina da escola e sem ferramenta nenhuma instalada, se a coleta está funcionando. A
-chave de API nunca aparece em nenhum dos dois.
+**Godot 4.4+** (testado em 4.6 e 4.7.2) · GDScript com tipagem estática · renderizador
+Mobile · 640×360 · sem addons.
 
 ---
 
-## Como se joga
+## O jogo
 
-O labirinto é a topologia da rede e o pacote de dados é o que você transporta.
+O labirinto é a **topologia de uma rede**, e o gato transporta um **pacote de dados** até
+a porta de saída. No caminho há **vigias** (cachorros farejadores) que representam quem
+intercepta dados em trânsito. Cada vigia tem um **anel colorido** no chão e é parado de um
+jeito:
 
-**Interceptadores.** Cada cachorro farejador lê **uma** cifra, e só ela o engana: cifrar
-com outra **não protege** -- é o mesmo que atravessar em texto claro. A cor do cachorro é
-identidade visual (`CachorroConfig.cor`, escolhida livremente), não um código que diga qual
-cifra usar. Quando você é pego, a tela de captura nomeia a cifra que teria protegido.
+| Vigia | Como se proteger |
+|---|---|
+| **de cifra** (César, Vigenère ou SHA-256) | aplicar a cifra no terminal, por exemplo `cifrar senha chave=3`. O comando passa pelo analisador léxico e sintático, e a proteção vem da cifra de verdade |
+| **de comando** | digitar a frase de conduta que o professor definiu, por exemplo `trocar senha` |
+| **que só persegue** | não há comando: a defesa é fugir |
 
-**Terminal** (`T`). É onde a cifra é aplicada: `cifrar <pacote> chave=<valor>`,
-`hash <palavra>`, `verificar <palavra> <prefixo>`, mais `dica` e `status`. Resolver um
-desafio ativa a proteção **na cifra daquele desafio**, por alguns segundos. Os desafios de
-uma fase ciclam, então sempre dá para reaplicar a cifra que o interceptador exige.
+Encostar num vigia sem a proteção certa **intercepta o pacote**: o jogador perde uma vida
+e pontos e volta ao início. Não é game over: é o custo pedagógico do erro. A tela de
+captura explica o que teria protegido.
 
-Abrir o terminal **pausa o jogo** (como a caixa de puzzle): pensar qual ferramenta usar
-não deve ser uma corrida contra o cachorro. A proteção não conta o tempo pausado.
-Ao acertar, o terminal mostra a transformação **letra a letra** — texto claro, chave
-alinhada e resultado — e o que o cachorro passa a ver no lugar do conteúdo.
+Espalhados pelo labirinto há **pacotes** com perguntas curtas. A porta só abre depois de
+coletar todos.
 
-**Pacotes.** Três por fase, espalhados em pontas distantes. Encostar num pacote abre uma
-pergunta curta com botões (qual ferramenta serve para aquele caso). Acertar coleta;
-errar custa pontos e deixa tentar de novo. `ESC` fecha sem responder.
+| Tecla | Ação |
+|---|---|
+| `WASD` / setas | mover |
+| `T` | abrir o terminal (pausa o jogo) |
+| `F4` | painel que mostra como a cifra funciona, letra a letra |
+| `F3` | desenha a rota que o A\* calculou para cada cachorro |
+| `ESC` | menu de pause (continuar, reiniciar fase, voltar ao menu) |
 
-**Porta.** A saída fica trancada até os três pacotes serem coletados — o cadeado é
-visível do outro lado do labirinto. Aberta, ela leva direto à fase seguinte.
+**Comandos do terminal:** `cifrar <palavra> chave=<valor>`, `decifrar …`, `hash <palavra>`,
+`verificar <palavra> <prefixo>`, `dica` e `status`, além dos comandos livres da fase.
 
-**Teclas.** `WASD`/setas movem · `T` terminal · `F3` mostra o caminho do A\* de cada
-cachorro, na cor dele · `ESC` sai da fase (ou fecha o terminal/puzzle).
+![Terminal: erro de sintaxe em "cyfrar", depois "cifrar" aceito e a transformação letra a letra](docs/imagens/terminal.png)
 
-### Criando uma fase pelo editor (o caminho do professor)
+---
 
-Menu -> **criar fase**. A tela e organizada em tres abas -- **geral** (titulo, briefing,
-vidas, mapa), **cachorros** e **perguntas** -- com a area de erros e os botoes salvar/salvar
-e jogar/voltar sempre visiveis embaixo, fora das abas, para o erro de validacao aparecer
-não importa em qual aba voce esteja. As duas listas que crescem conforme voce adiciona:
+## Criando fases (ferramenta de autoria)
 
-- **vigias** — cor (identidade visual) e o **comando que bloqueia** aquele vigia. O jogador
-  precisa digitar esse comando **exatamente** assim no terminal. Comando em branco = o vigia
-  so persegue, e a unica defesa e a rota.
-- **terminais** — as perguntas espalhadas pelo labirinto: enunciado, opcoes (marque a
-  correta no circulo) e uma explicacao opcional, mostrada ao acertar. O jogador precisa
-  coletar todos para a porta abrir.
+O jogo não traz fases fixas: o professor as cria. Na primeira execução é criada uma
+**fase de exemplo** ("Senhas fortes"), que já traz os três tipos de vigia.
 
-**Salvar** valida pelo mesmo caminho que o jogo usa: fase invalida nao e gravada e os erros
-aparecem na tela. **Salvar e jogar** ja abre a fase. O arquivo vai para `user://fases/` com
-o nome derivado do titulo.
+**Menu → criar fase** abre o editor, em três abas:
 
-Em **escolher fase** ficam as acoes sobre cada uma: jogar, editar (reabre preenchida e grava
-por cima), exportar (`.json` para onde voce quiser) e excluir (com confirmacao). **Subir
-fase**, no menu, valida o arquivo antes de aceitar — `.json` quebrado e recusado na porta.
+- **geral**: título, briefing, vidas, tamanho do mapa e semente. A caixa *mostrar ao
+  jogador o comando que para cada vigia* põe uma legenda no rodapé da fase. Desligue numa
+  fase de avaliação, em que ver o comando entregaria a resposta.
+- **cachorros**: cor e tipo de cada vigia. Comando livre pede o comando; cifra pede
+  palavra e chave (SHA-256 não tem chave); "só persegue" não pede nada.
+- **perguntas**: enunciado, opções, a correta e uma explicação opcional.
 
-O formato:
+**Salvar** valida pelo mesmo caminho que o jogo usa: fase inválida não é gravada, e os
+erros aparecem na tela. O labirinto é gerado a partir da semente e é **sempre
+solucionável**. Em **escolher fase** dá para jogar, editar, exportar e excluir, e **subir
+fase** importa um arquivo `.json`.
+
+A fase é um JSON pequeno. O mapa viaja como semente, não desenhado:
 
 ```json
 {
   "titulo": "Senhas fortes",
-  "id_fase": "uuid-v4",
+  "id_fase": "uuid-v4 (gerado se ausente; liga a fase à telemetria)",
   "briefing": "texto mostrado ao entrar",
   "mostrar_comandos": true,
-  "mapa":   {"largura": 21, "altura": 15, "seed": 20260914},
   "vidas": 3,
-  "cachorros": [{"cor": "#4da3ff", "comando_para_bloquear": "trocar senha"}],
+  "mapa": {"largura": 21, "altura": 15, "seed": 20260914},
+  "cachorros": [
+    {"cor": "#4da3ff", "comando_para_bloquear": "trocar senha"},
+    {"cor": "#7ee081", "modo_de_bloqueio": "CIFRA", "algoritmo_exigido": "CESAR",
+     "palavra": "senha", "chave": "3"},
+    {"cor": "#ff6b6b", "comando_para_bloquear": ""}
+  ],
   "terminais": [
-    {"enunciado": "...", "opcoes": ["a", "b"], "correta": "a", "explicacao": "..."}
+    {"enunciado": "qual destas é a senha mais difícil de descobrir?",
+     "opcoes": ["uma frase longa", "seu nome e o ano"],
+     "correta": "uma frase longa",
+     "explicacao": "tamanho vale mais que símbolo."}
   ]
 }
 ```
 
-O mapa **nao** viaja desenhado: viajam largura, altura e semente, e o labirinto e regerado
-igual. Por isso exportar num computador e subir em outro leva a fase inteira, e por isso a
-semente sorteada volta gravada ao salvar. O `id_fase` nunca muda ao editar, exportar ou
-subir — e ele que liga a fase a telemetria ja coletada.
-
-Uma fase de exemplo ("Senhas fortes") e criada em `user://fases/` no primeiro boot, e so se
-a pasta estiver vazia.
-
-`mostrar_comandos` (caixa "mostrar ao jogador o comando que para cada vigia" no editor)
-poe no rodape da fase uma legenda com a cor de cada vigia e o comando que o para. Ligado
-na fase de exemplo e, por padrao, em fase nova; desligue numa fase de avaliacao, em que
-ver o comando entregaria a resposta. Arquivo sem o campo = desligado.
-
-### Validação do labirinto
-
-O mapa gerado passa por `MapaConfig.problemas()` antes de virar jogo — jogador,
-porta, pacotes e cachorros alcançáveis, borda fechada, contagens coerentes. O
-`TileMapLayer` e o `AStarGrid2D` são **derivados** desse mesmo dado, então o mapa
-jogável não diverge do que foi validado. As fases fixas do TCC e seus geradores
-saíram do projeto ([ADR 0012](docs/decisoes/0012-ferramenta-de-autoria-sem-fases-fixas.md)).
-
-### Arte
-
-Gato (jogador) e cachorros usam `AnimatedSprite2D` com `SpriteFrames`
-(andar em 4 direções + sentado). Para refazer a arte:
-
-```powershell
-python tools/arte/extrair_gato.py          # folha original -> recursos/arte/gato.png
-python tools/arte/extrair_cachorro.py      # folha original -> recursos/arte/cachorro.png
-& $godot --headless --path . --import
-& $godot --headless --path . --script res://tools/gerar_sprite_frames.gd
-```
-
-Detalhe em [ADR 0013](docs/decisoes/0013-arte-dos-personagens.md).
-
-### Telemetria
-
-Menu → **telemetria** abre a visão geral (médias de todas as fases). **fases jogadas**
-lista cada fase por `id_fase`: selecione uma ou várias (ctrl/shift) para ver a
-telemetria de uma fase, tirar a média só das selecionadas ou exportá-las. Jogar de
-novo a mesma fase soma na mesma linha. Detalhe em
-[ADR 0014](docs/decisoes/0014-telemetria-por-fase.md).
-
-### Modo de treino (agente de RL)
-
-`modo_treino=true` no `config.cfg` desliga as duas mecânicas que pressupõem um humano —
-e **só** essas duas:
-
-| | `modo_treino=false` (padrão) | `modo_treino=true` |
-|---|---|---|
-| Pacote | abre a caixa de puzzle | coletado ao encostar |
-| Proteção | só a cifra que aquele interceptador exige | qualquer cifra ativa |
-
-Labirinto, A\*, Diretor, terminal, porta e telemetria são idênticos nos dois modos.
-Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
+`algoritmo_exigido` aceita `CESAR` (chave de 1 a 25), `VIGENERE` (chave em letras) e
+`SHA256` (sem chave; o jogador confere com `hash` e `verificar`). Comando vazio significa
+que o vigia só persegue.
 
 ---
 
-## Estado
+## Telemetria
 
-| Marco | Situação |
+A telemetria é **coleta de dados de pesquisa**, feita de forma anônima: o jogador é só um
+UUID (`id_sujeito`), texto digitado é truncado em 240 caracteres, e nada de nome, e-mail
+ou identificador de máquina sai do cliente. Os eventos são assíncronos, enfileirados em
+disco e tolerantes a falha: se a API cair, o jogo continua e a fila espera.
+
+**Menu → telemetria** abre o painel:
+
+1. **visão geral**: acertos × erros e médias (acerto, tempo de resposta, conclusão,
+   tempo de conclusão, pontuação, capturas e dicas) de todas as fases;
+2. **fases jogadas**: uma linha por fase (`id_fase`). Selecione uma ou várias (ctrl/shift)
+   para tirar a média só delas ou exportá-las;
+3. **detalhe da fase**: a telemetria de uma fase e o histórico de partidas. Jogar a mesma
+   fase de novo soma aqui.
+
+Dá para exportar o geral, a seleção ou uma fase (com os registros crus) em JSON.
+
+![Painel de telemetria](docs/imagens/telemetria.png)
+
+### Configuração da coleta
+
+O jogo cria `user://config.cfg` na primeira execução:
+
+```ini
+[telemetria]
+modo_telemetria="MOCK"        ; MOCK grava em disco; HTTP envia para a API
+url_api="http://localhost:8080"
+chave_api=""                  ; escopo INGESTAO (só escreve); nunca aparece na tela
+tamanho_lote=50
+intervalo_envio_s=5.0
+
+[pesquisa]
+id_sujeito=""                 ; UUID do participante, preenchido antes de cada coleta
+
+[diagnostico]
+nivel_log="INFO"              ; SILENCIO | ERRO | AVISO | INFO | DEPURACAO
+```
+
+Os dados do jogo ficam em `user://`. No Windows é
+`%APPDATA%\Godot\app_userdata\Purr Bytes\`:
+
+| Arquivo | Conteúdo |
 |---|---|
-| 0 — Fundação | ✅ concluído |
-| 1 — Fase 1: César, labirinto e A\* | ✅ concluído |
-| 2 — Fase 2: Vigenère e Diretor de IA | ✅ concluído |
-| 3 — Fase 3: SHA-256 e telemetria HTTP | ✅ concluído |
-| Evolução de gameplay (modo humano) | ✅ concluído — [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md), [relatório](RELATORIO_CLAUDE_CODE.md) |
-| Tutorial de cores removido · telemetria global (`id_fase`) · Dashboard | ✅ concluído — [conformidade](docs/conformidade-monografia.md) |
-| Editor visual de fases · fases como JSON | ✅ concluído — [ADR 0011](docs/decisoes/0011-editor-visual-de-fases.md) |
-| Fases fixas removidas · menu de pause (ESC) | ✅ concluído — [ADR 0012](docs/decisoes/0012-ferramenta-de-autoria-sem-fases-fixas.md) |
-| Pixel art do gato e dos cachorros (animada) | ✅ concluído — [ADR 0013](docs/decisoes/0013-arte-dos-personagens.md) |
-| Telemetria por fase (geral → fases jogadas → detalhe, filtro e exportação) | ✅ concluído — [ADR 0014](docs/decisoes/0014-telemetria-por-fase.md) |
+| `fases/` | as fases criadas (`.json`) |
+| `telemetria_mock.jsonl` | registro local da coleta (modo MOCK) |
+| `historico_telemetria.jsonl` | cópia local do que o servidor aceitou (modo HTTP) |
+| `fila_telemetria.json` | eventos ainda não enviados |
+| `exportacoes/` | arquivos exportados pelo painel |
 
-### Pendências conhecidas da evolução de gameplay
+O contrato REST, com exemplos reais de cada corpo enviado, está em
+[`docs/contrato-telemetria.md`](docs/contrato-telemetria.md).
 
-- O labirinto novo (25×19) e o posicionamento de pacotes, cachorros e porta foram
-  conferidos por código (conectividade por inundação e testes de integração), mas
-  **não** foram vistos em tela: vale abrir `fase_01.tscn` no editor e jogar uma
-  partida para avaliar ritmo, distância entre pacotes e agressividade das patrulhas.
-- Fases 2 e 3 ganharam cachorros coloridos e pacotes, mas continuam com o traçado de
-  labirinto antigo (19×13, e o mesmo nas duas) — o remodelamento equivalente ao da
-  fase 1 não foi pedido e não foi feito.
-- Com Diretor (fases 2 e 3), todos os cachorros perseguem a mesma região de crença.
-  Eles se espalham na varredura, mas andam em matilha; se isso ficar pesado em tela,
-  o caminho é dar uma crença por cachorro (não foi feito para não mexer no ADR 0002).
+---
 
-### Pendências conhecidas do Marco 3
+## Rodando e testando
 
-- `tests/teste_resiliencia_http.gd` e `tests/teste_transporte_http.gd` sobem
-  um processo Python real (`tools/servidor_eco.py`) -- rodam bem mais devagar
-  que o resto da suíte (conexão recusada contra uma porta fechada não falha
-  instantaneamente no Windows). Rode a suíte inteira com folga de tempo; para
-  iterar rápido, filtre por outro nome de arquivo.
-- **"As três fases jogáveis em sequência com progressão de vidas e
-  pontuação"** (critério de aceite do Marco 3) está validado fase a fase por
-  integração automatizada (`tests/teste_fase_0{1,2,3}_integracao.gd`), mas a
-  travessia completa **menu → fase 1 → fase 2 → fase 3 → menu**, pela
-  navegação de cena de verdade, não tem teste automatizado -- o Marco 1 já
-  havia identificado `get_tree().change_scene_to_file()` como arriscado de
-  exercitar dentro do processo compartilhado da suíte de testes. Isso precisa
-  de uma partida manual no editor antes de considerar o critério
-  100% fechado.
-- O labirinto de `fase_03.tscn` reaproveita o MESMO traçado de `fase_02.tscn`
-  (gerado por `tools/gerar_fase_03.gd`) -- funcional, mas repetitivo
-  visualmente; candidato a variar quando a arte definitiva entrar.
-- Decisões completas em
-  [ADR 0009](docs/decisoes/0009-sha256-http-e-resiliencia.md).
+```powershell
+# ajuste para onde o Godot estiver na sua máquina
+$godot = "$env:LOCALAPPDATA\Programs\godot\Godot_v4.7.2-stable_win64.exe"
 
-### Pendências conhecidas do Marco 2
+& $godot --path .                                   # abrir no editor
+& $godot --headless --path . --import               # importar (depois de git pull)
+& $godot --headless --path . --script res://tests/runner.gd            # suíte inteira
+& $godot --headless --path . --script res://tests/runner.gd -- sprites # só um arquivo
+```
 
-- O labirinto de `fase_02.tscn` foi pintado por código
-  (`tools/gerar_fase_02.gd`), mesma técnica da fase 1 -- vale abrir no editor
-  para conferir visualmente e trocar a arte placeholder quando ela existir.
-- As 4 regiões do Diretor (`Marcadores/Regioes` em `fase_02.tscn`) cobrem os
-  quadrantes do mapa por retângulo, sem alinhar pixel a pixel com as paredes
-  do labirinto -- funcional (é só o que decide "o jogador está nesta região"
-  para o Diretor, não um limite físico), mas pode valer a pena ajustar no
-  editor depois que a arte definitiva mostrar a topologia real do mapa.
-- Detalhe completo das decisões do Diretor e de Vigenère em
-  [ADR 0002](docs/decisoes/0002-diretor-ia.md) e
-  [ADR 0008](docs/decisoes/0008-vigenere-e-painel-de-demonstracao.md).
+A suíte é nativa, sem addon ([ADR 0005](docs/decisoes/0005-suite-de-testes-nativa.md)),
+e sai com código 0 quando está verde. Ela inclui os casos TC-01 a TC-04 da monografia
+(`tests/teste_casos_monografia.gd`). Os dois testes de HTTP sobem
+`tools/servidor_eco.py`, então precisam de `python` no PATH. As fases e a telemetria que os
+testes criam ficam em `user://testes`, nunca na lista de fases do jogador.
 
-### Pendências conhecidas do Marco 1
+### Ferramentas
 
-- O labirinto de `fase_01.tscn` foi pintado por código
-  (`tools/gerar_fase_01.gd`), não desenhado no editor -- funcional e testado,
-  mas vale abrir uma vez no editor para conferir visualmente o traçado e
-  trocar a arte placeholder pela definitiva quando ela existir.
-- A depuração visual do A\* (F3) desenha o caminho final, não os "nós
-  expandidos": `AStarGrid2D` não expõe o conjunto fechado pela API pública, e
-  a implementação didática que expõe (`scripts/ia/astar_referencia.gd`) é
-  vetada para uso em runtime pelo próprio `CLAUDE.md`. Detalhe em
-  [ADR 0007](docs/decisoes/0007-marco1-cachorro-e-desafios.md#7-depuração-visual-do-a-f3-só-o-caminho-final-não-os-nós-expandidos).
-- `CatalogoResultados.TIMEOUT` não tem gatilho de jogo no Marco 1: não há
-  campo de prazo por desafio especificado no briefing. `ABANDONO` tem gatilho
-  real (abandonar a fase com desafio ativo). Detalhe na
-  [ADR 0007](docs/decisoes/0007-marco1-cachorro-e-desafios.md).
-- Personagens já têm pixel art animada (ADR 0013); os tiles do labirinto ainda são
-  placeholder (`recursos/arte/tiles_placeholder.png`).
+| Comando | Para quê |
+|---|---|
+| `tools/sessao_de_demonstracao.gd` | abre e encerra uma sessão MOCK e imprime o JSONL (gera os exemplos do contrato) |
+| `tools/simular_queda.gd -- encher` / `-- drenar` | demonstra a resiliência: a fila sobrevive ao processo morto e drena sem perder nem duplicar evento |
+| `python tools/servidor_eco.py 8091 log.jsonl` | servidor de eco das quatro rotas, para o modo HTTP sem back-end |
+| `python tools/arte/extrair_gato.py`, `extrair_cachorro.py` | normalizam as folhas de sprite originais |
+| `tools/gerar_sprite_frames.gd` | monta os `SpriteFrames` a partir das folhas |
+
+Os scripts `.gd` rodam com `& $godot --headless --path . --script res://<caminho>`.
+
+---
+
+## Arquitetura
+
+```
+autoload/        ConfigJogo, Sessao, Telemetria (fila, lote, retentativa, MOCK/HTTP)
+cenas/base/      fase_base (a cena de fase: toda a lógica), jogador, cachorro, terminal
+cenas/ui/        menu, seleção de fases, editor, HUD, captura, painel de telemetria
+scripts/dominio/ FaseConfig, MapaConfig, CachorroConfig, PacoteConfig, DesafioConfig (dados)
+scripts/lexico/  AFD, parser recursivo descendente, AST, validação semântica
+scripts/cripto/  César, Vigenère, SHA-256 (HashingContext)
+scripts/ia/      navegação (AStarGrid2D), A* de referência (didático), Diretor
+scripts/geracao/ gerador de labirinto e leitura/escrita da fase em JSON
+tests/           suíte nativa
+docs/            decisões (ADR), gramática, contrato de telemetria, conformidade
+```
+
+A fase é **dado**, não código: o JSON vira um `FaseConfig`, e `fase_base.tscn` é a única
+cena de fase. Onde a engine já resolve, usamos a ferramenta nativa:
+
+| Necessidade | Godot |
+|---|---|
+| Pathfinding | `AStarGrid2D` (com uma implementação didática comentada usada como oráculo nos testes, [ADR 0001](docs/decisoes/0001-astar.md)) |
+| Mapa e colisão | `TileMapLayer` + `TileSet` com a custom data `solido`, que o A\* e a física leem |
+| Personagens | `CharacterBody2D`, `AnimatedSprite2D` + `SpriteFrames` |
+| SHA-256 | `HashingContext` |
+| HTTP | `HTTPRequest` |
+| Seleção múltipla, tabelas | `ItemList`, `RichTextLabel` com `[table]` |
+
+## Relação com a monografia
+
+| Monografia | No jogo |
+|---|---|
+| RF: comandos por interface de análise léxica | terminal com AFD → parser → semântica ([gramática](docs/gramatica.md)) |
+| RF: rotas de pacotes e ameaças dinâmicas | labirinto gerado, cachorros com A\* |
+| RF: tempo de resolução, acerto e erro | telemetria por resposta, por partida e por fase |
+| RF: cifras e hashing como proteção, visualmente | vigias de cifra, explicação letra a letra, painel `F4` |
+| RNF: pixel art, hardware escolar | sprites animados, renderizador Mobile, amostra de desempenho |
+| RNF: REST/JSON assíncrono | fila em disco, lote, backoff com jitter |
+| RNF: sem dado pessoal | só UUIDs; texto livre truncado |
+| RNF: nova fase com baixo esforço | editor + JSON; nenhuma linha de código por fase |
+| Quadro 1 (TC-01 a TC-04) | `tests/teste_casos_monografia.gd` |
+
+O mapeamento completo, com os desvios a defender e as pendências para o TCC II, está em
+[`docs/conformidade-monografia.md`](docs/conformidade-monografia.md). As decisões de
+projeto, uma por arquivo, estão em [`docs/decisoes/`](docs/decisoes/).
