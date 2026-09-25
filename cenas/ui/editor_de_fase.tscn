@@ -156,7 +156,7 @@ theme_override_constants/separation = 6
 [node name="AjudaVigias" type="Label" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
 theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
 theme_override_font_sizes/font_size = 8
-text = "o comando bloqueia o vigia quando digitado EXATAMENTE assim no terminal. deixe em branco para o vigia so perseguir (sem defesa possivel)."
+text = "comando livre: para o vigia quando digitado EXATAMENTE assim no terminal. cifra (Cesar, Vigenere, SHA-256): o jogador protege a palavra com a chave, pelo analisador do terminal. so persegue: nao ha defesa, so fugir."
 autowrap_mode = 3
 
 [node name="RolagemVigias" type="ScrollContainer" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]

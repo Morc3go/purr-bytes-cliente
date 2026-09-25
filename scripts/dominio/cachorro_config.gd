@@ -59,6 +59,26 @@ extends Resource
 ## usando a protecao por algoritmo (algoritmo_exigido).
 @export var comando_para_bloquear: String = ""
 
+## Vigia de CIFRA criado no editor: a palavra que o jogador protege e a chave.
+## A fase transforma isso num DesafioConfig (CarregadorFaseJson), e o comando
+## passa pelo analisador lexico-sintatico e pela cifra de verdade -- ao
+## contrario do comando livre, que e comparado como texto. Vazios nas fases em
+## que o desafio ja vem pronto no FaseConfig.
+@export var palavra_da_cifra: String = ""
+## Cesar: deslocamento (1..25). Vigenere: palavra-chave. SHA-256: vazio (hash
+## nao tem chave).
+@export var chave_da_cifra: String = ""
+
+
+## O que o jogador digita para enganar este vigia de cifra -- o mesmo texto
+## que a legenda de comandos mostra. Vazio quando nao ha palavra configurada.
+func comando_da_cifra() -> String:
+	if palavra_da_cifra.is_empty():
+		return ""
+	if algoritmo_exigido == "SHA256":
+		return "hash %s, depois verificar %s <prefixo>" % [palavra_da_cifra, palavra_da_cifra]
+	return "cifrar %s chave=%s" % [palavra_da_cifra, chave_da_cifra]
+
 
 func bloqueia_por_comando() -> bool:
 	return modo_de_bloqueio == "COMANDO" and not comando_para_bloquear.strip_edges().is_empty()
