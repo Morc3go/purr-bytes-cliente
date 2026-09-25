@@ -23,6 +23,10 @@ signal lote_confirmado(rota: String, quantidade: int)
 signal falha_de_envio(rota: String, detalhe: String, permanente: bool)
 
 const CAMINHO_FILA_PADRAO: String = "user://fila_telemetria.json"
+
+## Copia local do que o modo HTTP ja entregou, ao lado do arquivo de fila. Em
+## MOCK o proprio arquivo do transporte ja e esse registro.
+const NOME_HISTORICO_LOCAL: String = "historico_telemetria.jsonl"
 const VERSAO_FILA: int = 1
 
 ## Limites copiados do schema do back-end. Truncar aqui, e nao la, e o que
@@ -50,6 +54,12 @@ const STATUS_ENCERRADA: String = "ENCERRADA"
 const STATUS_ABANDONADA: String = "ABANDONADA"
 
 var _transporte: TransporteTelemetria = null
+
+## So existe fora do modo MOCK. Sem ele, o painel de fases jogadas ficaria vazio
+## justamente na coleta real (HTTP): o professor nao veria o que a propria
+## maquina ja enviou. Grava o MESMO pacote, no mesmo formato do MOCK, e so
+## depois do 2xx -- o que esta no historico e o que o servidor aceitou.
+var _historico_local: TransporteMock = null
 var _caminho_fila: String = CAMINHO_FILA_PADRAO
 
 var _eventos: Array[Dictionary] = []
@@ -105,6 +115,17 @@ func configurar(transporte: TransporteTelemetria, caminho_fila: String) -> void:
 	_transporte = transporte
 	add_child(_transporte)
 	_caminho_fila = caminho_fila
+
+	if _historico_local != null:
+		_historico_local.queue_free()
+		_historico_local = null
+	if not (_transporte is TransporteMock):
+		# Deriva da pasta da fila para os testes (fila temporaria) nunca
+		# escreverem no historico real do jogador.
+		_historico_local = TransporteMock.new(
+			_caminho_fila.get_base_dir().path_join(NOME_HISTORICO_LOCAL))
+		_historico_local.name = "HistoricoLocal"
+		add_child(_historico_local)
 	Registro.info("Telemetria", "transporte: %s | fila: %s" % [_transporte.rotulo(), _caminho_fila])
 
 
@@ -313,6 +334,10 @@ func descarregar() -> void:
 			var quantidade: int = _remover_do_pacote(pacote)
 			_falhas_consecutivas = 0
 			_temporizador.wait_time = maxf(0.5, ConfigJogo.intervalo_envio_s)
+			if _historico_local != null:
+				# Falha aqui nao volta o item para a fila: o servidor ja o tem,
+				# reenviar duplicaria dado de pesquisa por causa de uma copia local.
+				await _historico_local.enviar(pacote)
 			lote_confirmado.emit(rota, quantidade)
 		elif resultado.permanente:
 			# 4xx: reenviar daria o mesmo erro para sempre. Descarta e grita --
@@ -334,15 +359,14 @@ func descarregar() -> void:
 	_descarregando = false
 
 
-## Caminho do registro local da coleta -- o JSONL do modo MOCK. Vazio em modo
-## HTTP, onde o historico vive no servidor e o cliente nao guarda copia.
-##
-## E a fonte do Dashboard de Telemetria. Devolver vazio (em vez de inventar um
-## caminho) e o que permite a tela dizer "o historico esta no servidor" em vez
-## de mostrar um grafico zerado como se nao houvesse dado nenhum.
+## Caminho do registro local da coleta -- a fonte do Dashboard de Telemetria.
+## Em MOCK e o arquivo do proprio transporte; em HTTP e a copia local do que o
+## servidor ja aceitou (_historico_local). Vazio so sem transporte nenhum.
 func caminho_do_registro_local() -> String:
 	var mock := _transporte as TransporteMock
-	return mock.caminho() if mock != null else ""
+	if mock != null:
+		return mock.caminho()
+	return _historico_local.caminho() if _historico_local != null else ""
 
 
 func estatisticas() -> Dictionary:

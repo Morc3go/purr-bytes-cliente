@@ -64,7 +64,7 @@ func _ao_escolher_arquivo_para_subir(caminho: String) -> void:
 	if FileAccess.file_exists(destino):
 		# Nao sobrescrever calado: o professor pode ter uma fase com o mesmo
 		# titulo e perder o trabalho dela sem perceber.
-		destino = "%s/%s-%s.json" % [CarregadorFaseJson.PASTA_DAS_FASES,
+		destino = "%s/%s-%s.json" % [CarregadorFaseJson.pasta_das_fases,
 			destino.get_file().get_basename(), resultado.config.id_fase.substr(0, 8)]
 
 	var erros: PackedStringArray = CarregadorFaseJson.salvar(resultado.config, destino)

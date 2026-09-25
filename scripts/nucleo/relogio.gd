@@ -41,3 +41,27 @@ static func marca_ms() -> int:
 
 static func decorrido_ms(marca_inicial: int) -> int:
 	return maxi(0, Time.get_ticks_msec() - marca_inicial)
+
+
+## Inverso de agora_utc_iso(): "2026-09-24T23:39:59.249Z" -> ms desde a epoca.
+## Devolve -1 para texto fora do formato, em vez de 0 -- 0 e uma data valida
+## (1970), e somar duracao com ele produziria uma partida de 56 anos.
+##
+## Time.get_unix_time_from_datetime_string() nao aceita a fracao nem o "Z",
+## entao os dois sao separados aqui e o resto fica com a funcao nativa.
+static func iso_para_unix_ms(texto: String) -> int:
+	var limpo: String = texto.strip_edges().trim_suffix("Z")
+	if limpo.length() < 19 or limpo[10] != "T":
+		return -1
+	var milissegundos: int = 0
+	var ponto: int = limpo.find(".")
+	if ponto != -1:
+		var fracao: String = limpo.substr(ponto + 1).left(3).rpad(3, "0")
+		if not fracao.is_valid_int():
+			return -1
+		milissegundos = fracao.to_int()
+		limpo = limpo.left(ponto)
+	var segundos: int = Time.get_unix_time_from_datetime_string(limpo)
+	if segundos == 0 and not limpo.begins_with("1970-01-01T00:00:00"):
+		return -1
+	return segundos * 1000 + milissegundos

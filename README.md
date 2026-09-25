@@ -204,12 +204,20 @@ Gato (jogador) e cachorros usam `AnimatedSprite2D` com `SpriteFrames`
 
 ```powershell
 python tools/arte/extrair_gato.py          # folha original -> recursos/arte/gato.png
-python tools/arte/desenhar_cachorro.py     # -> recursos/arte/cachorro.png
+python tools/arte/extrair_cachorro.py      # folha original -> recursos/arte/cachorro.png
 & $godot --headless --path . --import
 & $godot --headless --path . --script res://tools/gerar_sprite_frames.gd
 ```
 
 Detalhe em [ADR 0013](docs/decisoes/0013-arte-dos-personagens.md).
+
+### Telemetria
+
+Menu → **telemetria** abre a visão geral (médias de todas as fases). **fases jogadas**
+lista cada fase por `id_fase`: selecione uma ou várias (ctrl/shift) para ver a
+telemetria de uma fase, tirar a média só das selecionadas ou exportá-las. Jogar de
+novo a mesma fase soma na mesma linha. Detalhe em
+[ADR 0014](docs/decisoes/0014-telemetria-por-fase.md).
 
 ### Modo de treino (agente de RL)
 
@@ -239,6 +247,7 @@ Detalhe em [ADR 0010](docs/decisoes/0010-modo-humano-cores-pacotes-e-porta.md).
 | Editor visual de fases · fases como JSON | ✅ concluído — [ADR 0011](docs/decisoes/0011-editor-visual-de-fases.md) |
 | Fases fixas removidas · menu de pause (ESC) | ✅ concluído — [ADR 0012](docs/decisoes/0012-ferramenta-de-autoria-sem-fases-fixas.md) |
 | Pixel art do gato e dos cachorros (animada) | ✅ concluído — [ADR 0013](docs/decisoes/0013-arte-dos-personagens.md) |
+| Telemetria por fase (geral → fases jogadas → detalhe, filtro e exportação) | ✅ concluído — [ADR 0014](docs/decisoes/0014-telemetria-por-fase.md) |
 
 ### Pendências conhecidas da evolução de gameplay
 

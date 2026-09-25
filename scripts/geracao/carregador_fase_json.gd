@@ -34,6 +34,11 @@ extends RefCounted
 ## que o aluno joga.
 
 const PASTA_DAS_FASES: String = "user://fases"
+
+## Pasta efetivamente usada. So a suite de testes troca (tests/runner.gd), para
+## que nenhuma fase criada por teste apareca na lista de fases do jogador --
+## antes, um teste interrompido no meio deixava "Fase de teste" no menu.
+static var pasta_das_fases: String = PASTA_DAS_FASES
 const _VIDAS_PADRAO: int = 3
 const _LARGURA_PADRAO: int = 21
 const _ALTURA_PADRAO: int = 15
@@ -53,8 +58,8 @@ class Resultado:
 
 
 static func garantir_pasta() -> void:
-	if not DirAccess.dir_exists_absolute(PASTA_DAS_FASES):
-		DirAccess.make_dir_recursive_absolute(PASTA_DAS_FASES)
+	if not DirAccess.dir_exists_absolute(pasta_das_fases):
+		DirAccess.make_dir_recursive_absolute(pasta_das_fases)
 
 
 ## Fase de exemplo gravada no primeiro boot: o jogo nunca abre com a lista
@@ -67,7 +72,7 @@ static func semear_exemplo() -> void:
 	if not listar().is_empty():
 		return
 
-	var caminho: String = "%s/exemplo-senhas-fortes.json" % PASTA_DAS_FASES
+	var caminho: String = "%s/exemplo-senhas-fortes.json" % pasta_das_fases
 	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
 	if arquivo == null:
 		Registro.aviso("Fases", "nao foi possivel gravar a fase de exemplo (erro %d)"
@@ -125,14 +130,30 @@ static func _exemplo() -> Dictionary:
 static func listar() -> PackedStringArray:
 	garantir_pasta()
 	var caminhos := PackedStringArray()
-	var dir: DirAccess = DirAccess.open(PASTA_DAS_FASES)
+	var dir: DirAccess = DirAccess.open(pasta_das_fases)
 	if dir == null:
 		return caminhos
 	for nome: String in dir.get_files():
 		if nome.get_extension().to_lower() == "json":
-			caminhos.append("%s/%s" % [PASTA_DAS_FASES, nome])
+			caminhos.append("%s/%s" % [pasta_das_fases, nome])
 	caminhos.sort()
 	return caminhos
+
+
+## id_fase -> titulo de cada fase da pasta, lendo so o cabecalho do JSON (sem
+## gerar labirinto): o painel de telemetria mostra o titulo ATUAL, mesmo que o
+## professor tenha renomeado a fase depois de jogar -- o id_fase nao muda.
+static func titulos_por_id() -> Dictionary:
+	var titulos: Dictionary = {}
+	for caminho: String in listar():
+		var lido: Variant = JSON.parse_string(FileAccess.get_file_as_string(caminho))
+		if typeof(lido) != TYPE_DICTIONARY:
+			continue
+		var dados: Dictionary = lido as Dictionary
+		var id_fase: String = String(dados.get("id_fase", ""))
+		if Identificador.e_uuid(id_fase):
+			titulos[id_fase] = String(dados.get("titulo", "")).strip_edges()
+	return titulos
 
 
 static func de_arquivo(caminho: String) -> Resultado:
@@ -372,4 +393,4 @@ static func nome_de_arquivo(titulo: String) -> String:
 	saida = saida.strip_edges().trim_prefix("-").trim_suffix("-")
 	if saida.is_empty():
 		saida = "fase"
-	return "%s/%s.json" % [PASTA_DAS_FASES, saida]
+	return "%s/%s.json" % [pasta_das_fases, saida]

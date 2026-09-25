@@ -6,7 +6,6 @@ extends CasoDeTeste
 ## mostra o erro em vez de esconder a fase quebrada, e nenhum painel novo volta
 ## a ser transparente -- o bug historico das telas deste projeto.
 
-const _PASTA: String = CarregadorFaseJson.PASTA_DAS_FASES
 
 var _criados: PackedStringArray = PackedStringArray()
 
@@ -22,7 +21,7 @@ func depois() -> void:
 
 func _gravar(nome: String, conteudo: String) -> String:
 	CarregadorFaseJson.garantir_pasta()
-	var caminho: String = "%s/%s" % [_PASTA, nome]
+	var caminho: String = "%s/%s" % [CarregadorFaseJson.pasta_das_fases, nome]
 	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
 	arquivo.store_string(conteudo)
 	arquivo.close()
