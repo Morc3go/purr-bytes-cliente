@@ -65,8 +65,8 @@ func teste_fase_tem_dois_cachorros_com_cor_da_legenda() -> void:
 			"os dois cachorros do fixture exigem Cesar")
 		afirmar_igual(cachorro.cor(), LegendaCores.cor("CESAR"),
 			"a cor do cachorro vem de LegendaCores, nao de uma tabela paralela")
-		afirmar_igual(cachorro.get_node("Sprite").modulate, LegendaCores.cor("CESAR"),
-			"a cor esta pintada no sprite, e nao so guardada numa variavel")
+		afirmar_igual((cachorro.get_node("Marcador") as MarcadorDeCor).cor, LegendaCores.cor("CESAR"),
+			"a cor esta pintada no anel do chao, e nao so guardada numa variavel")
 
 	afirmar_diferente(_fase.cachorros[0].global_position, _fase.cachorros[1].global_position,
 		"cada cachorro nasce na celula que o CachorroConfig manda")
@@ -90,7 +90,7 @@ func teste_o_tutorial_saiu_mas_a_cor_e_o_aviso_de_protecao_ficaram() -> void:
 	await get_tree().process_frame
 
 	for cachorro: Cachorro in _fase.cachorros:
-		var pintada: Color = (cachorro.get_node("Sprite") as AnimatedSprite2D).modulate
+		var pintada: Color = (cachorro.get_node("Marcador") as MarcadorDeCor).cor
 		afirmar_igual(pintada, cachorro.cor(), "o cachorro continua pintado com a cor dele")
 		afirmar_verdadeiro(pintada.a > 0.0, "e a cor e visivel, nao transparente")
 

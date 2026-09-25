@@ -190,6 +190,8 @@ func teste_round_trip_nao_perde_cachorro_nem_pergunta() -> void:
 
 func teste_nome_de_arquivo_e_sanitizado() -> void:
 	afirmar_igual(CarregadorFaseJson.nome_de_arquivo("Senhas Fortes!"),
-		"user://fases/senhas-fortes.json", "titulo vira nome de arquivo seguro")
+		CarregadorFaseJson.pasta_das_fases.path_join("senhas-fortes.json"),
+		"titulo vira nome de arquivo seguro")
 	afirmar_igual(CarregadorFaseJson.nome_de_arquivo("   "),
-		"user://fases/fase.json", "titulo vazio nao gera nome vazio")
+		CarregadorFaseJson.pasta_das_fases.path_join("fase.json"),
+		"titulo vazio nao gera nome vazio")

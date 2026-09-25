@@ -18,7 +18,8 @@ ainda falta. Requisito que mudou de forma está marcado com o porquê.
 | Cifra de César, Vigenère e SHA-256 funcionando de verdade | ✅ testadas contra vetores conhecidos | `scripts/cripto/`, `tests/teste_{cesar,vigenere,sha256}.gd` |
 | Economia de erro (vidas, pontuação, captura não expulsa) | ✅ | `autoload/sessao.gd`, `cenas/ui/tela_captura.tscn` |
 | Telemetria assíncrona, tolerante a falha | ✅ fila em disco, lote, backoff, retomada | `autoload/telemetria.gd`, ADR 0003/0009 |
-| **Dashboard de Telemetria (Figura 7)** | ✅ **novo** — acertos × erros, tempo por fase, exportar JSON | `cenas/ui/dashboard_telemetria.tscn`, `scripts/telemetria/resumo_telemetria.gd` |
+| **Dashboard de Telemetria (Figura 7)** | ✅ acertos × erros, médias gerais; **fases jogadas** com telemetria por `id_fase` (partidas, conclusão, tempo, pontuação, capturas, dicas), média só das fases selecionadas, exportação geral / por seleção / por fase | `cenas/ui/dashboard_telemetria.tscn`, `scripts/telemetria/resumo_telemetria.gd`, ADR 0014 |
+| RF: registrar tempo de resolução, taxa de acerto e taxa de erro das missões | ✅ por fase e por partida | `ResumoTelemetria.ResumoDeFase` |
 | Demonstração visual da cifra (`CIFRA_DEMONSTRADA`) | ✅ painel + explicação passo a passo no terminal ao acertar | `cenas/base/painel_cifra.tscn`, `FaseBase._explicar_no_terminal` |
 
 ## Requisitos não funcionais
@@ -27,7 +28,7 @@ ainda falta. Requisito que mudou de forma está marcado com o porquê.
 |---|---|---|
 | Arquitetura modular; fase nova = dado, não código | ✅ | fase é um JSON que vira `FaseConfig`; `fase_base.tscn` é a única cena de fase |
 | Rodar em hardware escolar padrão | ✅ por construção | renderizador Mobile, 640×360, `AMOSTRA_DESEMPENHO` a cada 30 s |
-| Estética pixel art 2D | ✅ | gato e cachorros animados (`AnimatedSprite2D` + `SpriteFrames`), filtro Nearest; tiles ainda placeholder — ADR 0013 |
+| Estética pixel art 2D | ✅ | gato e cachorro animados (`AnimatedSprite2D` + `SpriteFrames`), cor do vigia num anel no chão, filtro Nearest; tiles ainda placeholder — ADR 0013 |
 | Nenhum dado pessoal sai do cliente | ✅ | só `id_sujeito` (UUID), `id_sessao`, `id_fase`; texto livre truncado em 240 |
 | Evento perdido = dado de pesquisa perdido | ✅ reforçado | o descarte por número de fase **acabou** (ver abaixo) |
 | Comportamento auditável na tela | ✅ | `F3` desenha o A\*, dashboard mostra a coleta, painel de diagnóstico mostra a fila |

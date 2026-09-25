@@ -27,6 +27,13 @@ const PARADO: StringName = &"parado"
 ## "patinar" no chao quando o cachorro corre.
 @export_range(1.0, 300.0, 1.0) var velocidade_de_referencia: float = 60.0
 
+## Para folhas sem vista de costas (a do cachorro): andando na vertical, o
+## personagem continua na ultima lateral em vez de mostrar a frente -- de
+## frente, sentado, ele pareceria deslizar pelo corredor.
+@export var lateral_no_eixo_vertical: bool = false
+
+var _ultima_lateral: StringName = ANDAR_DIREITA
+
 
 func _ready() -> void:
 	if sprite_frames != null and sprite_frames.has_animation(PARADO):
@@ -36,6 +43,8 @@ func _ready() -> void:
 ## Chamado pelo dono depois do move_and_slide(), com a velocidade real.
 func atualizar(velocidade: Vector2) -> void:
 	var nome: StringName = animacao_para(velocidade)
+	if nome == ANDAR_DIREITA or nome == ANDAR_ESQUERDA:
+		_ultima_lateral = nome
 	if nome == PARADO:
 		speed_scale = 1.0
 	else:
@@ -45,10 +54,13 @@ func atualizar(velocidade: Vector2) -> void:
 
 
 ## Separada de atualizar() para ser testavel sem SceneTree: e a regra inteira
-## (eixo dominante decide; empate fica no horizontal).
+## (eixo dominante decide; empate fica no horizontal). Nao muda estado -- a
+## ultima lateral so e lembrada por atualizar().
 func animacao_para(velocidade: Vector2) -> StringName:
 	if velocidade.length() < velocidade_minima:
 		return PARADO
 	if absf(velocidade.x) >= absf(velocidade.y):
 		return ANDAR_DIREITA if velocidade.x > 0.0 else ANDAR_ESQUERDA
+	if lateral_no_eixo_vertical:
+		return _ultima_lateral
 	return ANDAR_BAIXO if velocidade.y > 0.0 else ANDAR_CIMA

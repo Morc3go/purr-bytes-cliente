@@ -135,3 +135,12 @@ func _preparar_diretorio_temporario() -> void:
 				interno.remove(arquivo)
 	else:
 		dir.make_dir_recursive(CasoDeTeste.DIR_TEMPORARIO)
+
+	# Fases criadas pelos testes vivem aqui, nunca em user://fases: a lista de
+	# fases do jogador nao pode herdar "Fase de teste" de uma suite interrompida.
+	var pasta_de_fases: String = CasoDeTeste.DIR_TEMPORARIO.path_join("fases")
+	var fases: DirAccess = DirAccess.open(pasta_de_fases)
+	if fases != null:
+		for arquivo: String in fases.get_files():
+			fases.remove(arquivo)
+	CarregadorFaseJson.pasta_das_fases = pasta_de_fases

@@ -55,6 +55,7 @@ var _cor: Color = Color(0.85, 0.85, 0.85)
 @onready var _area_de_contato: Area2D = $AreaDeContato
 @onready var _linha_de_visao: RayCast2D = $LinhaDeVisao
 @onready var _sprite: AnimadorDirecional = $Sprite
+@onready var _marcador: MarcadorDeCor = $Marcador
 
 
 func _ready() -> void:
@@ -67,13 +68,13 @@ func definir_algoritmo(algoritmo: String) -> void:
 	algoritmo_exigido = algoritmo
 
 
-## modulate sobre a mesma folha em tons de cinza (recursos/arte/cachorro.png),
-## e nao uma folha por cor: um cachorro colorido e o mesmo desenho tingido --
-## nao um arquivo de imagem por cor para manter em sincronia.
+## A cor vai para o anel no chao (MarcadorDeCor), nao para o sprite: a arte do
+## cachorro e colorida, e tinge-la inteira misturaria o marrom do desenho com a
+## cor que identifica o vigia.
 func definir_cor(nova_cor: Color) -> void:
 	_cor = nova_cor
-	if _sprite != null:
-		_sprite.modulate = _cor
+	if _marcador != null:
+		_marcador.cor = _cor
 
 
 func cor() -> Color:

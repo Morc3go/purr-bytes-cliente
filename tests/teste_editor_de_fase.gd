@@ -7,7 +7,6 @@ extends CasoDeTeste
 ## editar uma fase nao perde vigia, pergunta nem labirinto -- a perda silenciosa
 ## e o risco desta camada inteira.
 
-const _PASTA: String = CarregadorFaseJson.PASTA_DAS_FASES
 
 var _criados: PackedStringArray = PackedStringArray()
 var _tela: Control = null

@@ -18,12 +18,25 @@ artefato de compressão), remove o fundo preto e reduz a paleta. Saída:
 `recursos/arte/gato.png`, 96×120, quadros de 24×24 com os pés alinhados na base.
 Refazer a arte é rodar o script de novo, não retocar à mão.
 
-### 2. O cachorro é desenhado em tons de cinza
+### 2. O cachorro: folha própria, e a cor do vigia num anel no chão
 
-Não veio arte de cachorro. `tools/arte/desenhar_cachorro.py` desenha um na mesma
-grade do gato, em cinza, porque a cor de cada vigia é **mecânica** (ADR 0010: a
-cor diz qual comando o bloqueia) e chega por `modulate`. Uma folha por cor
-duplicaria arte a cada cor nova do editor; cinza tingido não duplica nada.
+*(revisado em 2026-09-25, quando chegou a arte do cachorro)*
+
+`tools/arte/extrair_cachorro.py` normaliza `tools/arte/cachorro_original.webp`.
+Essa folha foi reamostrada com escala fracionária — não há grade de pixel de arte —,
+então cada quadro é reduzido pela mesma escala (7,3 px por pixel do jogo), com a cor
+tirada da mediana do miolo de cada bloco. A folha só tem frente, sentado e lateral
+virada para a esquerda: a lateral direita é a esquerda espelhada, e andando na
+vertical o cachorro continua na última lateral (`lateral_no_eixo_vertical`), porque
+de frente e sentado ele pareceria deslizar.
+
+A cor de cada vigia é **mecânica** (ADR 0010). Com a arte colorida, tingir o sprite
+por `modulate` escureceria o desenho e misturaria o marrom do cachorro com a cor do
+vigia. A cor foi para `MarcadorDeCor`, um anel desenhado com `_draw()` sob o
+cachorro, que aceita qualquer cor escolhida no editor.
+
+(A primeira versão, antes da arte chegar, era um cachorro desenhado por script em
+cinza e tingido por `modulate`.)
 
 ### 3. Ferramentas nativas: `SpriteFrames` + `AtlasTexture` + `AnimatedSprite2D`
 

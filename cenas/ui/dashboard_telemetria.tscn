@@ -99,10 +99,21 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 8
 text = "atualizar"
 
+[node name="FasesJogadas" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "fases jogadas"
+
 [node name="Exportar" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 8
-text = "exportar JSON"
+text = "exportar geral"
+
+[node name="LimparFiltro" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
+visible = false
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "todas as fases"
 
 [node name="Diagnostico" type="Button" parent="Raiz/Margem/Coluna/Acoes"]
 size_flags_horizontal = 3
@@ -113,6 +124,123 @@ text = "diagnostico"
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 8
 text = "voltar ao menu"
+
+[node name="PainelFases" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_painel")
+
+[node name="Margem" type="MarginContainer" parent="PainelFases"]
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Coluna" type="VBoxContainer" parent="PainelFases/Margem"]
+theme_override_constants/separation = 6
+
+[node name="Titulo" type="Label" parent="PainelFases/Margem/Coluna"]
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "fases jogadas"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="Aviso" type="Label" parent="PainelFases/Margem/Coluna"]
+theme_override_colors/font_color = Color(0.7, 0.85, 0.75, 1)
+theme_override_font_sizes/font_size = 8
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Lista" type="ItemList" parent="PainelFases/Margem/Coluna"]
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.9, 0.92, 0.96, 1)
+theme_override_font_sizes/font_size = 8
+select_mode = 1
+
+[node name="Acoes" type="HBoxContainer" parent="PainelFases/Margem/Coluna"]
+theme_override_constants/separation = 6
+
+[node name="VerFase" type="Button" parent="PainelFases/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "ver telemetria da fase"
+
+[node name="Media" type="Button" parent="PainelFases/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "media das selecionadas"
+
+[node name="ExportarSelecionadas" type="Button" parent="PainelFases/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "exportar selecionadas"
+
+[node name="Fechar" type="Button" parent="PainelFases/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "voltar"
+
+[node name="PainelDetalhe" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_painel")
+
+[node name="Margem" type="MarginContainer" parent="PainelDetalhe"]
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Coluna" type="VBoxContainer" parent="PainelDetalhe/Margem"]
+theme_override_constants/separation = 6
+
+[node name="Titulo" type="Label" parent="PainelDetalhe/Margem/Coluna"]
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "fase"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="Aviso" type="Label" parent="PainelDetalhe/Margem/Coluna"]
+theme_override_colors/font_color = Color(0.7, 0.85, 0.75, 1)
+theme_override_font_sizes/font_size = 8
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Detalhe" type="RichTextLabel" parent="PainelDetalhe/Margem/Coluna"]
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.9, 0.92, 0.96, 1)
+theme_override_font_sizes/normal_font_size = 8
+theme_override_font_sizes/bold_font_size = 8
+bbcode_enabled = true
+
+[node name="Acoes" type="HBoxContainer" parent="PainelDetalhe/Margem/Coluna"]
+theme_override_constants/separation = 6
+
+[node name="ExportarFase" type="Button" parent="PainelDetalhe/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "exportar esta fase"
+
+[node name="VoltarAsFases" type="Button" parent="PainelDetalhe/Margem/Coluna/Acoes"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 8
+text = "voltar"
 
 [node name="PainelDiagnostico" type="PanelContainer" parent="."]
 anchor_left = 0.5
