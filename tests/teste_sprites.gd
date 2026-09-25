@@ -89,13 +89,30 @@ func teste_jogador_anima_ao_andar_e_senta_ao_parar() -> void:
 	jogador.free()
 
 
-func teste_cachorro_continua_tingido_pela_cor() -> void:
+func teste_cor_do_cachorro_vai_para_o_anel_e_nao_tinge_a_arte() -> void:
 	var cachorro: Cachorro = (load("res://cenas/base/cachorro.tscn") as PackedScene).instantiate() as Cachorro
 	get_tree().root.add_child(cachorro)
 	var cor := Color(0.3, 0.6, 1.0)
 	cachorro.definir_cor(cor)
-	afirmar_igual((cachorro.get_node("Sprite") as CanvasItem).modulate, cor,
-		"a cor do vigia continua visivel na arte nova")
+	afirmar_igual((cachorro.get_node("Marcador") as MarcadorDeCor).cor, cor,
+		"a cor do vigia aparece no anel do chao")
+	afirmar_igual((cachorro.get_node("Sprite") as CanvasItem).modulate, Color.WHITE,
+		"a arte colorida do cachorro nao e tingida")
+	cachorro.free()
+
+
+func teste_cachorro_sem_costas_fica_na_lateral_ao_andar_na_vertical() -> void:
+	var cachorro: Cachorro = (load("res://cenas/base/cachorro.tscn") as PackedScene).instantiate() as Cachorro
+	get_tree().root.add_child(cachorro)
+	var sprite: AnimadorDirecional = cachorro.get_node("Sprite") as AnimadorDirecional
+	afirmar_verdadeiro(sprite.lateral_no_eixo_vertical, "folha do cachorro nao tem costas")
+	sprite.atualizar(Vector2(-60, 0))
+	sprite.atualizar(Vector2(0, -60))
+	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_ESQUERDA,
+		"subindo depois de ir para a esquerda: continua de lado, virado para a esquerda")
+	sprite.atualizar(Vector2(60, 0))
+	sprite.atualizar(Vector2(0, 60))
+	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_DIREITA, "descendo depois da direita")
 	cachorro.free()
 
 
