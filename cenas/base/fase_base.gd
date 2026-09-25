@@ -136,6 +136,8 @@ func _ready() -> void:
 	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais,
 		configuracao.garantir_id_fase(), configuracao.titulo)
 	hud.definir_titulo("fase %d -- %s" % [configuracao.numero, configuracao.titulo])
+	if configuracao.mostrar_comandos:
+		hud.mostrar_comandos(_legenda_de_comandos())
 
 	Telemetria.registrar_evento(CatalogoEventos.FASE_INICIADA, {
 		"algoritmo": configuracao.algoritmo,
@@ -258,8 +260,14 @@ func abandonar() -> void:
 	_voltar_ao_menu()
 
 
-## Reinicia a fase corrente do zero: recarrega a cena, o que roda _ready() de
-## novo com uma partida nova (vidas, pontuacao de fase, progresso de desafio).
+## Reinicia a fase corrente do zero: uma FaseBase nova com a MESMA
+## configuracao, o que roda _ready() de novo com uma partida nova (vidas,
+## pontuacao de fase, progresso de desafio).
+##
+## Nao usa reload_current_scene(): ele recarrega fase_base.tscn do disco, e uma
+## fase de autoria nao tem .tscn propria -- a configuracao existe so em
+## memoria. A cena recarregada nascia sem FaseConfig e caia na tela de
+## "configuracao invalida". IniciadorDeFase e o mesmo caminho que o menu usa.
 ## Conta como abandono da tentativa em curso -- o jogador esta descartando o
 ## que tinha feito nesta partida de proposito, e e essa distincao que separa
 ## isto do reinicio silencioso de _ao_esgotar_vidas() (o mesmo intento, sem
@@ -270,7 +278,7 @@ func reiniciar() -> void:
 	_encerrada = true
 	_registrar_abandono()
 	fase_abandonada.emit(configuracao.numero)
-	get_tree().reload_current_scene()
+	IniciadorDeFase.jogar(get_tree(), configuracao)
 
 
 ## Telemetria e saida da sessao compartilhadas por abandonar() e reiniciar():
@@ -406,16 +414,35 @@ func _protegido_contra(cachorro_alvo: Cachorro) -> bool:
 	#   - fase de autoria: ele traz um comando em texto livre, e so digitar
 	#     AQUELE comando o bloqueia (comparacao exata);
 	#   - fases 1 a 3: nao ha comando, e vale a cifra exigida.
+	# Vigia que so persegue: nada o bloqueia, a defesa e fugir. Sem este
+	# retorno ele caia na regra da cifra e qualquer "cifrar" o desligava.
+	if _apenas_persegue(cachorro_alvo):
+		return false
+
 	if cachorro_alvo.bloqueia_por_comando():
 		return jogador.comando_protegido == cachorro_alvo.comando_para_bloquear
 
 	return jogador.algoritmo_protegido == cachorro_alvo.algoritmo_exigido
 
 
+func _apenas_persegue(cachorro_alvo: Cachorro) -> bool:
+	var config_do_cachorro: CachorroConfig = _config_por_cachorro.get(cachorro_alvo) as CachorroConfig
+	return config_do_cachorro != null and config_do_cachorro.apenas_persegue()
+
+
 ## A tela de captura e o momento em que o jogador mais quer saber o porque --
 ## por isso a explicacao distingue os tres casos em vez de repetir "voce foi
 ## pego" (secao 7 do CLAUDE.md: enquadramento pedagogico, nao punitivo).
 func _explicacao_da_captura(cachorro_alvo: Cachorro) -> String:
+	if _apenas_persegue(cachorro_alvo):
+		return "este vigia nao tem comando que o pare: a unica defesa e fugir dele."
+
+	if cachorro_alvo.bloqueia_por_comando():
+		if configuracao.mostrar_comandos:
+			return "este vigia so para com o comando '%s' no terminal (tecla T)." \
+				% cachorro_alvo.comando_para_bloquear
+		return "este vigia so para com o comando certo no terminal (tecla T). descubra qual."
+
 	var exigido: String = LegendaCores.nome(cachorro_alvo.algoritmo_exigido)
 
 	if not jogador.protecao_ativa:
@@ -773,6 +800,19 @@ func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig, indi
 	_config_por_cachorro[alvo] = config_do_cachorro
 	_visao_por_cachorro[alvo] = false
 	_ancora_por_cachorro[alvo] = 0
+
+
+## Uma linha por vigia, na cor dele: o que o jogador precisa digitar, ou que
+## aquele nao tem comando. So os vigias de comando e os que so perseguem
+## entram -- vigia de cifra (fases de cifra) se resolve pelo desafio.
+func _legenda_de_comandos() -> Array[Dictionary]:
+	var itens: Array[Dictionary] = []
+	for alvo: Cachorro in cachorros:
+		if alvo.bloqueia_por_comando():
+			itens.append({"cor": alvo.cor(), "texto": alvo.comando_para_bloquear})
+		elif _apenas_persegue(alvo):
+			itens.append({"cor": alvo.cor(), "texto": "sem comando: fuja"})
+	return itens
 
 
 func _mundo_da_celula(celula: Vector2i) -> Vector2:

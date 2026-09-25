@@ -23,6 +23,7 @@ func _ready() -> void:
 	# dela quando alguem abre o menu, e escrever em user:// durante um teste
 	# headless seria efeito colateral escondido.
 	CarregadorFaseJson.semear_exemplo()
+	CarregadorFaseJson.atualizar_exemplo()
 
 	$Coluna/Botoes/EscolherFase.pressed.connect(_ao_escolher_fase)
 	$Coluna/Botoes/CriarFase.pressed.connect(_ao_criar_fase)
