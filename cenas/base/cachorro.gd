@@ -138,6 +138,13 @@ func indice_atual() -> int:
 ## jogador "de gracas" -- fase_base.gd chama isto a cada quadro exatamente
 ## porque a deteccao precisa ser tao responsiva quanto o jogo, mesmo com o
 ## replanejamento do A* rodando so por intervalo (secao 6 do CLAUDE.md).
+## Contato em curso (e nao so o instante em que comecou): body_entered nao
+## dispara de novo para quem ja estava dentro da area quando a
+## invulnerabilidade do jogador acabou.
+func esta_encostando(corpo: Node2D) -> bool:
+	return _area_de_contato.overlaps_body(corpo)
+
+
 func tem_linha_de_visao(alvo_global: Vector2) -> bool:
 	if global_position.distance_to(alvo_global) > alcance_deteccao:
 		return false

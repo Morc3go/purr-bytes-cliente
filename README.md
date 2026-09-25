@@ -29,7 +29,9 @@ jeito:
 
 Encostar num vigia sem a proteção certa **intercepta o pacote**: o jogador perde uma vida
 e pontos e volta ao início. Não é game over: é o custo pedagógico do erro. A tela de
-captura explica o que teria protegido.
+captura explica o que teria protegido e congela a ação; `Enter` continua. Na volta, os
+cachorros retornam aos pontos onde nasceram e o gato fica alguns segundos invulnerável,
+piscando.
 
 Espalhados pelo labirinto há **pacotes** com perguntas curtas. A porta só abre depois de
 coletar todos.
