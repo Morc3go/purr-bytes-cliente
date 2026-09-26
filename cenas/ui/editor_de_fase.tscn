@@ -58,10 +58,11 @@ custom_minimum_size = Vector2(0, 220)
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 9
 
-[node name="Geral" type="VBoxContainer" parent="Raiz/Margem/Coluna/Abas"]
-theme_override_constants/separation = 8
+[node name="Geral" type="ScrollContainer" parent="Raiz/Margem/Coluna/Abas"]
+horizontal_scroll_mode = 0
 
 [node name="Margem" type="MarginContainer" parent="Raiz/Margem/Coluna/Abas/Geral"]
+size_flags_horizontal = 3
 theme_override_constants/margin_left = 6
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 6
@@ -156,7 +157,7 @@ theme_override_constants/separation = 6
 [node name="AjudaVigias" type="Label" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
 theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
 theme_override_font_sizes/font_size = 8
-text = "comando livre: para o vigia quando digitado EXATAMENTE assim no terminal. cifra (Cesar, Vigenere, SHA-256): o jogador protege a palavra com a chave, pelo analisador do terminal. so persegue: nao ha defesa, so fugir."
+text = "escolha como cada vigia e parado. comando livre: o jogador digita EXATAMENTE a frase. cifra de Cesar / Vigenere e hash SHA-256: o jogador protege a palavra com a chave pelo terminal (ex.: cifrar senha chave=3). so persegue: nao ha defesa, so fugir."
 autowrap_mode = 3
 
 [node name="RolagemVigias" type="ScrollContainer" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
@@ -167,9 +168,8 @@ size_flags_vertical = 3
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
-[node name="AdicionarVigia" type="Button" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
-theme_override_font_sizes/font_size = 9
-text = "+ vigia"
+[node name="AdicionarVigias" type="HBoxContainer" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
+theme_override_constants/separation = 4
 
 [node name="Perguntas" type="VBoxContainer" parent="Raiz/Margem/Coluna/Abas"]
 theme_override_constants/separation = 6
