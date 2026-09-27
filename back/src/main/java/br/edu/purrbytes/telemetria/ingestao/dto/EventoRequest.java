@@ -12,15 +12,18 @@ import java.util.UUID;
 
 /**
  * Um elemento de {@code POST /v1/sessoes/{id}/eventos}. {@code idFase} é
- * obrigatório desde a mudança de contrato de 2026-09-14; {@code fase} é
- * legado e nulável (o cliente só o preenche entre 1 e 4).
+ * opcional: eventos de sessão (SESSAO_INICIADA, SESSAO_ENCERRADA...) não
+ * pertencem a fase nenhuma. Exigir o campo aqui fazia a API recusar o lote
+ * inteiro com 400 -- e o cliente descartava todos os eventos da sessão (ver
+ * migration V8). {@code fase} é legado e nulável (o cliente só o preenche
+ * entre 1 e 4).
  */
 public record EventoRequest(
         @NotNull UUID idEvento,
         @NotNull UUID idSessao,
         @PositiveOrZero long sequencia,
         @NotBlank @Size(max = 40) String tipoEvento,
-        @NotNull UUID idFase,
+        UUID idFase,
         @Size(max = 60) String tituloFase,
         @Min(1) @Max(4) Integer fase,
         @NotNull Instant ocorridoEm,

@@ -11,6 +11,10 @@ spring:
       maximum-pool-size: ${PB_DB_POOL_MAX:20}
       minimum-idle: 5
       connection-timeout: 10000
+      # O driver junta os INSERTs de um lote (hibernate.jdbc.batch_size) num
+      # comando so. Aqui, e nao na URL, para valer mesmo quando PB_DB_URL muda.
+      data-source-properties:
+        reWriteBatchedInserts: true
 
   jpa:
     # O schema pertence ao Flyway. O Hibernate apenas confere se bate com as entidades.
@@ -79,6 +83,11 @@ purrbytes:
     max-eventos-por-lote: ${PB_MAX_LOTE:500}
     # Tolerancia de defasagem entre o relogio do cliente e o do servidor.
     max-defasagem-relogio-minutos: 60
+
+  seguranca:
+    # De quanto em quanto tempo o ultimo_uso_em da chave de API e gravado.
+    # Gravar a cada requisicao era um UPDATE extra por lote.
+    intervalo-registro-uso-minutos: 5
 
   exportacao:
     diretorio: ${PB_EXPORT_DIR:./dados-exportados}

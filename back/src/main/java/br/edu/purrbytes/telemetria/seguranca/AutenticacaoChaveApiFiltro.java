@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -29,10 +30,13 @@ public class AutenticacaoChaveApiFiltro extends OncePerRequestFilter {
 
     private final ChaveApiRepository chaveApiRepository;
     private final ObjectMapper objectMapper;
+    private final Duration intervaloRegistroDeUso;
 
-    public AutenticacaoChaveApiFiltro(ChaveApiRepository chaveApiRepository, ObjectMapper objectMapper) {
+    public AutenticacaoChaveApiFiltro(ChaveApiRepository chaveApiRepository, ObjectMapper objectMapper,
+            Duration intervaloRegistroDeUso) {
         this.chaveApiRepository = chaveApiRepository;
         this.objectMapper = objectMapper;
+        this.intervaloRegistroDeUso = intervaloRegistroDeUso;
     }
 
     @Override
@@ -66,10 +70,16 @@ public class AutenticacaoChaveApiFiltro extends OncePerRequestFilter {
 
         // Best-effort: uma falha aqui não pode derrubar a requisição de
         // ingestão, que já foi autenticada com sucesso.
+        //
+        // So grava de tempos em tempos: gravar a cada requisicao era um UPDATE
+        // extra por lote, na mesma tabela, para toda a sala de aula ao mesmo
+        // tempo -- e "ultimo uso" com precisao de minutos basta para auditoria.
         try {
             ChaveApi chave = encontrada.get();
-            chave.marcarUso(agora);
-            chaveApiRepository.save(chave);
+            if (chave.usoRegistradoHaMaisDe(intervaloRegistroDeUso, agora)) {
+                chave.marcarUso(agora);
+                chaveApiRepository.save(chave);
+            }
         } catch (RuntimeException ignorada) {
             logger.warn("falha ao atualizar ultimo_uso_em da chave de API", ignorada);
         }

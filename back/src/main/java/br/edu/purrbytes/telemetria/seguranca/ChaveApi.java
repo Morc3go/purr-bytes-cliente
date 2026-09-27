@@ -4,6 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -27,6 +30,10 @@ public class ChaveApi {
     @Column(name = "prefixo", nullable = false, length = 12)
     private String prefixo;
 
+    // CHAR(64) na migration V4 (o hash SHA-256 hex tem sempre 64 caracteres).
+    // Sem o tipo explicito o Hibernate espera VARCHAR, e o ddl-auto=validate
+    // recusava o schema: a API nao chegava a subir.
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "chave_hash", nullable = false, length = 64)
     private String chaveHash;
 
@@ -59,5 +66,9 @@ public class ChaveApi {
 
     public void marcarUso(Instant agora) {
         this.ultimoUsoEm = agora;
+    }
+
+    public boolean usoRegistradoHaMaisDe(Duration intervalo, Instant agora) {
+        return ultimoUsoEm == null || ultimoUsoEm.plus(intervalo).isBefore(agora);
     }
 }

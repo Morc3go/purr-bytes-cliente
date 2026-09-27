@@ -52,11 +52,21 @@ class ValidacaoDeContratoTest {
     }
 
     @Test
-    void eventoSemIdFaseFalha() {
-        // id_fase e obrigatorio desde a mudanca de contrato de 2026-09-14.
+    void eventoDeSessaoSemIdFaseEAceito() {
+        // SESSAO_INICIADA nao pertence a fase nenhuma: o cliente manda id_fase
+        // nulo. Exigir o campo fazia a API recusar o lote inteiro (ver V8).
         EventoRequest req = new EventoRequest(UUID.randomUUID(), UUID.randomUUID(), 0,
-                "FASE_INICIADA", null, "Cesar", 1, Instant.now(), null);
-        Set<ConstraintViolation<EventoRequest>> violacoes = validator.validate(req);
+                "SESSAO_INICIADA", null, null, null, Instant.now(), null);
+        assertThat(validator.validate(req)).isEmpty();
+    }
+
+    @Test
+    void tentativaSemIdFaseFalha() {
+        // Tentativa de comando so existe dentro de uma fase.
+        TentativaRequest req = new TentativaRequest(UUID.randomUUID(), UUID.randomUUID(),
+                null, "Cesar", 1, "cesar-01", "cifrar pacote chave=3", null,
+                "SUCESSO", null, 100, 1, Instant.now());
+        Set<ConstraintViolation<TentativaRequest>> violacoes = validator.validate(req);
         assertThat(violacoes).anyMatch(v -> v.getPropertyPath().toString().equals("idFase"));
     }
 

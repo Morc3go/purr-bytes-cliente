@@ -2,7 +2,6 @@ package br.edu.purrbytes.telemetria.config;
 
 import br.edu.purrbytes.telemetria.seguranca.ChaveApiRepository;
 import br.edu.purrbytes.telemetria.seguranca.HashDeChave;
-import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,10 +41,13 @@ public class DesenvolvimentoSeedConfig {
                 return;
             }
             String hash = HashDeChave.sha256Hex(CHAVE_DEV_EM_CLARO);
+            // criada_em fica com o DEFAULT now() da migration V4: passar um
+            // java.time.Instant direto ao JDBC falhava ("Can't infer the SQL
+            // type"), e o boot inteiro abortava no perfil dev.
             jdbcTemplate.update(
-                    "insert into operacao.chave_api (id_chave, nome, prefixo, chave_hash, escopo, ativa, criada_em) "
-                            + "values (?, ?, ?, ?, 'INGESTAO', true, ?)",
-                    UUID.randomUUID(), "chave de desenvolvimento (cliente Godot local)", PREFIXO_DEV, hash, Instant.now());
+                    "insert into operacao.chave_api (id_chave, nome, prefixo, chave_hash, escopo, ativa) "
+                            + "values (?, ?, ?, ?, 'INGESTAO', true)",
+                    UUID.randomUUID(), "chave de desenvolvimento (cliente Godot local)", PREFIXO_DEV, hash);
             log.info("chave de API de DESENVOLVIMENTO semeada. Use no config.cfg do jogo: {}", CHAVE_DEV_EM_CLARO);
         };
     }

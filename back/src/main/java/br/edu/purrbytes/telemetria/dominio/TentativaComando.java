@@ -3,7 +3,11 @@ package br.edu.purrbytes.telemetria.dominio;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.springframework.data.domain.Persistable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +21,7 @@ import org.hibernate.type.SqlTypes;
  */
 @Entity
 @Table(name = "tentativa_comando", schema = "pesquisa")
-public class TentativaComando {
+public class TentativaComando implements Persistable<UUID> {
 
     @Id
     @Column(name = "id_tentativa")
@@ -32,6 +36,9 @@ public class TentativaComando {
     @Column(name = "titulo_fase", length = 60)
     private String tituloFase;
 
+    // SMALLINT nas migrations; sem o tipo explicito o ddl-auto=validate
+    // recusava o schema (esperava INTEGER) e a API nao subia.
+    @JdbcTypeCode(SqlTypes.SMALLINT)
     @Column(name = "fase")
     private Integer fase;
 
@@ -54,6 +61,9 @@ public class TentativaComando {
     @Column(name = "tempo_resposta_ms", nullable = false)
     private int tempoRespostaMs;
 
+    // SMALLINT nas migrations; sem o tipo explicito o ddl-auto=validate
+    // recusava o schema (esperava INTEGER) e a API nao subia.
+    @JdbcTypeCode(SqlTypes.SMALLINT)
     @Column(name = "numero_tentativa", nullable = false)
     private int numeroTentativa;
 
@@ -88,5 +98,30 @@ public class TentativaComando {
 
     public UUID getIdTentativa() {
         return idTentativa;
+    }
+
+    // Persistable: o id vem do cliente (UUID gerado no jogo), entao o Spring
+    // Data nao tem como saber se o registro e novo e fazia merge() -- um
+    // SELECT por linha antes de cada INSERT (510 SELECTs num lote de 500).
+    // O servico ja filtra os ids gravados antes (idempotencia), entao todo
+    // objeto criado aqui e novo: persist() direto, e o batch_size do
+    // application.yml passa a agrupar os INSERTs de verdade.
+    @Transient
+    private boolean novo = true;
+
+    @Override
+    public UUID getId() {
+        return idTentativa;
+    }
+
+    @Override
+    public boolean isNew() {
+        return novo;
+    }
+
+    @PostPersist
+    @PostLoad
+    void marcarComoPersistido() {
+        this.novo = false;
     }
 }
