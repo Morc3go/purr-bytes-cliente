@@ -18,7 +18,7 @@ const ANIMACOES: Array[StringName] = [
 ]
 
 
-func teste_sprite_frames_tem_as_cinco_animacoes_completas() -> void:
+func teste_sprite_frames_tem_as_animacoes_completas() -> void:
 	for nome: String in QUADROS:
 		var quadros: SpriteFrames = load(QUADROS[nome]) as SpriteFrames
 		if not afirmar_nao_nulo(quadros, "%s: SpriteFrames carrega" % nome):
@@ -27,13 +27,54 @@ func teste_sprite_frames_tem_as_cinco_animacoes_completas() -> void:
 			if not afirmar_verdadeiro(quadros.has_animation(animacao),
 					"%s tem a animacao %s" % [nome, animacao]):
 				continue
-			afirmar_igual(quadros.get_frame_count(animacao), 4,
-				"%s/%s tem 4 quadros" % [nome, animacao])
+			# Andar tem ciclo de 4 passos; o parado do gato e um quadro so
+			# desde a ADR 0017 (a pose sentada virou "descansar").
+			if animacao != AnimadorDirecional.PARADO:
+				afirmar_igual(quadros.get_frame_count(animacao), 4,
+					"%s/%s tem 4 quadros" % [nome, animacao])
+			else:
+				afirmar_verdadeiro(quadros.get_frame_count(animacao) >= 1,
+					"%s/%s tem ao menos um quadro" % [nome, animacao])
 			afirmar_verdadeiro(quadros.get_animation_loop(animacao),
 				"%s/%s repete em ciclo" % [nome, animacao])
 			var primeiro: Texture2D = quadros.get_frame_texture(animacao, 0)
 			afirmar_igual(primeiro.get_size(), Vector2(24, 24),
 				"%s/%s: quadro de 24x24" % [nome, animacao])
+
+	var gato: SpriteFrames = load(QUADROS["gato"]) as SpriteFrames
+	afirmar_verdadeiro(gato.has_animation(AnimadorDirecional.DESCANSAR),
+		"o gato tem a animacao de descansar (ADR 0017)")
+	afirmar_igual(gato.get_frame_count(AnimadorDirecional.DESCANSAR), 4,
+		"descansar usa os 4 quadros sentado")
+
+
+## O .tres foi ajustado a mao pela equipe (ADR 0017). Se o gerador nao
+## reproduzir o mesmo resultado, rodar o gerador de novo apagaria o ajuste --
+## este teste trava os dois juntos.
+func teste_gerador_reproduz_os_sprite_frames_versionados() -> void:
+	var gerador: GDScript = load("res://tools/gerar_sprite_frames.gd") as GDScript
+	for folha: String in gerador.FOLHAS:
+		var opcoes: Dictionary = gerador.FOLHAS[folha]
+		var gerado: SpriteFrames = gerador.montar(folha, opcoes) as SpriteFrames
+		var versionado: SpriteFrames = load(String(opcoes["destino"])) as SpriteFrames
+		var nomes_gerados: Array = Array(gerado.get_animation_names())
+		var nomes_versionados: Array = Array(versionado.get_animation_names())
+		nomes_gerados.sort()
+		nomes_versionados.sort()
+		afirmar_igual(nomes_gerados, nomes_versionados, "%s: mesmas animacoes" % folha.get_file())
+		for animacao: StringName in versionado.get_animation_names():
+			if not gerado.has_animation(animacao):
+				continue
+			afirmar_igual(gerado.get_frame_count(animacao), versionado.get_frame_count(animacao),
+				"%s/%s: mesmo numero de quadros" % [folha.get_file(), animacao])
+			afirmar_proximo(gerado.get_animation_speed(animacao),
+				versionado.get_animation_speed(animacao), 0.001,
+				"%s/%s: mesma velocidade" % [folha.get_file(), animacao])
+			for i: int in versionado.get_frame_count(animacao):
+				var a: AtlasTexture = gerado.get_frame_texture(animacao, i) as AtlasTexture
+				var b: AtlasTexture = versionado.get_frame_texture(animacao, i) as AtlasTexture
+				afirmar_igual(a.region, b.region,
+					"%s/%s quadro %d: mesma regiao da folha" % [folha.get_file(), animacao, i])
 
 
 func teste_quadros_nao_sao_transparentes() -> void:

@@ -108,8 +108,7 @@ func teste_a_tela_e_opaca() -> void:
 	add_child(tela)
 	await get_tree().process_frame
 
-	var fundo: ColorRect = tela.get_node("Fundo") as ColorRect
-	afirmar_igual(fundo.color.a, 1.0, "fundo opaco")
+	afirmar_fundo_opaco(tela.get_node("Fundo"), "fundo opaco")
 
 	var painel: PanelContainer = tela.get_node("Raiz") as PanelContainer
 	var estilo: StyleBoxFlat = painel.get_theme_stylebox("panel") as StyleBoxFlat
