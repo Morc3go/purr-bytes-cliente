@@ -6,7 +6,7 @@ preservando o caminho de um futuro agente de aprendizado por reforço.
 
 ---
 
-## Observação inicial: o brief descrevia outro código
+## Observação inicial: o pedido descrevia outro código
 
 O pedido citava `main.gd`, `game_map.gd`, `ai_controller.gd`, `cat_sprites.png`, `Lexer`,
 `Telemetria.log_event`, `rl_mode`, `MAP` 15×15, `PACKETS` e `SERVER_POS`. **Nada disso
@@ -65,7 +65,7 @@ tutorial — mudar uma cor lá muda tudo de uma vez.
 com o `algoritmo_exigido` de quem encostou: **cifrar em César não engana quem lê Vigenère**,
 e a tela de captura diz exatamente isso.
 
-**Desvio deliberado do pedido:** o brief pedia 2–3 cores já na fase 1, com `sha`/`aes`/`rsa`.
+**Desvio deliberado do pedido:** o pedido pedia 2–3 cores já na fase 1, com `sha`/`aes`/`rsa`.
 Duas mudanças:
 
 - **AES/RSA viraram César/Vigenère/SHA-256.** `aes` e `rsa` não são verbos do AFD e não
@@ -446,15 +446,15 @@ HTTP.
 
 # Tutorial removido, telemetria global e Dashboard
 
-**Data:** 2026-09-14 · **Escopo:** as quatro partes do brief, executadas na ordem pedida.
+**Data:** 2026-09-14 · **Escopo:** as quatro partes do pedido, executadas na ordem pedida.
 
-## 0. Uma premissa do brief que não se confirmou
+## 0. Uma premissa do pedido que não se confirmou
 
-O brief parte de que "o projeto virou uma ferramenta de autoria: o professor cria fases
+O pedido parte de que "o projeto virou uma ferramenta de autoria: o professor cria fases
 (JSON + editor), define cachorros com cor livre e comando de bloqueio em texto livre".
 **Isso não existe neste repositório.** Ele está em `f0fa062`, igual ao `origin/main`: sem
 editor de fases, sem `.json` de fase, sem comando em texto livre, e o `CachorroConfig` não
-tinha campo `cor` (o brief supõe que "provavelmente já existe").
+tinha campo `cor` (o pedido supõe que "provavelmente já existe").
 
 Mais importante: a regra "cor = cifra" **não era legado morto** — era e continua sendo a
 mecânica central (`FaseBase._protegido_contra`, `FaseConfig.problemas()`). Levantei isso
@@ -488,7 +488,7 @@ item a resolver antes da coleta.
 
 ## 2. Telemetria global
 
-O diagnóstico do brief estava **certo**: `telemetria.gd` descartava tentativa com fase fora
+O diagnóstico do pedido estava **certo**: `telemetria.gd` descartava tentativa com fase fora
 de 1..4 e `sessao.gd` fazia `clampi(numero, 1, 4)`.
 
 - `FaseConfig.id_fase` — UUID v4 estável, gravado no `.tres`. `garantir_id_fase()` gera na
@@ -500,7 +500,7 @@ de 1..4 e `sessao.gd` fazia `clampi(numero, 1, 4)`.
 - `Sessao` guarda os dois; o `clampi` saiu.
 - **Nada mais é descartado por número de fase.**
 
-**Decisão de engenharia que diverge do texto do brief:** o campo numérico `fase` continua
+**Decisão de engenharia que diverge do texto do pedido:** o campo numérico `fase` continua
 indo como `null` fora de 1..4. Não é amarra do cliente — é que o `CHECK (fase BETWEEN 1
 AND 4)` ainda existe no banco de produção, e um valor fora da faixa faz a API recusar o
 **lote inteiro** (4xx = erro permanente = lote descartado), levando junto centenas de
@@ -576,7 +576,7 @@ que não:**
 - `5b443f5` **não apagou nenhum arquivo** (`--diff-filter=D` vazio); alterou dois.
 - As 126 + 82 linhas removidas foram, textualmente, o `PainelTutorial` (legenda de cores) e o
   `PainelTelemetria` de diagnóstico — que não sumiu, migrou para dentro do dashboard. Os
-  números batem com o brief porque era exatamente isso que aquelas linhas eram.
+  números batem com o pedido porque era exatamente isso que aquelas linhas eram.
 - `git log --all -S` por `CarregadorFaseJson`, `user://fases` e `FileDialog`: **zero
   ocorrências em toda a história**. `scripts/geracao/` nunca existiu; nenhum arquivo de editor
   foi adicionado em commit algum. Os dois *dangling commits* do `fsck` são versões antigas do
@@ -594,7 +594,7 @@ sobreviveu (que estava intacto). Registrado no ADR 0011 para quem auditar o hist
 | `6b2ad85` | Editor visual (criar, editar, salvar, round-trip) |
 | *(este)* | Subir e exportar `.json` |
 
-**Nota de honestidade:** as Etapas 3 e 4 do brief saíram no mesmo commit. Editar não é código
+**Nota de honestidade:** as Etapas 3 e 4 do pedido saíram no mesmo commit. Editar não é código
 separado de criar — é a mesma tela carregada a partir de um arquivo, e o round-trip é uma
 propriedade desse mesmo código. Cheguei a criar um commit vazio para marcar a Etapa 4 e o
 removi: commit sem diff alega trabalho que não existe.

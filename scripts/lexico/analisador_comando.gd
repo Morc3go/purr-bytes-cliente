@@ -9,7 +9,7 @@ extends RefCounted
 ## scripts/lexico/resolvedor_comando.gd. Manter a fronteira aqui e o que deixa
 ## o Marco 2 (Vigenere) reaproveitar este arquivo inteiro sem tocar uma linha:
 ## se Vigenere precisasse mudar o parser, a generalizacao teria falhado
-## (prompt de abertura do Marco 2, CLAUDE.md secao 10).
+## (ver CLAUDE.md, planejamento do Marco 2).
 
 const _CODIGO_CARACTERE_INVALIDO: String = "caractere_invalido"
 const _CODIGO_TOKEN_INESPERADO: String = "token_inesperado"

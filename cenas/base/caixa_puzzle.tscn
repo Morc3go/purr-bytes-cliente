@@ -3,12 +3,12 @@
 [ext_resource type="Script" path="res://cenas/base/caixa_puzzle.gd" id="1_caixa"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_opaco"]
-bg_color = Color(0.11, 0.12, 0.16, 1)
+bg_color = Color(1, 1, 1, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.35, 0.38, 0.46, 1)
+border_color = Color(1, 0.851, 0.482, 1)
 content_margin_left = 6.0
 content_margin_top = 5.0
 content_margin_right = 6.0
@@ -32,7 +32,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.04, 0.05, 0.09, 0.82)
+color = Color(0.145, 0.129, 0.106, 0.82)
 
 [node name="Painel" type="PanelContainer" parent="Raiz"]
 theme_override_styles/panel = SubResource("StyleBoxFlat_opaco")

@@ -154,6 +154,14 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
+"texture": SubResource("AtlasTexture_yryxt")
+}],
+"loop": true,
+"name": &"parado",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
 "texture": SubResource("AtlasTexture_wwrf3")
 }, {
 "duration": 1.0,
@@ -166,6 +174,6 @@ animations = [{
 "texture": SubResource("AtlasTexture_v1o7b")
 }],
 "loop": true,
-"name": &"parado",
-"speed": 3.0
+"name": &"descansar",
+"speed": 1.5
 }]

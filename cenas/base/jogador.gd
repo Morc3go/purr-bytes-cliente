@@ -39,6 +39,19 @@ var _restante_de_protecao_s: float = 0.0
 @onready var _sprite: AnimadorDirecional = $Sprite
 var _entrada_habilitada: bool = true
 
+## Pedido da Day: depois de tempo_sem_entrada_para_descansar_s sem NENHUMA
+## tecla de movimento (nao so parado por um instante entre passos), o gato
+## senta e descansa em vez de continuar no "parado" de olho aberto -- e volta
+## ao normal no primeiro input. @export por causa da secao 9 do CLAUDE.md
+## (zero numero magico): e um valor de balanceamento, nao implementacao.
+@export_range(1.0, 60.0, 0.5) var tempo_sem_entrada_para_descansar_s: float = 10.0
+
+var _tempo_sem_entrada_s: float = 0.0
+var _descansando: bool = false
+
+@onready var _zzz: Label = $Zzz
+var _tween_do_zzz: Tween = null
+
 
 func _physics_process(delta: float) -> void:
 	if _restante_de_protecao_s > 0.0:
@@ -59,7 +72,53 @@ func _physics_process(delta: float) -> void:
 
 	velocity = velocity.lerp(direcao * velocidade, clampf(resposta * delta, 0.0, 1.0))
 	move_and_slide()
-	_sprite.atualizar(velocity)
+	_atualizar_descanso(direcao, delta)
+
+
+## direcao e o INPUT bruto (antes do lerp), nao a velocity: e a intencao do
+## jogador que conta como "mexeu", nao o resíduo de inercia enquanto o corpo
+## ainda esta freando depois de soltar a tecla.
+func _atualizar_descanso(direcao: Vector2, delta: float) -> void:
+	if direcao != Vector2.ZERO:
+		_tempo_sem_entrada_s = 0.0
+		if _descansando:
+			_sair_do_descanso()
+		_sprite.atualizar(velocity)
+		return
+
+	_tempo_sem_entrada_s += delta
+	if not _descansando and _tempo_sem_entrada_s >= tempo_sem_entrada_para_descansar_s:
+		_entrar_em_descanso()
+
+	if _descansando:
+		_sprite.descansar()
+	else:
+		_sprite.atualizar(velocity)
+
+
+func _entrar_em_descanso() -> void:
+	_descansando = true
+	_zzz.visible = true
+	_zzz.modulate.a = 1.0
+	if _tween_do_zzz != null and _tween_do_zzz.is_valid():
+		_tween_do_zzz.kill()
+	# "zzz" pulsando bem devagar por cima do gato: e o substituto honesto para
+	# o sprite de olho fechado -- gato_frames.tres nao tem esse quadro
+	# desenhado (so as 5 animacoes originais), entao em vez de arriscar editar
+	# pixel a pixel um rosto de 24x24 as cegas, o sono fica claro por este
+	# indicador. Trocar por um quadro de "olho fechado" de verdade, quando
+	# alguem desenhar um, e so adicionar a textura e apontar para ela aqui.
+	_tween_do_zzz = create_tween().set_loops()
+	_tween_do_zzz.tween_property(_zzz, "modulate:a", 0.35, 0.6)
+	_tween_do_zzz.tween_property(_zzz, "modulate:a", 1.0, 0.6)
+
+
+func _sair_do_descanso() -> void:
+	_descansando = false
+	if _tween_do_zzz != null and _tween_do_zzz.is_valid():
+		_tween_do_zzz.kill()
+	_zzz.visible = false
+	_zzz.modulate.a = 1.0
 
 
 ## Chamado pela fase quando um comando de cifra e aceito. A duracao vem do

@@ -17,6 +17,18 @@ const CENA_DO_DASHBOARD: String = "res://cenas/ui/dashboard_telemetria.tscn"
 const CENA_DA_SELECAO: String = "res://cenas/ui/selecao_de_fases.tscn"
 const CENA_DO_EDITOR: String = "res://cenas/ui/editor_de_fase.tscn"
 
+## O gatinho do menu e so decoracao (um AnimatedSprite2D cru, sem
+## AnimadorDirecional/Jogador por tras) -- por isso o idle-timer dele vive
+## aqui, e nao em jogador.gd. Mesma regra pedida para o gato de dentro da
+## fase: fica em pe ("parado") ate o mouse ou o teclado ficarem
+## tempo_sem_entrada_para_descansar_s sem nenhum evento, ai senta e descansa.
+@export_range(1.0, 60.0, 0.5) var tempo_sem_entrada_para_descansar_s: float = 10.0
+
+var _tempo_sem_entrada_s: float = 0.0
+var _gato_descansando: bool = false
+
+@onready var _gato: AnimatedSprite2D = $Cartao/Coluna/Mascote/Gato
+
 
 func _ready() -> void:
 	# A fase de exemplo e semeada aqui, e nao no autoload: o jogo so precisa
@@ -25,13 +37,39 @@ func _ready() -> void:
 	CarregadorFaseJson.semear_exemplo()
 	CarregadorFaseJson.atualizar_exemplo()
 
-	$Coluna/Botoes/EscolherFase.pressed.connect(_ao_escolher_fase)
-	$Coluna/Botoes/CriarFase.pressed.connect(_ao_criar_fase)
-	$Coluna/Botoes/SubirFase.pressed.connect(_ao_subir_fase)
+	$Cartao/Coluna/Botoes/EscolherFase.pressed.connect(_ao_escolher_fase)
+	$Cartao/Coluna/Botoes/CriarFase.pressed.connect(_ao_criar_fase)
+	$Cartao/Coluna/Botoes/SubirFase.pressed.connect(_ao_subir_fase)
 	$DialogoDeImportacao.file_selected.connect(_ao_escolher_arquivo_para_subir)
-	$Coluna/Botoes/Telemetria.pressed.connect(_ao_abrir_telemetria)
-	$Coluna/Botoes/Sair.pressed.connect(_ao_sair)
-	$Coluna/Botoes/EscolherFase.grab_focus()
+	$Cartao/Coluna/Botoes/Telemetria.pressed.connect(_ao_abrir_telemetria)
+	$Cartao/Coluna/Botoes/Sair.pressed.connect(_ao_sair)
+	$Cartao/Coluna/Botoes/EscolherFase.grab_focus()
+
+
+func _process(delta: float) -> void:
+	_tempo_sem_entrada_s += delta
+	if not _gato_descansando and _tempo_sem_entrada_s >= tempo_sem_entrada_para_descansar_s:
+		_gato_descansando = true
+		if _gato.sprite_frames != null and _gato.sprite_frames.has_animation(&"descansar"):
+			_gato.play(&"descansar")
+
+
+## _input() e nao _gui_input(): o menu inteiro conta como "atividade", nao so
+## clicar exatamente em cima do gato -- e mouse_filter dos outros controles
+## (Fundo, Mascote) ja e IGNORE de proposito, entao nada rouba o evento antes
+## dele chegar aqui.
+func _input(event: InputEvent) -> void:
+	var e_atividade: bool = (event is InputEventMouseMotion or event is InputEventMouseButton
+		or event is InputEventKey or event is InputEventScreenTouch
+		or event is InputEventScreenDrag or event is InputEventJoypadButton
+		or event is InputEventJoypadMotion)
+	if not e_atividade:
+		return
+
+	_tempo_sem_entrada_s = 0.0
+	if _gato_descansando:
+		_gato_descansando = false
+		_gato.play(&"parado")
 
 
 ## As fases criadas pelo professor: lista, joga, edita, exclui e exporta.

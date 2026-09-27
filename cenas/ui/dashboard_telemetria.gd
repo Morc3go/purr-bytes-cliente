@@ -25,10 +25,14 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 const CAMINHO_DA_EXPORTACAO: String = "user://resumo_telemetria.json"
 const PASTA_DE_EXPORTACAO: String = "user://exportacoes"
 
-const COR_ACERTO: Color = Color(0.40, 0.82, 0.52)
-const COR_ERRO: Color = Color(0.90, 0.45, 0.45)
-const COR_EIXO: Color = Color(0.55, 0.58, 0.66)
-const COR_TEXTO: Color = Color(0.92, 0.93, 0.96)
+## As quatro cores do grafico foram clareadas junto com o resto do painel:
+## dashboard_telemetria.tscn passou a ter fundo escuro (tema_telas_secundarias,
+## ver ADR 0017 adendo), e as cores antigas (tuned para fundo branco/creme)
+## ficariam ilegiveis desenhadas por cima do painel escuro no _draw() abaixo.
+const COR_ACERTO: Color = Color(0.42, 0.78, 0.48)
+const COR_ERRO: Color = Color(0.92, 0.42, 0.38)
+const COR_EIXO: Color = Color(0.69, 0.729, 0.859)
+const COR_TEXTO: Color = Color(0.937, 0.945, 0.973)
 
 @onready var _grafico: Control = $Raiz/Margem/Coluna/Corpo/Grafico
 @onready var _tabela: RichTextLabel = $Raiz/Margem/Coluna/Corpo/Tabela

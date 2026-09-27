@@ -68,7 +68,7 @@ func _ao_selecionar(indice: int) -> void:
 
 	_detalhe.clear()
 	if not resultado.ok():
-		_detalhe.append_text("[b]%s[/b]\n\n[color=#ff8a80]esta fase nao pode ser jogada:[/color]\n%s"
+		_detalhe.append_text("[b]%s[/b]\n\n[color=#bf2a19]esta fase nao pode ser jogada:[/color]\n%s"
 			% [caminho.get_file(), resultado.mensagem()])
 		# Excluir continua valendo: e como o professor se livra de um arquivo ruim.
 		$Raiz/Margem/Coluna/Acoes/Jogar.disabled = true

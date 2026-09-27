@@ -1,29 +1,35 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://cenas/ui/editor_de_fase.gd" id="1_editor"]
+[ext_resource type="Theme" path="res://recursos/temas/tema_telas_secundarias.tres" id="2_tema"]
+[ext_resource type="Texture2D" path="res://recursos/arte/wallpaper_telas_secundarias.png" id="3_wallpaper"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_painel"]
-bg_color = Color(0.11, 0.12, 0.16, 1)
+bg_color = Color(0.129, 0.145, 0.188, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.35, 0.38, 0.46, 1)
+border_color = Color(0.4, 0.443, 0.549, 0.7)
 
 [node name="EditorDeFase" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_tema")
 script = ExtResource("1_editor")
 
-[node name="Fundo" type="ColorRect" parent="."]
+[node name="Fundo" type="TextureRect" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.07, 0.08, 0.11, 1)
+texture = ExtResource("3_wallpaper")
+expand_mode = 1
+stretch_mode = 6
+texture_filter = 2
 
 [node name="Raiz" type="PanelContainer" parent="."]
 anchor_right = 1.0
@@ -46,7 +52,7 @@ theme_override_constants/margin_bottom = 6
 theme_override_constants/separation = 6
 
 [node name="Titulo" type="Label" parent="Raiz/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 13
 text = "criar fase"
 horizontal_alignment = 1
@@ -76,7 +82,7 @@ theme_override_constants/v_separation = 6
 columns = 2
 
 [node name="RotuloTitulo" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "titulo da fase"
 
@@ -87,7 +93,7 @@ theme_override_font_sizes/font_size = 9
 placeholder_text = "ex.: Senhas fortes"
 
 [node name="RotuloVidas" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "vidas"
 
@@ -97,7 +103,7 @@ max_value = 10.0
 value = 3.0
 
 [node name="RotuloMapa" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "mapa (largura x altura)"
 
@@ -117,7 +123,7 @@ step = 2.0
 value = 15.0
 
 [node name="RotuloSemente" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "semente (0 = sortear)"
 
@@ -130,7 +136,7 @@ button_pressed = true
 text = "mostrar ao jogador o comando que para cada vigia"
 
 [node name="RotuloBriefing" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.86, 0.88, 0.93, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "briefing (o que o jogador le ao entrar)"
 
@@ -154,7 +160,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 6
 
 [node name="AjudaVigias" type="Label" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+theme_override_colors/font_color = Color(0.8, 0.72, 0.62, 1)
 theme_override_font_sizes/font_size = 8
 text = "comando livre: para o vigia quando digitado EXATAMENTE assim no terminal. cifra (Cesar, Vigenere, SHA-256): o jogador protege a palavra com a chave, pelo analisador do terminal. so persegue: nao ha defesa, so fugir."
 autowrap_mode = 3
@@ -185,7 +191,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 6
 
 [node name="AjudaTerminais" type="Label" parent="Raiz/Margem/Coluna/Abas/Perguntas/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.72, 0.76, 0.84, 1)
+theme_override_colors/font_color = Color(0.8, 0.72, 0.62, 1)
 theme_override_font_sizes/font_size = 8
 text = "marque a opcao correta no circulo a esquerda. o jogador precisa coletar todos os terminais para a porta abrir."
 autowrap_mode = 3
@@ -204,7 +210,7 @@ text = "+ terminal"
 
 [node name="Erros" type="RichTextLabel" parent="Raiz/Margem/Coluna"]
 custom_minimum_size = Vector2(0, 38)
-theme_override_colors/default_color = Color(1, 0.62, 0.6, 1)
+theme_override_colors/default_color = Color(0.92, 0.42, 0.38, 1)
 theme_override_font_sizes/normal_font_size = 8
 theme_override_font_sizes/bold_font_size = 8
 bbcode_enabled = true
