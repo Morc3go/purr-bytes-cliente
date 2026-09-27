@@ -1,6 +1,6 @@
 # Conformidade com a monografia — estado do cliente
 
-**Atualizado em:** 2026-09-25 · Referência: *Purr Bytes: jogo educacional para letramento
+**Atualizado em:** 2026-09-27 · Referência: *Purr Bytes: jogo educacional para letramento
 em segurança digital* (TCC I, Universidade Positivo, 2026).
 
 Este documento existe para a defesa: para cada item declarado na monografia, o que o
@@ -16,7 +16,7 @@ está na seção [Desvios a defender](#desvios-a-defender), com o porquê.
 | Levantar requisitos funcionais e não funcionais | ✅ rastreados abaixo, um por um | este documento |
 | Design de nível 0 (arquitetura cliente-servidor) | ✅ lado cliente: fila, lote e contrato REST documentados | `autoload/telemetria.gd`, `docs/contrato-telemetria.md` |
 | Interface gráfica 2D e mecânicas de interação | ✅ | `cenas/`, `scripts/` |
-| Back-end com criptografia e API REST de telemetria | ⏳ **fora deste repositório** (`Morc3go/prototipo`); o cliente já fala o contrato (modo HTTP) | `scripts/telemetria/transporte_http.gd` |
+| Back-end com criptografia e API REST de telemetria | ✅ API em Java 21 + Spring Boot, as 4 rotas do contrato, PostgreSQL com Flyway; integração verificada com o jogo real (sessão completa, queda e volta da API) | `back/`, ADR 0018, `tools/verificar_backend.gd` |
 | Analisador léxico para validar os comandos | ✅ AFD + parser recursivo descendente + validação semântica | `scripts/lexico/`, ADR 0006, `docs/gramatica.md` |
 
 ## Requisitos funcionais (seção 4.1.1)
@@ -33,7 +33,7 @@ está na seção [Desvios a defender](#desvios-a-defender), com o porquê.
 | Requisito | Estado | Observação |
 |---|---|---|
 | Pixel art 2D, fluido em hardware escolar | ✅ | gato e cachorros animados (`AnimatedSprite2D` + `SpriteFrames`), filtro Nearest, renderizador Mobile, 640×360; `AMOSTRA_DESEMPENHO` a cada 30 s mede FPS, memória e custo do A\* — ADR 0013 |
-| Comunicação assíncrona via API REST/JSON | ✅ lado cliente | `HTTPRequest`, fila em disco, lote, backoff com jitter; nunca bloqueia o jogo — ADR 0003/0009 |
+| Comunicação assíncrona via API REST/JSON | ✅ ponta a ponta | cliente: `HTTPRequest`, fila em disco, lote, backoff com jitter, nunca bloqueia o jogo (ADR 0003/0009); API: `202 Accepted`, ingestão idempotente, lote de até 500 (ADR 0018) |
 | Sem dados de identificação pessoal | ✅ | só UUIDs (`id_sujeito`, `id_sessao`, `id_fase`); texto livre truncado em 240; chave de API nunca exibida |
 | Arquitetura modular; nova fase com baixo esforço, por matriz de dados | ✅ | fase é um JSON (mapa por semente + listas de vigias e perguntas) que vira `FaseConfig`; `fase_base.tscn` é a única cena de fase; o editor cria fases sem código — ADR 0004/0011/0012 |
 
@@ -102,7 +102,14 @@ O banco nasceu com `CHECK (fase BETWEEN 1 AND 4)`. Numa ferramenta de fases livr
 perderia dado, então todo evento carrega `id_fase` (UUID gravado no arquivo da fase) e o
 número vai só como legado. Contrato em `docs/contrato-telemetria.md`, seção 0.
 
-### 5. Tecnologia do protótipo
+### 5. Back-end: Java, como a monografia previa
+
+A seção 2.2 cita Java/Kotlin com a Java Cryptography Architecture. A API em `back/` é
+Java 21 com Spring Boot; o hash da chave de API usa `MessageDigest` (JCA). O SHA-256
+**do jogo** (vigias de hash) roda no cliente, com `HashingContext` do Godot, porque é
+mecânica de jogo e precisa responder na hora, sem rede.
+
+### 6. Tecnologia do protótipo
 
 A seção 6.1 cita um protótipo em JavaScript; o cliente atual é Godot 4 (GDScript tipado),
 como a seção 2.1 especifica. Os casos TC-01 a TC-04 foram refeitos sobre ele.
@@ -111,9 +118,10 @@ como a seção 2.1 especifica. Os casos TC-01 a TC-04 foram refeitos sobre ele.
 
 ## Pendências para o TCC II
 
-1. **Back-end.** As rotas REST não existem em produção; o cliente foi validado contra
-   `tools/servidor_eco.py`. Falta decidir a stack (a monografia cita Java/Kotlin + JCA) e
-   alinhar a constraint de número de fase com o `id_fase`.
+1. **Administração do back-end.** A ingestão está pronta e integrada (`back/`, ADR 0018),
+   mas ainda faltam as rotas de escopo `ADMINISTRACAO`: cadastro de participante e TCLE
+   (hoje a API cria um sujeito mínimo `AUTO-…` na primeira sessão) e emissão de chave de
+   API (hoje por SQL, ver README). A API ainda não foi publicada num servidor.
 2. **Diretor de IA nas fases de autoria.** O Diretor (informação imperfeita, ADR 0002)
    só liga quando a fase declara regiões, e as fases de autoria não declaram — nelas o
    cachorro persegue por linha de visão e patrulha. Não é requisito da monografia, mas é

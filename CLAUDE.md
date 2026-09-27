@@ -517,3 +517,6 @@ Cada um tem justificativa completa no ADR indicado.
 | Framework de testes GUT ou gdUnit4 em `addons/` | Suíte nativa (`extends SceneTree` + reflexão), zero addon, a pedido do orientando | ADR 0005 |
 | `Array[DesafioConfig]` sem tipo definido | `DesafioConfig` criado como `Resource` de dado puro | ADR 0004 |
 | InputMap com 6 ações | 7 ações: acrescentada `alternar_depuracao` (F3), que o Marco 1 exige para a demo do A\* | `tools/configurar_entrada.gd` |
+| Back-end em `Morc3go/prototipo`, "rotas REST ainda não implementadas" | A API da equipe (Java 21 + Spring Boot + PostgreSQL + Flyway) está em `back/` deste repositório, com as quatro rotas implementadas e integradas ao cliente; migrations até V8 | ADR 0018 |
+| `id_fase` "sempre presente" em todo evento | `null` em eventos de sessão (não pertencem a fase); tentativa continua exigindo | ADR 0018, `docs/contrato-telemetria.md` |
+| `4xx` sempre permanente (lote descartado) | `401/403/404/408/425/429` são transitórios: chave ou URL errada não apaga a coleta | ADR 0018 |
