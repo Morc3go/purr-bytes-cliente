@@ -79,9 +79,9 @@ func teste_o_tutorial_saiu_mas_a_cor_e_o_aviso_de_protecao_ficaram() -> void:
 	var menu: Control = load("res://cenas/ui/menu_principal.tscn").instantiate() as Control
 	afirmar_nulo(menu.get_node_or_null("PainelTutorial"),
 		"o painel de tutorial de cores nao existe mais")
-	afirmar_nulo(menu.get_node_or_null("Coluna/Botoes/Tutorial"),
+	afirmar_nulo(menu.get_node_or_null("Cartao/Coluna/Botoes/Tutorial"),
 		"nem o botao que o abria")
-	afirmar_nao_nulo(menu.get_node_or_null("Coluna/Botoes/Telemetria"),
+	afirmar_nao_nulo(menu.get_node_or_null("Cartao/Coluna/Botoes/Telemetria"),
 		"o botao de telemetria continua no lugar, sem buraco no layout")
 	menu.free()
 

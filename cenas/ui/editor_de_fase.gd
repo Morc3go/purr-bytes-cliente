@@ -476,7 +476,7 @@ func _salvar(jogar_depois: bool) -> void:
 		return
 
 	_erros.clear()
-	_erros.append_text("[color=#8fd694]fase salva em %s[/color]" % caminho.get_file())
+	_erros.append_text("[color=#1a6b2c]fase salva em %s[/color]" % caminho.get_file())
 
 
 func _mostrar_erros(erros: PackedStringArray) -> void:

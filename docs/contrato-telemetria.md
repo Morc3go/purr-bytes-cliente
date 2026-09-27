@@ -41,8 +41,8 @@ O que muda no corpo enviado:
 
 | campo | antes | agora |
 |---|---|---|
-| `id_fase` | — | **novo, sempre presente.** UUID v4 estável, gerado uma vez por fase e gravado no recurso dela. É a chave de ligação fase ↔ eventos. |
-| `titulo_fase` | — | **novo**, ≤ 60 caracteres. Rótulo legível, só para diagnóstico. |
+| `id_fase` | — | **novo.** UUID v4 estável, gerado uma vez por fase e gravado no recurso dela. É a chave de ligação fase ↔ eventos. Sempre presente em tentativas e em eventos de fase; **`null` em eventos de sessão** (`SESSAO_INICIADA`, `SESSAO_ENCERRADA`, `SESSAO_ABANDONADA`, amostras fora de fase), que não pertencem a fase nenhuma. |
+| `titulo_fase` | — | **novo**, ≤ 60 caracteres. Rótulo legível, só para diagnóstico. `null` junto com `id_fase`. |
 | `fase` | número 1..4, obrigatório em `tentativa_comando` | **legado e opcional.** Continua indo quando está em 1..4; vai `null` fora disso. |
 
 O cliente **nunca mais descarta** um registro por causa do número da fase.
@@ -52,10 +52,13 @@ Enquanto o `CHECK` existir no banco de produção, o cliente segue anulando `fas
 **lote inteiro** (4xx = erro permanente = lote descartado), levando junto centenas de
 registros válidos. A identidade real já está em `id_fase`.
 
-**O que pedimos ao banco:** uma coluna `id_fase UUID` em `evento_telemetria` e
-`tentativa_comando` (mais `titulo_fase VARCHAR(60)` se for útil), e a remoção do
-`CHECK (fase BETWEEN 1 AND 4)`. Feito isso, o cliente para de anular o campo numérico —
-é uma linha em `autoload/telemetria.gd`, já marcada em comentário.
+**No banco (`back/`):** a V7 criou `id_fase`/`titulo_fase` nas duas tabelas e a V8
+(2026-09-27) acertou a integração: `id_fase` opcional em `evento_telemetria` (evento de
+sessão), `tentativa_comando.fase` sem `NOT NULL`, e `vw_desempenho_fase` agrupando por
+`id_fase`. Antes da V8 a API recusava com 400 todo lote que tivesse um evento de sessão
+— e o cliente descartava o lote inteiro: **nenhum evento chegava ao banco**. Encontrado
+rodando o jogo de verdade contra a API; conferível a qualquer momento com
+`tools/verificar_backend.gd`.
 
 `id_fase` é técnico e anônimo: não deriva de nada pessoal e não identifica participante.
 O pseudônimo do sujeito continua sendo só `id_sujeito`.
@@ -84,8 +87,13 @@ gravado.
 | Faixa | Interpretação | O que o cliente faz |
 |---|---|---|
 | `2xx` (a API responde `202`) | Aceito para processamento | Remove o lote da fila |
-| `4xx` | Erro permanente — o lote está malformado | **Descarta** o lote e registra erro alto |
+| `400`, `413`, `422` e demais `4xx` | Erro permanente — o lote está malformado | **Descarta** o lote e registra erro alto |
+| `401`, `403`, `404`, `408`, `425`, `429` | Configuração ou rede (chave errada/expirada, URL errada, limite) — o dado está bom | **Preserva** a fila e tenta de novo, como um `5xx` |
 | `5xx`, timeout, sem rede | Erro transitório | **Preserva** a fila e tenta de novo com backoff exponencial + jitter (teto de 60s) |
+
+Por que `401` não descarta: uma chave digitada errado no `config.cfg` da sala de aula
+apagaria a coleta do dia inteiro. Com o lote preservado, basta corrigir a chave e os
+dados chegam.
 
 Reenvio após queda de conexão é esperado e normal: o cliente não sabe se o lote
 chegou, então manda de novo. Os IDs vêm do cliente exatamente para isso — o

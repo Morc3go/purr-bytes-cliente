@@ -4,9 +4,9 @@
 
 ## Contexto
 
-O prompt de abertura do Marco 3 (`CLAUDE.md`, seção 10) pede para começar
-pelo servidor de eco e pelo teste de resiliência, "porque é ele que define a
-forma do cliente HTTP" — o SHA-256 vem depois. As rotas reais de
+O planejamento do Marco 3 (`CLAUDE.md`) pede para começar pelo servidor de
+eco e pelo teste de resiliência, porque é ele que define a forma do cliente
+HTTP — o SHA-256 vem depois. As rotas reais de
 `Morc3go/prototipo` continuam sem implementação (confirmado antes de começar:
 só existe `TelemetriaApplication.java`), então `TransporteHttp` precisa
 nascer testável contra alguma coisa real sem depender do time do back-end.
@@ -107,8 +107,8 @@ Marco 1, intocada. É uma restrição de **autoria de dado**:
 escolhido para algum desafio começar com dígito, forçando quem edita o
 roteiro a escolher outro `texto_claro` até o digest natural começar com
 `a`-`f`. Documentado aqui em vez de tocar `scripts/lexico/` — o mesmo
-princípio do prompt de abertura do Marco 2 ("se precisar tocar no parser,
-pare e diga") aplicado por analogia ao Marco 3: o parser continua o mesmo
+princípio usado no Marco 2 (tocar no parser sinalizaria generalização
+falha) aplicado por analogia ao Marco 3: o parser continua o mesmo
 desde o Marco 1, e este parágrafo é a prova de que isso foi verificado, não
 presumido.
 

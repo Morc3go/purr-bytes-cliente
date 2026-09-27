@@ -115,6 +115,27 @@ func afirmar_proximo(obtido: float, esperado: float, tolerancia: float, mensagem
 		"%s -- esperado %f +- %f, obtido %f" % [mensagem, esperado, tolerancia, obtido])
 
 
+## O fundo de uma tela de pagina inteira e opaco? Aceita os dois jeitos que o
+## projeto usa: ColorRect de cor solida, ou TextureRect com wallpaper (ADR 0017)
+## cobrindo a tela toda, sem transparencia na imagem nem no modulate. Painel
+## transparente sobre o jogo foi o bug historico das telas deste projeto.
+func afirmar_fundo_opaco(fundo: Node, mensagem: String) -> bool:
+	if fundo is ColorRect:
+		return afirmar_igual((fundo as ColorRect).color.a, 1.0, "%s (cor solida)" % mensagem)
+	if fundo is TextureRect:
+		var wallpaper: TextureRect = fundo as TextureRect
+		if not afirmar_nao_nulo(wallpaper.texture, "%s (wallpaper com textura)" % mensagem):
+			return false
+		var imagem: Image = wallpaper.texture.get_image()
+		return afirmar_verdadeiro(
+			wallpaper.anchor_right == 1.0 and wallpaper.anchor_bottom == 1.0
+				and wallpaper.modulate.a == 1.0 and wallpaper.self_modulate.a == 1.0
+				and imagem != null and imagem.detect_alpha() == Image.ALPHA_NONE,
+			"%s (wallpaper em tela cheia e sem transparencia)" % mensagem)
+	falhar("%s: fundo ausente ou de tipo inesperado (%s)" % [mensagem, fundo])
+	return false
+
+
 func falhar(mensagem: String) -> void:
 	afirmar(false, mensagem)
 

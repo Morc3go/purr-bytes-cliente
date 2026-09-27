@@ -10,55 +10,92 @@ extends SceneTree
 ## depois de gerado, da para abrir e ajustar no editor normalmente.
 ##
 ## Grade da folha (linha -> animacao), a mesma da arte original do gato:
-##   0 andar_baixo | 1 andar_direita | 2 andar_cima | 3 andar_esquerda | 4 parado
+##   0 andar_baixo | 1 andar_direita | 2 andar_cima | 3 andar_esquerda
+##   4 descansar (gato) / parado (cachorro) -- ver FOLHAS
 
 const TAMANHO_QUADRO: Vector2i = Vector2i(24, 24)
 const QUADROS_POR_LINHA: int = 4
-const ANIMACOES: Array[StringName] = [
-	&"andar_baixo", &"andar_direita", &"andar_cima", &"andar_esquerda", &"parado",
+## Linhas 0..3 da folha: andar nas quatro direcoes, iguais para os dois.
+const ANIMACOES_DE_ANDAR: Array[StringName] = [
+	&"andar_baixo", &"andar_direita", &"andar_cima", &"andar_esquerda",
 ]
-## Ritmo de passo lido na arte: 4 quadros por ciclo a 8 qps da ~2 passos/s,
-## o que casa com a velocidade de 70 px/s do jogador em tile de 16.
 const QPS_ANDAR: float = 8.0
-## Parado e "respirar", nao andar: bem mais lento.
-const QPS_PARADO: float = 3.0
 
+## O que cada folha faz com a linha 4 e com o "parado". O gato ganhou em ADR
+## 0017 (pedido da equipe) um "parado" de um quadro so, de olho aberto, e a
+## linha 4 (sentado) virou "descansar" -- o gato que dorme apos 10 s sem
+## entrada. O cachorro nao descansa: a linha 4 dele continua sendo o parado.
 const FOLHAS: Dictionary = {
-	"res://recursos/arte/gato.png": "res://recursos/arte/gato_frames.tres",
-	"res://recursos/arte/cachorro.png": "res://recursos/arte/cachorro_frames.tres",
+	"res://recursos/arte/gato.png": {
+		"destino": "res://recursos/arte/gato_frames.tres",
+		"linha_4": &"descansar", "qps_linha_4": 1.5,
+		"parado_de_um_quadro": Vector2i(0, 0), "qps_parado": 1.0,
+	},
+	"res://recursos/arte/cachorro.png": {
+		"destino": "res://recursos/arte/cachorro_frames.tres",
+		"linha_4": &"parado", "qps_linha_4": 3.0,
+	},
 }
+
+## Com um argumento (-- <pasta>), grava la em vez de sobrescrever recursos/:
+## e assim que a suite confere que este gerador reproduz os .tres versionados.
+var _pasta_de_saida: String = ""
 
 
 func _initialize() -> void:
+	var argumentos: PackedStringArray = OS.get_cmdline_user_args()
+	if not argumentos.is_empty():
+		_pasta_de_saida = argumentos[0]
 	var codigo: int = 0
 	for origem: String in FOLHAS:
-		if not _gerar(origem, FOLHAS[origem]):
+		var destino: String = String(FOLHAS[origem]["destino"])
+		if not _pasta_de_saida.is_empty():
+			destino = _pasta_de_saida.path_join(destino.get_file())
+		if not _salvar(montar(origem, FOLHAS[origem]), destino):
 			codigo = 1
 	quit(codigo)
 
 
-func _gerar(caminho_folha: String, destino: String) -> bool:
+static func _recorte(folha: Texture2D, coluna: int, linha: int) -> AtlasTexture:
+	# AtlasTexture recorta a folha sem duplicar pixels: um PNG so no disco,
+	# as regioes dentro do .tres.
+	var recorte := AtlasTexture.new()
+	recorte.atlas = folha
+	recorte.region = Rect2(Vector2(coluna * TAMANHO_QUADRO.x, linha * TAMANHO_QUADRO.y),
+		Vector2(TAMANHO_QUADRO))
+	return recorte
+
+
+static func montar(caminho_folha: String, opcoes: Dictionary) -> SpriteFrames:
 	var folha: Texture2D = load(caminho_folha) as Texture2D
 	if folha == null:
 		push_error("folha nao encontrada: %s (rode --import antes)" % caminho_folha)
-		return false
+		return null
 
 	var quadros := SpriteFrames.new()
 	quadros.remove_animation(&"default")
-	for linha: int in ANIMACOES.size():
-		var nome: StringName = ANIMACOES[linha]
+	var linhas: Array[StringName] = ANIMACOES_DE_ANDAR.duplicate()
+	linhas.append(opcoes["linha_4"] as StringName)
+	for linha: int in linhas.size():
+		var nome: StringName = linhas[linha]
 		quadros.add_animation(nome)
 		quadros.set_animation_loop(nome, true)
-		quadros.set_animation_speed(nome, QPS_PARADO if nome == &"parado" else QPS_ANDAR)
+		quadros.set_animation_speed(nome, QPS_ANDAR if linha < 4 else float(opcoes["qps_linha_4"]))
 		for coluna: int in QUADROS_POR_LINHA:
-			# AtlasTexture recorta a folha sem duplicar pixels: um PNG so no
-			# disco, 20 regioes dentro do .tres.
-			var recorte := AtlasTexture.new()
-			recorte.atlas = folha
-			recorte.region = Rect2(Vector2(coluna * TAMANHO_QUADRO.x, linha * TAMANHO_QUADRO.y),
-				Vector2(TAMANHO_QUADRO))
-			quadros.add_frame(nome, recorte)
+			quadros.add_frame(nome, _recorte(folha, coluna, linha))
 
+	if opcoes.has("parado_de_um_quadro"):
+		var celula: Vector2i = opcoes["parado_de_um_quadro"]
+		quadros.add_animation(&"parado")
+		quadros.set_animation_loop(&"parado", true)
+		quadros.set_animation_speed(&"parado", float(opcoes["qps_parado"]))
+		quadros.add_frame(&"parado", _recorte(folha, celula.x, celula.y))
+	return quadros
+
+
+func _salvar(quadros: SpriteFrames, destino: String) -> bool:
+	if quadros == null:
+		return false
 	var erro: Error = ResourceSaver.save(quadros, destino)
 	if erro != OK:
 		push_error("falha ao salvar %s (erro %d)" % [destino, erro])

@@ -17,6 +17,7 @@ const ANDAR_CIMA: StringName = &"andar_cima"
 const ANDAR_DIREITA: StringName = &"andar_direita"
 const ANDAR_ESQUERDA: StringName = &"andar_esquerda"
 const PARADO: StringName = &"parado"
+const DESCANSAR: StringName = &"descansar"
 
 ## Abaixo disto o corpo esta "parado": o lerp do jogador leva alguns quadros
 ## para zerar, e sem limiar o gato ficaria andando no lugar ao soltar a tecla.
@@ -51,6 +52,18 @@ func atualizar(velocidade: Vector2) -> void:
 		speed_scale = maxf(1.0, velocidade.length() / velocidade_de_referencia)
 	if animation != nome or not is_playing():
 		play(nome)
+
+
+## Chamado pelo Jogador apos alguns segundos sem entrada (ver
+## tempo_sem_entrada_para_descansar_s em jogador.gd). So troca de fato se a
+## SpriteFrames tiver a animacao "descansar" -- e por isso que o Cachorro, que
+## usa este MESMO script (regra de ouro da secao 3), nunca entra nesse estado:
+## ninguem chama descansar() nele, e cachorro_frames.tres nem precisa da
+## animacao para o resto do script continuar funcionando normalmente.
+func descansar() -> void:
+	if sprite_frames != null and sprite_frames.has_animation(DESCANSAR) and animation != DESCANSAR:
+		speed_scale = 1.0
+		play(DESCANSAR)
 
 
 ## Separada de atualizar() para ser testavel sem SceneTree: e a regra inteira

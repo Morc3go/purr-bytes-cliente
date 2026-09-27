@@ -74,7 +74,7 @@ erro no Eixo 1.
   sem alteração: só muda `FaseConfig.verbos_permitidos` e a validação
   semântica da chave (numérica vira alfabética). Se Vigenère exigir tocar o
   parser, esta ADR está sinalizando que a generalização falhou — critério
-  citado explicitamente no prompt de abertura do Marco 2.
+  de aceite explícito do planejamento do Marco 2 (`CLAUDE.md`).
 - `tests/teste_analisador_lexico.gd` e `tests/teste_analisador_sintatico.gd`
   testam as duas etapas isoladamente (tokens prontos entrando no parser, sem
   passar pelo AFD); `tests/teste_analisador_comando.gd` testa o pipeline dos

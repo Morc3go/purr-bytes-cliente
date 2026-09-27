@@ -43,15 +43,15 @@ func _json_minimo(titulo: String) -> String:
 func teste_menu_tem_as_portas_de_autoria() -> void:
 	var menu: Control = load("res://cenas/ui/menu_principal.tscn").instantiate() as Control
 
-	for caminho: String in ["Coluna/Botoes/EscolherFase", "Coluna/Botoes/CriarFase",
-			"Coluna/Botoes/SubirFase", "Coluna/Botoes/Telemetria", "Coluna/Botoes/Sair"]:
+	for caminho: String in ["Cartao/Coluna/Botoes/EscolherFase", "Cartao/Coluna/Botoes/CriarFase",
+			"Cartao/Coluna/Botoes/SubirFase", "Cartao/Coluna/Botoes/Telemetria", "Cartao/Coluna/Botoes/Sair"]:
 		afirmar_nao_nulo(menu.get_node_or_null(caminho), "o menu tem o botao %s" % caminho)
 
-	afirmar_nulo(menu.get_node_or_null("Coluna/Botoes/Tutorial"),
+	afirmar_nulo(menu.get_node_or_null("Cartao/Coluna/Botoes/Tutorial"),
 		"o tutorial de cores continua fora -- decisao anterior, nao regressao")
 	# O jogo nao tem fase propria (ADR 0012): "escolher fase" e o unico
 	# caminho para jogar, entao nao ha mais botao "jogar" separado no menu.
-	afirmar_nulo(menu.get_node_or_null("Coluna/Botoes/Jogar"),
+	afirmar_nulo(menu.get_node_or_null("Cartao/Coluna/Botoes/Jogar"),
 		"nao ha mais atalho para uma fase fixa")
 	menu.free()
 
@@ -108,8 +108,7 @@ func teste_a_tela_e_opaca() -> void:
 	add_child(tela)
 	await get_tree().process_frame
 
-	var fundo: ColorRect = tela.get_node("Fundo") as ColorRect
-	afirmar_igual(fundo.color.a, 1.0, "fundo opaco")
+	afirmar_fundo_opaco(tela.get_node("Fundo"), "fundo opaco")
 
 	var painel: PanelContainer = tela.get_node("Raiz") as PanelContainer
 	var estilo: StyleBoxFlat = painel.get_theme_stylebox("panel") as StyleBoxFlat

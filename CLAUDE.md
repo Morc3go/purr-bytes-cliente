@@ -1,10 +1,9 @@
-# Purr Bytes — Briefing de implementação do cliente Godot (Fases 1 a 3)
+# Purr Bytes — Especificação técnica do cliente Godot (Fases 1 a 3)
 
-> **Como usar este documento.** Ele é o contexto permanente do projeto, não um prompt único.
-> Salve-o como `CLAUDE.md` na raiz do repositório do jogo e execute **um marco por sessão**,
-> na ordem. No início de cada sessão, use o prompt de abertura do marco correspondente
-> (seção 10). Não peça o projeto inteiro de uma vez: cada marco tem critérios de aceite que
-> precisam estar verdes antes do próximo começar.
+> **Como usar este documento.** É o contexto permanente do projeto: arquitetura, restrições
+> inegociáveis e critérios de aceite, organizados por marco de entrega. Antes de implementar
+> qualquer marco, leia este documento inteiro e os ADRs em `docs/decisoes/`. Um marco só
+> começa quando o anterior tem seus critérios de aceite verdes.
 
 ---
 
@@ -494,31 +493,7 @@ Esse último é o que permite afirmar, com número, que a IA cabe no orçamento 
 
 ---
 
-## 10. Prompts de abertura de sessão
-
-**Marco 0**
-> Leia `CLAUDE.md` inteiro. Vamos executar o **Marco 0 — Fundação**. Me apresente o plano
-> antes de implementar: arquivos que vai criar, o que cada autoload expõe e como a cena pai
-> se estrutura. Não implemente as fases ainda.
-
-**Marco 1**
-> Marco 0 concluído e aceito. Leia `CLAUDE.md` e os ADRs. Vamos ao **Marco 1 — Fase 1**.
-> Comece pelo analisador léxico-sintático e seus testes, depois a cifra de César, depois o A\*
-> e o cachorro, e só então a montagem da fase. Plano primeiro.
-
-**Marco 2**
-> Marco 1 aceito. Vamos ao **Marco 2 — Fase 2**. Atenção especial ao Diretor: o cachorro não
-> pode receber a posição exata do jogador em nenhum caminho de código. Se durante a
-> implementação da Vigenère você precisar tocar no parser, pare e me diga — significa que a
-> generalização do Marco 1 falhou.
-
-**Marco 3**
-> Marco 2 aceito. Vamos ao **Marco 3 — Fase 3**. Comece pelo servidor de eco e pelo teste de
-> resiliência da fila, porque é ele que define a forma do cliente HTTP. O SHA-256 vem depois.
-
----
-
-## 11. Fora de escopo (não implemente sem pedido explícito)
+## 10. Fora de escopo (não implemente sem pedido explícito)
 
 - Fase 4 (AES simplificado).
 - Dashboard de telemetria — é aplicação separada, consome as visões `vw_resumo_sessao`,
@@ -542,3 +517,6 @@ Cada um tem justificativa completa no ADR indicado.
 | Framework de testes GUT ou gdUnit4 em `addons/` | Suíte nativa (`extends SceneTree` + reflexão), zero addon, a pedido do orientando | ADR 0005 |
 | `Array[DesafioConfig]` sem tipo definido | `DesafioConfig` criado como `Resource` de dado puro | ADR 0004 |
 | InputMap com 6 ações | 7 ações: acrescentada `alternar_depuracao` (F3), que o Marco 1 exige para a demo do A\* | `tools/configurar_entrada.gd` |
+| Back-end em `Morc3go/prototipo`, "rotas REST ainda não implementadas" | A API da equipe (Java 21 + Spring Boot + PostgreSQL + Flyway) está em `back/` deste repositório, com as quatro rotas implementadas e integradas ao cliente; migrations até V8 | ADR 0018 |
+| `id_fase` "sempre presente" em todo evento | `null` em eventos de sessão (não pertencem a fase); tentativa continua exigindo | ADR 0018, `docs/contrato-telemetria.md` |
+| `4xx` sempre permanente (lote descartado) | `401/403/404/408/425/429` são transitórios: chave ou URL errada não apaga a coleta | ADR 0018 |

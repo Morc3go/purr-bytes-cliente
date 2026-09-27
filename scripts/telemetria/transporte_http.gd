@@ -70,9 +70,23 @@ func enviar(pacote: Dictionary) -> ResultadoEnvio:
 		return ResultadoEnvio.falha_transitoria(
 			"falha de rede antes de qualquer resposta HTTP (resultado %d)" % resultado)
 
+	return classificar_status(codigo_http)
+
+
+## 4xx que dizem respeito a CONFIGURACAO ou a rede, nao ao dado: chave errada ou
+## expirada (401), sem permissao (403), URL errada (404), timeout (408), limite
+## de requisicoes (429). Descartar o lote nesses casos apagaria a coleta de uma
+## sala inteira por causa de um config.cfg errado -- o lote espera na fila, com
+## backoff, ate alguem corrigir. O mesmo principio da URL invalida acima.
+const _4XX_TRANSITORIOS: PackedInt32Array = [401, 403, 404, 408, 425, 429]
+
+
+## 2xx sucesso; 4xx de dado malformado (400, 413, 422...) e permanente -- o
+## reenvio daria o mesmo erro para sempre; o resto e transitorio.
+static func classificar_status(codigo_http: int) -> ResultadoEnvio:
 	if codigo_http >= 200 and codigo_http < 300:
 		return ResultadoEnvio.ok("HTTP %d" % codigo_http)
-	if codigo_http >= 400 and codigo_http < 500:
+	if codigo_http >= 400 and codigo_http < 500 and not _4XX_TRANSITORIOS.has(codigo_http):
 		return ResultadoEnvio.falha_permanente("HTTP %d" % codigo_http)
 	return ResultadoEnvio.falha_transitoria("HTTP %d" % codigo_http)
 

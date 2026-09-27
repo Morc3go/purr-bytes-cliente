@@ -122,9 +122,7 @@ func teste_a_tela_carrega_com_fundo_opaco_e_diagnostico_acessivel() -> void:
 	add_child(tela)
 	await get_tree().process_frame
 
-	var fundo: ColorRect = tela.get_node("Fundo") as ColorRect
-	afirmar_nao_nulo(fundo, "a tela tem fundo proprio")
-	afirmar_igual(fundo.color.a, 1.0,
+	afirmar_fundo_opaco(tela.get_node_or_null("Fundo"),
 		"o fundo e OPACO: painel transparente sobre o jogo foi o bug historico das telas")
 
 	var painel: PanelContainer = tela.get_node("Raiz") as PanelContainer

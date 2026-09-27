@@ -4,9 +4,9 @@
 
 ## Contexto
 
-O prompt de abertura do Marco 2 (`CLAUDE.md`, seção 10) é explícito: *"Se
-durante a implementação da Vigenère você precisar tocar no parser,
-pare e me diga — significa que a generalização do Marco 1 falhou."* Vigenère
+O planejamento do Marco 2 (`CLAUDE.md`) é explícito: se a implementação da
+Vigenère precisasse tocar no parser, isso significaria que a generalização do
+Marco 1 falhou. Vigenère
 usa a mesma forma de comando que César (`cifrar pacote chave=<valor>`), então
 o teste real da arquitetura do Marco 1 é literal: implementar o algoritmo
 inteiro tocando **zero linhas** em `scripts/lexico/`.

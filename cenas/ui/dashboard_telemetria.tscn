@@ -1,37 +1,43 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://cenas/ui/dashboard_telemetria.gd" id="1_dashboard"]
+[ext_resource type="Theme" path="res://recursos/temas/tema_telas_secundarias.tres" id="2_tema"]
+[ext_resource type="Texture2D" path="res://recursos/arte/wallpaper_telas_secundarias.png" id="3_wallpaper"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_painel"]
-bg_color = Color(0.11, 0.12, 0.16, 1)
+bg_color = Color(0.129, 0.145, 0.188, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.35, 0.38, 0.46, 1)
+border_color = Color(0.4, 0.443, 0.549, 0.7)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_diagnostico"]
-bg_color = Color(0.08, 0.09, 0.13, 1)
+bg_color = Color(0.161, 0.18, 0.231, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.4, 0.44, 0.52, 1)
+border_color = Color(0.69, 0.729, 0.859, 1)
 
 [node name="DashboardTelemetria" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_tema")
 script = ExtResource("1_dashboard")
 
-[node name="Fundo" type="ColorRect" parent="."]
+[node name="Fundo" type="TextureRect" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.07, 0.08, 0.11, 1)
+texture = ExtResource("3_wallpaper")
+expand_mode = 1
+stretch_mode = 6
+texture_filter = 2
 
 [node name="Raiz" type="PanelContainer" parent="."]
 anchor_right = 1.0
@@ -54,13 +60,13 @@ theme_override_constants/margin_bottom = 8
 theme_override_constants/separation = 6
 
 [node name="Titulo" type="Label" parent="Raiz/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 14
 text = "dashboard de telemetria"
 horizontal_alignment = 1
 
 [node name="Cabecalho" type="Label" parent="Raiz/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.82, 0.85, 0.9, 1)
+theme_override_colors/font_color = Color(0.8, 0.72, 0.62, 1)
 theme_override_font_sizes/font_size = 8
 text = ""
 horizontal_alignment = 1
@@ -79,13 +85,13 @@ size_flags_vertical = 3
 custom_minimum_size = Vector2(240, 0)
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_colors/default_color = Color(0.9, 0.92, 0.96, 1)
+theme_override_colors/default_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/normal_font_size = 8
 theme_override_font_sizes/bold_font_size = 8
 bbcode_enabled = true
 
 [node name="Rodape" type="Label" parent="Raiz/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.7, 0.85, 0.75, 1)
+theme_override_colors/font_color = Color(0.42, 0.78, 0.48, 1)
 theme_override_font_sizes/font_size = 8
 text = ""
 horizontal_alignment = 1
@@ -146,14 +152,14 @@ theme_override_constants/margin_bottom = 8
 theme_override_constants/separation = 6
 
 [node name="Titulo" type="Label" parent="PainelFases/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 14
 text = "fases jogadas"
 horizontal_alignment = 1
 text_overrun_behavior = 3
 
 [node name="Aviso" type="Label" parent="PainelFases/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.7, 0.85, 0.75, 1)
+theme_override_colors/font_color = Color(0.42, 0.78, 0.48, 1)
 theme_override_font_sizes/font_size = 8
 text = ""
 horizontal_alignment = 1
@@ -161,7 +167,7 @@ autowrap_mode = 3
 
 [node name="Lista" type="ItemList" parent="PainelFases/Margem/Coluna"]
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.9, 0.92, 0.96, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 8
 select_mode = 1
 
@@ -209,14 +215,14 @@ theme_override_constants/margin_bottom = 8
 theme_override_constants/separation = 6
 
 [node name="Titulo" type="Label" parent="PainelDetalhe/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 14
 text = "fase"
 horizontal_alignment = 1
 text_overrun_behavior = 3
 
 [node name="Aviso" type="Label" parent="PainelDetalhe/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.7, 0.85, 0.75, 1)
+theme_override_colors/font_color = Color(0.42, 0.78, 0.48, 1)
 theme_override_font_sizes/font_size = 8
 text = ""
 horizontal_alignment = 1
@@ -224,7 +230,7 @@ autowrap_mode = 3
 
 [node name="Detalhe" type="RichTextLabel" parent="PainelDetalhe/Margem/Coluna"]
 size_flags_vertical = 3
-theme_override_colors/default_color = Color(0.9, 0.92, 0.96, 1)
+theme_override_colors/default_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/normal_font_size = 8
 theme_override_font_sizes/bold_font_size = 8
 bbcode_enabled = true
@@ -265,14 +271,14 @@ theme_override_constants/margin_bottom = 6
 theme_override_constants/separation = 6
 
 [node name="Titulo" type="Label" parent="PainelDiagnostico/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 10
 text = "diagnostico da coleta"
 horizontal_alignment = 1
 
 [node name="Diagnostico" type="RichTextLabel" parent="PainelDiagnostico/Margem/Coluna"]
 size_flags_vertical = 3
-theme_override_colors/default_color = Color(0.9, 0.92, 0.96, 1)
+theme_override_colors/default_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/normal_font_size = 8
 theme_override_font_sizes/bold_font_size = 8
 bbcode_enabled = true

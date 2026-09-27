@@ -71,7 +71,7 @@ func teste_editor_novo_abre_com_uma_linha_de_cada() -> void:
 
 func teste_a_tela_do_editor_e_opaca() -> void:
 	var tela: Control = await _abrir_editor()
-	afirmar_igual((tela.get_node("Fundo") as ColorRect).color.a, 1.0, "fundo opaco")
+	afirmar_fundo_opaco(tela.get_node("Fundo"), "fundo opaco")
 	var estilo: StyleBoxFlat = (tela.get_node("Raiz") as PanelContainer).get_theme_stylebox(
 		"panel") as StyleBoxFlat
 	afirmar_nao_nulo(estilo, "painel com StyleBox proprio")

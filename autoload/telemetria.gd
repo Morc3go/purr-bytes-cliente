@@ -199,6 +199,22 @@ func encerrar_sessao(status: String = STATUS_ENCERRADA) -> void:
 	_persistir()
 
 
+## Fora de uma fase (eventos de sessao, amostra no menu) id_fase vai NULL, e
+## nao "": a API valida o campo como UUID, "" vira null do lado Java, e antes
+## da V8 do back-end isso fazia o lote inteiro voltar 400 -- e ser descartado.
+## null e o valor honesto: o evento nao pertence a fase nenhuma.
+static func _nulo_se_vazio(texto: String) -> Variant:
+	return null if texto.is_empty() else texto
+
+
+func _id_fase_atual() -> Variant:
+	return _nulo_se_vazio(Sessao.id_fase)
+
+
+func _titulo_fase_atual() -> Variant:
+	return _nulo_se_vazio(_sanitizar_texto(Sessao.titulo_fase, LIMITE_DESAFIO))
+
+
 ## A fase de um evento e identificada por `id_fase` (UUID), nao pelo numero.
 ##
 ## O numero existia porque o banco nasceu com quatro fases fixas
@@ -237,8 +253,8 @@ func registrar_evento(tipo_evento: String, payload: Dictionary = {}, fase: int =
 		"id_sessao": _id_sessao,
 		"sequencia": _sequencia,
 		"tipo_evento": tipo_evento,
-		"id_fase": Sessao.id_fase,
-		"titulo_fase": _sanitizar_texto(Sessao.titulo_fase, LIMITE_DESAFIO),
+		"id_fase": _id_fase_atual(),
+		"titulo_fase": _titulo_fase_atual(),
 		"fase": fase if fase >= 1 and fase <= 4 else null,
 		"ocorrido_em": Relogio.agora_utc_iso(),
 		"payload": _sanitizar_payload(payload, 0),
@@ -284,8 +300,8 @@ func registrar_tentativa(
 	var tentativa: Dictionary = {
 		"id_tentativa": Identificador.uuid_v4(),
 		"id_sessao": _id_sessao,
-		"id_fase": Sessao.id_fase,
-		"titulo_fase": _sanitizar_texto(Sessao.titulo_fase, LIMITE_DESAFIO),
+		"id_fase": _id_fase_atual(),
+		"titulo_fase": _titulo_fase_atual(),
 		# Legado, pelo mesmo motivo do evento: o CHECK do banco ainda existe.
 		"fase": fase if fase >= 1 and fase <= 4 else null,
 		"desafio": _sanitizar_texto(desafio, LIMITE_DESAFIO),
@@ -580,7 +596,13 @@ func _converter_lista(bruto: Variant) -> Array[Dictionary]:
 		return saida
 	for item: Variant in bruto as Array:
 		if typeof(item) == TYPE_DICTIONARY:
-			saida.append(item as Dictionary)
+			var registro: Dictionary = item as Dictionary
+			# Fila gravada por versao anterior: "" no lugar de null faria a API
+			# recusar o lote (ver _nulo_se_vazio).
+			for campo: String in ["id_fase", "titulo_fase"]:
+				if registro.get(campo) is String and String(registro[campo]).is_empty():
+					registro[campo] = null
+			saida.append(registro)
 	return saida
 
 

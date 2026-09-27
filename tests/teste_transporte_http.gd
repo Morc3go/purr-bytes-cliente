@@ -137,3 +137,18 @@ func _drenar() -> void:
 			return
 		await get_tree().process_frame
 	falhar("a fila nao drenou contra o servidor de eco em 100 tentativas")
+
+
+func teste_status_de_configuracao_nao_descarta_dado_de_pesquisa() -> void:
+	# Chave errada no config.cfg da sala de aula nao pode apagar a coleta: o
+	# lote espera na fila ate a chave ser corrigida.
+	for codigo: int in [401, 403, 404, 408, 429, 500, 503]:
+		var resultado: ResultadoEnvio = TransporteHttp.classificar_status(codigo)
+		afirmar_falso(resultado.sucesso, "HTTP %d nao e sucesso" % codigo)
+		afirmar_falso(resultado.permanente, "HTTP %d e transitorio: o lote fica na fila" % codigo)
+	# Dado malformado: reenviar daria o mesmo erro para sempre.
+	for codigo: int in [400, 413, 422]:
+		afirmar_verdadeiro(TransporteHttp.classificar_status(codigo).permanente,
+			"HTTP %d e permanente" % codigo)
+	for codigo: int in [200, 202]:
+		afirmar_verdadeiro(TransporteHttp.classificar_status(codigo).sucesso, "HTTP %d e sucesso" % codigo)
