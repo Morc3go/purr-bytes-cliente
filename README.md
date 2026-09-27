@@ -61,8 +61,10 @@ O jogo não traz fases fixas: o professor as cria. Na primeira execução é cri
 - **geral**: título, briefing, vidas, tamanho do mapa e semente. A caixa *mostrar ao
   jogador o comando que para cada vigia* põe uma legenda no rodapé da fase. Desligue numa
   fase de avaliação, em que ver o comando entregaria a resposta.
-- **cachorros**: cor e tipo de cada vigia. Comando livre pede o comando; cifra pede
-  palavra e chave (SHA-256 não tem chave); "só persegue" não pede nada.
+- **cachorros**: um botão por tipo de vigia (**+ comando livre**, **+ cifra de César**,
+  **+ cifra de Vigenère**, **+ hash SHA-256**, **+ só persegue**). Comando livre pede o
+  comando; cifra pede palavra e chave (SHA-256 não tem chave); "só persegue" não pede
+  nada. O tipo pode ser trocado depois no seletor de cada linha.
 - **perguntas**: enunciado, opções, a correta e uma explicação opcional.
 
 **Salvar** valida pelo mesmo caminho que o jogo usa: fase inválida não é gravada, e os

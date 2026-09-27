@@ -52,8 +52,7 @@ var _id_fase: String = ""
 
 
 func _ready() -> void:
-	get_node(_CACHORROS + "/AdicionarVigia").pressed.connect(
-		func() -> void: _adicionar_vigia())
+	_montar_botoes_de_vigia()
 	get_node(_PERGUNTAS + "/AdicionarTerminal").pressed.connect(
 		func() -> void: _adicionar_terminal())
 	$Raiz/Margem/Coluna/Acoes/Salvar.pressed.connect(func() -> void: _salvar(false))
@@ -90,7 +89,7 @@ func _focar_aba(indice: int) -> void:
 			if _vigias.get_child_count() > 0:
 				(_vigias.get_child(0).get_node("Comando") as LineEdit).grab_focus()
 			else:
-				get_node(_CACHORROS + "/AdicionarVigia").grab_focus()
+				(get_node(_CACHORROS + "/AdicionarVigias").get_child(0) as Button).grab_focus()
 		2:
 			if _terminais.get_child_count() > 0:
 				(_terminais.get_child(0).get_node("Enunciado") as LineEdit).grab_focus()
@@ -146,11 +145,16 @@ func _carregar(caminho: String) -> void:
 ## Tipos de vigia oferecidos no editor, na ordem do seletor. Cada um e o par
 ## (modo_de_bloqueio, algoritmo_exigido) que o JSON grava.
 const _TIPOS_DE_VIGIA: Array[Dictionary] = [
-	{"rotulo": "comando livre", "modo": "COMANDO", "algoritmo": "CESAR"},
-	{"rotulo": "cifra de Cesar", "modo": "CIFRA", "algoritmo": "CESAR"},
-	{"rotulo": "cifra de Vigenere", "modo": "CIFRA", "algoritmo": "VIGENERE"},
-	{"rotulo": "hash SHA-256", "modo": "CIFRA", "algoritmo": "SHA256"},
-	{"rotulo": "so persegue", "modo": "NENHUM", "algoritmo": "CESAR"},
+	{"rotulo": "comando livre", "modo": "COMANDO", "algoritmo": "CESAR",
+		"dica": "o jogador digita exatamente a frase que voce escrever (ex.: trocar senha)"},
+	{"rotulo": "cifra de Cesar", "modo": "CIFRA", "algoritmo": "CESAR",
+		"dica": "cada letra anda N casas no alfabeto. palavra + chave de 1 a 25 (ex.: cifrar senha chave=3)"},
+	{"rotulo": "cifra de Vigenere", "modo": "CIFRA", "algoritmo": "VIGENERE",
+		"dica": "a chave e uma palavra; cada letra dela da um deslocamento (ex.: cifrar pacote chave=gato)"},
+	{"rotulo": "hash SHA-256", "modo": "CIFRA", "algoritmo": "SHA256",
+		"dica": "o jogador calcula o resumo com 'hash' e confere com 'verificar' -- integridade, nao sigilo"},
+	{"rotulo": "so persegue", "modo": "NENHUM", "algoritmo": "CESAR",
+		"dica": "nenhum comando para este vigia: a unica defesa e fugir"},
 ]
 
 
@@ -174,6 +178,7 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "",
 	tipo.add_theme_font_size_override("font_size", 9)
 	for item: Dictionary in _TIPOS_DE_VIGIA:
 		tipo.add_item(String(item["rotulo"]))
+		tipo.set_item_tooltip(tipo.item_count - 1, String(item["dica"]))
 	tipo.select(_indice_do_tipo(modo, algoritmo))
 	linha.add_child(tipo)
 
@@ -213,6 +218,40 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "",
 	_ajustar_campos_do_vigia(linha)
 	_vigias.add_child(linha)
 	return linha
+
+
+## Um botao "+" por tipo de vigia, montado da mesma tabela do seletor: antes
+## havia so "+ vigia", e as cifras ficavam escondidas dentro do menu suspenso
+## de cada linha -- quem criava a fase nao descobria que elas existiam.
+func _montar_botoes_de_vigia() -> void:
+	var linha: HBoxContainer = get_node(_CACHORROS + "/AdicionarVigias") as HBoxContainer
+	for item: Dictionary in _TIPOS_DE_VIGIA:
+		var botao := Button.new()
+		botao.text = "+ %s" % item["rotulo"]
+		botao.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		botao.add_theme_font_size_override("font_size", 8)
+		botao.tooltip_text = String(item["dica"])
+		var modo: String = item["modo"]
+		var algoritmo: String = item["algoritmo"]
+		botao.pressed.connect(func() -> void:
+			var nova: HBoxContainer = _adicionar_vigia(_cor_padrao_do_tipo(modo, algoritmo),
+				"", modo, algoritmo)
+			_focar_primeiro_campo_do_vigia(nova))
+		linha.add_child(botao)
+
+
+## Vigia de cifra nasce na cor do algoritmo (a mesma da legenda do jogo); os
+## outros, na cor padrao. O professor troca no seletor se quiser.
+func _cor_padrao_do_tipo(modo: String, algoritmo: String) -> Color:
+	return LegendaCores.cor(algoritmo) if modo == "CIFRA" else _COR_PADRAO_DO_VIGIA
+
+
+func _focar_primeiro_campo_do_vigia(linha: Node) -> void:
+	for nome: String in ["Comando", "Palavra"]:
+		var campo: Control = linha.get_node(nome) as Control
+		if campo.visible:
+			campo.grab_focus()
+			return
 
 
 func _indice_do_tipo(modo: String, algoritmo: String) -> int:
