@@ -1,0 +1,12 @@
+# Build do Maven
+target/
+
+# Credenciais locais: NUNCA versionar (senha do banco, pepper de privacidade).
+local-dev.env.ps1
+*.env
+.env*
+
+# IDEs
+.idea/
+*.iml
+.vscode/
