@@ -7,7 +7,9 @@ import br.edu.purrbytes.telemetria.erro.ErroDeIngestao;
 import br.edu.purrbytes.telemetria.ingestao.dto.LoteTentativasRequest;
 import br.edu.purrbytes.telemetria.ingestao.dto.TentativaRequest;
 import br.edu.purrbytes.telemetria.ingestao.dto.TokenRequest;
+import br.edu.purrbytes.telemetria.privacidade.SanitizadorDeTexto;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,16 +21,28 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TentativaIngestaoService {
 
+    // Larguras das colunas de pesquisa.tentativa_comando (V2, V7) e do lexema
+    // no cliente (LIMITE_LEXEMA). entrada_normalizada usa o limite de texto
+    // livre configurado, que e o que a politica de privacidade promete.
+    static final int LIMITE_DESAFIO = 60;
+    static final int LIMITE_TITULO_FASE = 60;
+    static final int LIMITE_CODIGO_ERRO = 40;
+    static final int LIMITE_TIPO_TOKEN = 40;
+    static final int LIMITE_LEXEMA = 60;
+
     private final TentativaComandoRepository tentativaRepository;
     private final SessaoJogoRepository sessaoRepository;
+    private final SanitizadorDeTexto sanitizador;
     private final int maxEventosPorLote;
 
     public TentativaIngestaoService(
             TentativaComandoRepository tentativaRepository,
             SessaoJogoRepository sessaoRepository,
+            SanitizadorDeTexto sanitizador,
             @Value("${purrbytes.ingestao.max-eventos-por-lote}") int maxEventosPorLote) {
         this.tentativaRepository = tentativaRepository;
         this.sessaoRepository = sessaoRepository;
+        this.sanitizador = sanitizador;
         this.maxEventosPorLote = maxEventosPorLote;
     }
 
@@ -48,9 +62,12 @@ public class TentativaIngestaoService {
             throw new ErroDeIngestao("sessao inexistente; abra a sessao antes de enviar tentativas");
         }
 
-        Set<UUID> idsJaGravados = tentativaRepository.idsExistentes(
-                tentativas.stream().map(TentativaRequest::idTentativa).toList());
-        List<TentativaComando> novas = tentativas.stream()
+        // Mesmo motivo de EventoIngestaoService: id repetido dentro do lote.
+        Map<UUID, TentativaRequest> porId = new LinkedHashMap<>();
+        tentativas.forEach(t -> porId.putIfAbsent(t.idTentativa(), t));
+
+        Set<UUID> idsJaGravados = tentativaRepository.idsExistentes(porId.keySet());
+        List<TentativaComando> novas = porId.values().stream()
                 .filter(t -> !idsJaGravados.contains(t.idTentativa()))
                 .map(this::paraEntidade)
                 .toList();
@@ -63,13 +80,16 @@ public class TentativaIngestaoService {
         List<Map<String, Object>> tokens = (t.tokens() == null ? List.<TokenRequest>of() : t.tokens())
                 .stream()
                 .map(token -> Map.<String, Object>of(
-                        "tipo", token.tipo(),
-                        "lexema", token.lexema() == null ? "" : token.lexema(),
+                        "tipo", sanitizador.texto(token.tipo(), LIMITE_TIPO_TOKEN),
+                        "lexema", token.lexema() == null ? "" : sanitizador.texto(token.lexema(), LIMITE_LEXEMA),
                         "posicao", token.posicao()))
                 .toList();
 
-        return new TentativaComando(t.idTentativa(), t.idSessao(), t.idFase(), t.tituloFase(), t.fase(),
-                t.desafio(), t.entradaNormalizada(), tokens, t.resultado(), t.codigoErro(),
+        return new TentativaComando(t.idTentativa(), t.idSessao(), t.idFase(),
+                sanitizador.texto(t.tituloFase(), LIMITE_TITULO_FASE), t.fase(),
+                sanitizador.texto(t.desafio(), LIMITE_DESAFIO),
+                sanitizador.texto(t.entradaNormalizada(), sanitizador.getLimiteTextoLivre()),
+                tokens, t.resultado(), sanitizador.texto(t.codigoErro(), LIMITE_CODIGO_ERRO),
                 t.tempoRespostaMs(), t.numeroTentativa(), t.ocorridoEm(), Instant.now());
     }
 }

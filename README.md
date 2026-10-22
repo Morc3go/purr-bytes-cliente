@@ -190,20 +190,24 @@ API e auditoria). A chave de API só é guardada como hash SHA-256.
 
 ### Rodando localmente
 
-Precisa de **Java 21**, **Maven** e **PostgreSQL 16**.
+Precisa de **Java 21**, **Maven** e **Docker** ([ADR 0019](docs/decisoes/0019-banco-de-dados-e-dados-ficticios.md)).
+
+> **LGPD:** o projeto não usa dados de pessoas reais. Nenhum usuário real é cadastrado e
+> nenhum cliente real testa o sistema; o banco contém apenas dados fictícios.
 
 ```powershell
-# 1. banco e usuário (uma vez), no psql como superusuário:
-#    CREATE ROLE purrbytes LOGIN PASSWORD '<escolha uma senha>';
-#    CREATE DATABASE purrbytes OWNER purrbytes;
-
-# 2. variáveis de ambiente (nunca versionar; back/.gitignore já ignora local-dev.env.ps1)
-$env:PB_DB_PASSWORD = '<a senha do passo 1>'
-
-# 3. subir no perfil de desenvolvimento
 cd back
-mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+docker compose up -d                                   # PostgreSQL 16, banco e usuário purrbytes
+mvn spring-boot:run "-Dspring-boot.run.profiles=dev"   # o Flyway cria tudo e aplica o seed fictício
 ```
+
+O banco sobe vazio; quem cria schemas, tabelas e visões é o Flyway, quando a API sobe. No
+perfil `dev` ele também aplica `db/seed-dev/R__dados_ficticios.sql`: 6 sujeitos, avaliações
+pré/pós e 2 partidas, todos fictícios (UUIDs começando com `f1c71c10`). Os dados ficam no
+volume Docker, nunca no repositório; `docker compose down -v` devolve um banco do zero.
+
+Sem Docker, um PostgreSQL 16 instalado também serve: crie o usuário e o banco `purrbytes`
+com a senha `purrbytes_dev` (ou defina `PB_DB_PASSWORD`).
 
 No perfil `dev` a API cria uma **chave de desenvolvimento** e a imprime no log de boot:
 `pb_ingestao_dev_nao_usar_em_coleta_real`. Para o jogo usar a API, no `config.cfg`:

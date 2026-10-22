@@ -6,8 +6,10 @@ import br.edu.purrbytes.telemetria.dominio.SessaoJogoRepository;
 import br.edu.purrbytes.telemetria.erro.ErroDeIngestao;
 import br.edu.purrbytes.telemetria.ingestao.dto.EventoRequest;
 import br.edu.purrbytes.telemetria.ingestao.dto.LoteEventosRequest;
+import br.edu.purrbytes.telemetria.privacidade.SanitizadorDeTexto;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,18 +25,24 @@ public class EventoIngestaoService {
 
     private static final Logger log = LoggerFactory.getLogger(EventoIngestaoService.class);
 
+    /** evento_telemetria.titulo_fase VARCHAR(60). */
+    static final int LIMITE_TITULO_FASE = 60;
+
     private final EventoTelemetriaRepository eventoRepository;
     private final SessaoJogoRepository sessaoRepository;
+    private final SanitizadorDeTexto sanitizador;
     private final int maxEventosPorLote;
     private final int maxDefasagemMinutos;
 
     public EventoIngestaoService(
             EventoTelemetriaRepository eventoRepository,
             SessaoJogoRepository sessaoRepository,
+            SanitizadorDeTexto sanitizador,
             @Value("${purrbytes.ingestao.max-eventos-por-lote}") int maxEventosPorLote,
             @Value("${purrbytes.ingestao.max-defasagem-relogio-minutos}") int maxDefasagemMinutos) {
         this.eventoRepository = eventoRepository;
         this.sessaoRepository = sessaoRepository;
+        this.sanitizador = sanitizador;
         this.maxEventosPorLote = maxEventosPorLote;
         this.maxDefasagemMinutos = maxDefasagemMinutos;
     }
@@ -55,8 +63,13 @@ public class EventoIngestaoService {
             throw new ErroDeIngestao("sessao inexistente; abra a sessao antes de enviar eventos");
         }
 
-        Set<UUID> idsJaGravados = eventoRepository.idsExistentes(eventos.stream().map(EventoRequest::idEvento).toList());
-        List<EventoTelemetria> novos = eventos.stream()
+        // O mesmo id repetido DENTRO do lote passava pelo filtro abaixo (que so
+        // olha o banco) e estourava a chave primaria: 400 e lote inteiro perdido.
+        Map<UUID, EventoRequest> porId = new LinkedHashMap<>();
+        eventos.forEach(e -> porId.putIfAbsent(e.idEvento(), e));
+
+        Set<UUID> idsJaGravados = eventoRepository.idsExistentes(porId.keySet());
+        List<EventoTelemetria> novos = porId.values().stream()
                 .filter(e -> !idsJaGravados.contains(e.idEvento()))
                 .map(this::paraEntidade)
                 .toList();
@@ -73,8 +86,8 @@ public class EventoIngestaoService {
 
     private EventoTelemetria paraEntidade(EventoRequest e) {
         return new EventoTelemetria(e.idEvento(), e.idSessao(), e.sequencia(), e.tipoEvento(),
-                e.idFase(), e.tituloFase(), e.fase(), e.ocorridoEm(), Instant.now(),
-                e.payload() == null ? Map.of() : e.payload());
+                e.idFase(), sanitizador.texto(e.tituloFase(), LIMITE_TITULO_FASE), e.fase(), e.ocorridoEm(),
+                Instant.now(), sanitizador.payload(e.payload()));
     }
 
     /**
