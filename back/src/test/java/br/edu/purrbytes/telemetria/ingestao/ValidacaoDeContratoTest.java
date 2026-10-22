@@ -3,6 +3,7 @@ package br.edu.purrbytes.telemetria.ingestao;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.edu.purrbytes.telemetria.ingestao.dto.AbrirSessaoRequest;
+import br.edu.purrbytes.telemetria.ingestao.dto.EncerrarSessaoRequest;
 import br.edu.purrbytes.telemetria.ingestao.dto.EventoRequest;
 import br.edu.purrbytes.telemetria.ingestao.dto.TentativaRequest;
 import jakarta.validation.ConstraintViolation;
@@ -49,6 +50,13 @@ class ValidacaoDeContratoTest {
         AbrirSessaoRequest req = new AbrirSessaoRequest(
                 UUID.randomUUID(), UUID.randomUUID(), "0.1.0", "", Instant.now());
         assertThat(validator.validate(req)).isNotEmpty();
+    }
+
+    @Test
+    void encerrarSemStatusFalha() {
+        // @Pattern sozinho aceitava null; so o NOT NULL do banco barrava.
+        EncerrarSessaoRequest req = new EncerrarSessaoRequest(UUID.randomUUID(), null, Instant.now());
+        assertThat(validator.validate(req)).anyMatch(v -> v.getPropertyPath().toString().equals("status"));
     }
 
     @Test
