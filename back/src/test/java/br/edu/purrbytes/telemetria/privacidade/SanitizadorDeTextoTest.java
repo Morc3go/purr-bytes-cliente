@@ -45,7 +45,7 @@ class SanitizadorDeTextoTest {
 
         Map<String, Object> saida = sanitizador.payload(payload);
 
-        assertThat((List<?>) saida.get("lista")).containsExactly("b".repeat(240));
+        assertThat(saida.get("lista")).isEqualTo(List.of("b".repeat(240)));
         assertThat(((Map<?, ?>) saida.get("mapa")).get("texto")).isEqualTo("c".repeat(240));
     }
 

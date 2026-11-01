@@ -37,6 +37,10 @@ public class ManipuladorGlobalDeErros {
         Map<String, String> campos = new LinkedHashMap<>();
         e.getBindingResult().getFieldErrors().forEach(erro ->
                 campos.put(erro.getField(), erro.getDefaultMessage()));
+        // 400 faz o cliente descartar o lote: sem este log, a perda nao deixava
+        // rastro no servidor. So nome do campo e regra -- nunca o valor, que
+        // pode ser texto livre digitado pelo participante.
+        log.warn("lote rejeitado na validacao: {}", campos);
         Map<String, Object> corpo = corpo("validacao", "um ou mais campos nao passaram na validacao");
         corpo.put("campos", campos);
         return ResponseEntity.badRequest().body(corpo);
