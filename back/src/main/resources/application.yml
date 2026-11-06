@@ -36,6 +36,11 @@ spring:
     schemas: operacao
     default-schema: operacao
     baseline-on-migrate: false
+    # O perfil dev acrescenta db/seed-dev (dados FICTICIOS). Sem isto, um banco
+    # que ja recebeu o seed nao subiria fora do perfil dev: o Flyway acusaria a
+    # migration repetivel "aplicada mas nao encontrada". Vale so para
+    # repetiveis; uma versionada sumida continua sendo erro.
+    ignore-migration-patterns: "*:future,repeatable:missing"
 
   jackson:
     default-property-inclusion: non_null
@@ -60,7 +65,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        # metrics ficava publico (nenhuma rota de /actuator passa pelo filtro
+        # de chave de API) e expunha detalhes da JVM e das rotas a qualquer um.
+        include: health,info
   endpoint:
     health:
       show-details: never

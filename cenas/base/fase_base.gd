@@ -144,7 +144,9 @@ func _ready() -> void:
 	# ja precisa sair com id_fase preenchido.
 	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais,
 		configuracao.garantir_id_fase(), configuracao.titulo)
-	hud.definir_titulo("fase %d -- %s" % [configuracao.numero, configuracao.titulo])
+	# So o titulo: toda fase de autoria tem numero 1 (legado da constraint do
+	# banco, ADR 0012), e o HUD dizia "fase 1" ate na quarta fase da trilha.
+	hud.definir_titulo(configuracao.titulo)
 	if configuracao.mostrar_comandos:
 		hud.mostrar_comandos(_legenda_de_comandos())
 
@@ -438,7 +440,7 @@ func _protegido_contra(cachorro_alvo: Cachorro) -> bool:
 		return false
 
 	if cachorro_alvo.bloqueia_por_comando():
-		return jogador.comando_protegido == cachorro_alvo.comando_para_bloquear
+		return jogador.comando_protegido == normalizar_comando_livre(cachorro_alvo.comando_para_bloquear)
 
 	return jogador.algoritmo_protegido == cachorro_alvo.algoritmo_exigido
 
@@ -546,12 +548,12 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 ## Devolve true quando o texto bloqueou algum cachorro -- e ai o comando ja foi
 ## tratado e registrado, e o pipeline lexico nao roda.
 func _tentar_comando_de_bloqueio(texto: String, tempo_resposta_ms: int) -> bool:
-	var limpo: String = texto.strip_edges()
+	var limpo: String = normalizar_comando_livre(texto)
 	if limpo.is_empty():
 		return false
 
 	for alvo: Cachorro in cachorros:
-		if not alvo.bloqueia_por_comando() or alvo.comando_para_bloquear != limpo:
+		if not alvo.bloqueia_por_comando() or normalizar_comando_livre(alvo.comando_para_bloquear) != limpo:
 			continue
 
 		jogador.ativar_protecao(configuracao.duracao_cifra_s, "", limpo)
@@ -566,6 +568,14 @@ func _tentar_comando_de_bloqueio(texto: String, tempo_resposta_ms: int) -> bool:
 		return true
 
 	return false
+
+
+## Frase de conduta comparada sem ligar para maiusculas nem espacos repetidos:
+## o mesmo "trim + minusculas" que o analisador lexico aplica aos comandos de
+## cifra (ADR 0006). Antes, "Ativar 2FA" ou "ativar  2fa" eram recusados e o
+## aluno perdia vida por digitacao, nao por nao saber a conduta.
+static func normalizar_comando_livre(texto: String) -> String:
+	return " ".join(texto.strip_edges().to_lower().split(" ", false))
 
 
 func _analisar_comando(texto: String, tempo_resposta_ms: int) -> void:

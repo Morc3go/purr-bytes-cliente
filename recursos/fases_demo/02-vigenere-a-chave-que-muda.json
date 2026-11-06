@@ -1,0 +1,64 @@
+{
+	"titulo": "2. Vigenère: a chave que muda",
+	"id_fase": "3c0b9d2e-1a41-4f6e-9b11-0c5e2a7d0202",
+	"briefing": "na cifra de vigenère a chave é uma palavra: cada letra dela dá um deslocamento diferente, e a chave se repete ao longo da mensagem.\nproteja o pacote antes de cada vigia:\n  vigia roxo: cifrar segredo chave=gato\n  vigia verde: cifrar rede chave=7 (revisão de césar)\no vigia vermelho só persegue. aperte F4 para ver a chave alinhada letra a letra.",
+	"mostrar_comandos": true,
+	"vidas": 3,
+	"mapa": {
+		"largura": 21,
+		"altura": 15,
+		"seed": 20261102
+	},
+	"cachorros": [
+		{
+			"cor": "#b48cff",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "VIGENERE",
+			"palavra": "segredo",
+			"chave": "gato"
+		},
+		{
+			"cor": "#7ee081",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "CESAR",
+			"palavra": "rede",
+			"chave": "7"
+		},
+		{
+			"cor": "#ff6b6b",
+			"comando_para_bloquear": ""
+		}
+	],
+	"terminais": [
+		{
+			"enunciado": "na vigenère com chave 'gato', o que muda de uma letra para a outra?",
+			"opcoes": [
+				"o deslocamento: cada letra da chave dá um diferente",
+				"o alfabeto usado",
+				"nada, é igual à cifra de césar"
+			],
+			"correta": "o deslocamento: cada letra da chave dá um diferente",
+			"explicacao": "g desloca 6, a desloca 0, t desloca 19, o desloca 14 -- e repete."
+		},
+		{
+			"enunciado": "a chave 'gato' tem 4 letras e a palavra 'segredo' tem 7. o que acontece?",
+			"opcoes": [
+				"a chave se repete: gatogat",
+				"as últimas letras ficam sem cifrar",
+				"o jogo recusa a chave"
+			],
+			"correta": "a chave se repete: gatogat",
+			"explicacao": "a chave é repetida até cobrir a mensagem inteira."
+		},
+		{
+			"enunciado": "por que contar as letras mais comuns não quebra a vigenère tão fácil?",
+			"opcoes": [
+				"a mesma letra vira letras diferentes conforme a posição",
+				"porque ela embaralha a ordem das palavras",
+				"porque ela apaga as vogais"
+			],
+			"correta": "a mesma letra vira letras diferentes conforme a posição",
+			"explicacao": "na césar o 'e' vira sempre a mesma letra; aqui ele muda, e a contagem se espalha."
+		}
+	]
+}

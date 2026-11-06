@@ -11,6 +11,12 @@ extends TransporteTelemetria
 ## Authorization: Bearer <chave_api> vai no cabecalho -- nunca em log, nunca
 ## na tela (restricao 8 da secao 4).
 
+## Sem timeout, uma API fora do ar no Windows prendia cada envio por 30 s (60 s
+## com "localhost", que tenta IPv6 e depois IPv4) -- e uma API que aceitasse a
+## conexao sem responder prendia a fila para sempre. O timeout vira falha
+## transitoria: o lote fica na fila e volta no backoff.
+const TIMEOUT_S: float = 10.0
+
 var url_base: String = ""
 var chave_api: String = ""
 
@@ -25,6 +31,7 @@ func _init(url_base_: String = "", chave_api_: String = "") -> void:
 func _ready() -> void:
 	_http = HTTPRequest.new()
 	_http.name = "RequisicaoHttp"
+	_http.timeout = TIMEOUT_S
 	add_child(_http)
 
 

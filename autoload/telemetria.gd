@@ -27,7 +27,9 @@ const CAMINHO_FILA_PADRAO: String = "user://fila_telemetria.json"
 ## Copia local do que o modo HTTP ja entregou, ao lado do arquivo de fila. Em
 ## MOCK o proprio arquivo do transporte ja e esse registro.
 const NOME_HISTORICO_LOCAL: String = "historico_telemetria.jsonl"
-const VERSAO_FILA: int = 1
+## 2: aberturas e encerramentos pendentes viraram listas (mais de uma sessao na
+## fila). A versao 1 continua sendo lida -- ver recuperar_fila().
+const VERSAO_FILA: int = 2
 
 ## Limites copiados do schema do back-end. Truncar aqui, e nao la, e o que
 ## cumpre a restricao 2 da secao 4: o texto reduzido e o unico que sai do
@@ -64,8 +66,12 @@ var _caminho_fila: String = CAMINHO_FILA_PADRAO
 
 var _eventos: Array[Dictionary] = []
 var _tentativas: Array[Dictionary] = []
-var _abertura_pendente: Dictionary = {}
-var _encerramento_pendente: Dictionary = {}
+## Listas, e nao um valor so: sem rede, o aluno pode encerrar uma partida e
+## comecar outra -- ou o jogo travar e ser reaberto -- antes de a fila drenar.
+## Com um valor so, a abertura da sessao anterior era sobrescrita, os eventos
+## dela voltavam 400 ("sessao inexistente") e eram descartados.
+var _aberturas_pendentes: Array[Dictionary] = []
+var _encerramentos_pendentes: Array[Dictionary] = []
 
 var _id_sessao: String = ""
 var _sequencia: int = 0
@@ -136,8 +142,8 @@ func configurar(transporte: TransporteTelemetria, caminho_fila: String) -> void:
 func reiniciar(transporte: TransporteTelemetria, caminho_fila: String) -> void:
 	_eventos.clear()
 	_tentativas.clear()
-	_abertura_pendente = {}
-	_encerramento_pendente = {}
+	_aberturas_pendentes.clear()
+	_encerramentos_pendentes.clear()
 	_id_sessao = ""
 	_sequencia = 0
 	_sessao_aberta = false
@@ -161,17 +167,16 @@ func iniciar_sessao(id_sessao: String, id_sujeito: String) -> void:
 	_id_sessao = id_sessao
 	_sequencia = 0
 	_sessao_aberta = true
-	_encerramento_pendente = {}
 
 	# Corpo de POST /v1/sessoes. Os campos sao exatamente as colunas NOT NULL de
 	# pesquisa.sessao_jogo (V2__pesquisa.sql), nada alem disso.
-	_abertura_pendente = {
+	_aberturas_pendentes.append({
 		"id_sessao": _id_sessao,
 		"id_sujeito": id_sujeito,
 		"versao_jogo": ConfigJogo.versao_jogo,
 		"plataforma": ConfigJogo.plataforma,
 		"iniciada_em": Relogio.agora_utc_iso(),
-	}
+	})
 
 	registrar_evento(CatalogoEventos.SESSAO_INICIADA, {
 		"modo_telemetria": ConfigJogo.modo_telemetria,
@@ -190,11 +195,11 @@ func encerrar_sessao(status: String = STATUS_ENCERRADA) -> void:
 	registrar_evento(codigo, {"status": status})
 
 	# Corpo de POST /v1/sessoes/{id}/encerrar.
-	_encerramento_pendente = {
+	_encerramentos_pendentes.append({
 		"id_sessao": _id_sessao,
 		"status": status,
 		"encerrada_em": Relogio.agora_utc_iso(),
-	}
+	})
 	_sessao_aberta = false
 	_persistir()
 
@@ -392,8 +397,10 @@ func estatisticas() -> Dictionary:
 		"proxima_sequencia": _sequencia,
 		"eventos_na_fila": _eventos.size(),
 		"tentativas_na_fila": _tentativas.size(),
-		"abertura_pendente": not _abertura_pendente.is_empty(),
-		"encerramento_pendente": not _encerramento_pendente.is_empty(),
+		"abertura_pendente": not _aberturas_pendentes.is_empty(),
+		"encerramento_pendente": not _encerramentos_pendentes.is_empty(),
+		"aberturas_pendentes": _aberturas_pendentes.size(),
+		"encerramentos_pendentes": _encerramentos_pendentes.size(),
 		"falhas_consecutivas": _falhas_consecutivas,
 		"itens_descartados": _eventos_descartados,
 		"transporte": "nenhum" if _transporte == null else _transporte.rotulo(),
@@ -402,7 +409,7 @@ func estatisticas() -> Dictionary:
 
 func fila_vazia() -> bool:
 	return _eventos.is_empty() and _tentativas.is_empty() \
-		and _abertura_pendente.is_empty() and _encerramento_pendente.is_empty()
+		and _aberturas_pendentes.is_empty() and _encerramentos_pendentes.is_empty()
 
 
 # ---------------------------------------------------------------------------
@@ -411,39 +418,50 @@ func fila_vazia() -> bool:
 
 ## Ordem fixa e obrigatoria: a sessao tem que existir no banco antes dos eventos
 ## (FK), e o encerramento vai por ultimo para nao fechar a sessao antes de o
-## ultimo evento chegar.
+## ultimo evento chegar. Com varias sessoes na fila, todas as aberturas saem
+## primeiro e todos os encerramentos por ultimo -- a ordem vale para cada uma.
 func _proximo_pacote() -> Dictionary:
-	if not _abertura_pendente.is_empty():
+	if not _aberturas_pendentes.is_empty():
 		return {
 			"rota": TransporteTelemetria.ROTA_ABRIR_SESSAO,
-			"id_sessao": String(_abertura_pendente["id_sessao"]),
-			"corpo": _abertura_pendente,
+			"id_sessao": String(_aberturas_pendentes[0]["id_sessao"]),
+			"corpo": _aberturas_pendentes[0],
 		}
 
 	if not _eventos.is_empty():
-		var limite: int = mini(mini(ConfigJogo.tamanho_lote, TETO_EVENTOS_POR_LOTE), _eventos.size())
 		return {
 			"rota": TransporteTelemetria.ROTA_EVENTOS,
 			"id_sessao": String(_eventos[0]["id_sessao"]),
-			"eventos": _eventos.slice(0, limite),
+			"eventos": _eventos.slice(0, _tamanho_do_lote(_eventos)),
 		}
 
 	if not _tentativas.is_empty():
-		var limite_t: int = mini(mini(ConfigJogo.tamanho_lote, TETO_EVENTOS_POR_LOTE), _tentativas.size())
 		return {
 			"rota": TransporteTelemetria.ROTA_TENTATIVAS,
 			"id_sessao": String(_tentativas[0]["id_sessao"]),
-			"tentativas": _tentativas.slice(0, limite_t),
+			"tentativas": _tentativas.slice(0, _tamanho_do_lote(_tentativas)),
 		}
 
-	if not _encerramento_pendente.is_empty():
+	if not _encerramentos_pendentes.is_empty():
 		return {
 			"rota": TransporteTelemetria.ROTA_ENCERRAR_SESSAO,
-			"id_sessao": String(_encerramento_pendente["id_sessao"]),
-			"corpo": _encerramento_pendente,
+			"id_sessao": String(_encerramentos_pendentes[0]["id_sessao"]),
+			"corpo": _encerramentos_pendentes[0],
 		}
 
 	return {}
+
+
+## Quantos itens do comeco da fila vao no proximo lote: ate o teto, e nunca
+## passando para a sessao seguinte. A rota leva um id_sessao so, e a API recusa
+## (400) o lote em que algum item aponte para outra -- e 400 descarta o lote.
+func _tamanho_do_lote(itens: Array[Dictionary]) -> int:
+	var limite: int = mini(mini(ConfigJogo.tamanho_lote, TETO_EVENTOS_POR_LOTE), itens.size())
+	var id_sessao: String = String(itens[0]["id_sessao"])
+	for i: int in limite:
+		if String(itens[i]["id_sessao"]) != id_sessao:
+			return i
+	return limite
 
 
 ## Remove da fila os itens que o pacote levava. Seguro contra eventos novos
@@ -452,7 +470,7 @@ func _proximo_pacote() -> Dictionary:
 func _remover_do_pacote(pacote: Dictionary) -> int:
 	match String(pacote["rota"]):
 		TransporteTelemetria.ROTA_ABRIR_SESSAO:
-			_abertura_pendente = {}
+			_aberturas_pendentes.pop_front()
 			return 1
 		TransporteTelemetria.ROTA_EVENTOS:
 			var n: int = (pacote["eventos"] as Array).size()
@@ -463,7 +481,7 @@ func _remover_do_pacote(pacote: Dictionary) -> int:
 			_tentativas = _tentativas.slice(m)
 			return m
 		TransporteTelemetria.ROTA_ENCERRAR_SESSAO:
-			_encerramento_pendente = {}
+			_encerramentos_pendentes.pop_front()
 			return 1
 	return 0
 
@@ -512,8 +530,8 @@ func _persistir() -> void:
 		"id_sessao": _id_sessao,
 		"sequencia": _sequencia,
 		"sessao_aberta": _sessao_aberta,
-		"abertura_pendente": _abertura_pendente,
-		"encerramento_pendente": _encerramento_pendente,
+		"aberturas_pendentes": _aberturas_pendentes,
+		"encerramentos_pendentes": _encerramentos_pendentes,
 		"eventos": _eventos,
 		"tentativas": _tentativas,
 		"itens_descartados": _eventos_descartados,
@@ -556,14 +574,21 @@ func recuperar_fila() -> void:
 		return
 
 	var dados: Dictionary = lido as Dictionary
-	if int(dados.get("versao", 0)) != VERSAO_FILA:
+	var versao: int = int(dados.get("versao", 0))
+	if versao != 1 and versao != VERSAO_FILA:
 		Registro.aviso("Telemetria", "fila persistida em versao incompativel; ignorada")
 		return
 
 	_id_sessao = String(dados.get("id_sessao", ""))
 	_sequencia = int(dados.get("sequencia", 0))
-	_abertura_pendente = dados.get("abertura_pendente", {}) as Dictionary
-	_encerramento_pendente = dados.get("encerramento_pendente", {}) as Dictionary
+	if versao == 1:
+		# A versao 1 guardava uma abertura e um encerramento soltos. Ignorar o
+		# arquivo jogaria fora a coleta presa nele numa maquina recem-atualizada.
+		_aberturas_pendentes = _lista_de_um(dados.get("abertura_pendente", {}))
+		_encerramentos_pendentes = _lista_de_um(dados.get("encerramento_pendente", {}))
+	else:
+		_aberturas_pendentes = _converter_lista(dados.get("aberturas_pendentes", [] as Array))
+		_encerramentos_pendentes = _converter_lista(dados.get("encerramentos_pendentes", [] as Array))
 	_eventos_descartados = int(dados.get("itens_descartados", 0))
 	_eventos = _converter_lista(dados.get("eventos", [] as Array))
 	_tentativas = _converter_lista(dados.get("tentativas", [] as Array))
@@ -582,12 +607,19 @@ func recuperar_fila() -> void:
 			"sessao %s ficou aberta na execucao anterior; marcada como ABANDONADA" % _id_sessao)
 		_sessao_aberta = false
 		registrar_evento(CatalogoEventos.SESSAO_ABANDONADA, {"motivo": "processo_encerrado"})
-		_encerramento_pendente = {
+		_encerramentos_pendentes.append({
 			"id_sessao": _id_sessao,
 			"status": STATUS_ABANDONADA,
 			"encerrada_em": Relogio.agora_utc_iso(),
-		}
+		})
 		_persistir()
+
+
+func _lista_de_um(bruto: Variant) -> Array[Dictionary]:
+	var saida: Array[Dictionary] = []
+	if typeof(bruto) == TYPE_DICTIONARY and not (bruto as Dictionary).is_empty():
+		saida.append(bruto as Dictionary)
+	return saida
 
 
 func _converter_lista(bruto: Variant) -> Array[Dictionary]:
@@ -649,8 +681,13 @@ func _sanitizar_valor(valor: Variant, profundidade: int) -> Variant:
 			for item: Variant in valor as Array:
 				lista.append(_sanitizar_valor(item, profundidade + 1))
 			return lista
-		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT:
+		TYPE_NIL, TYPE_BOOL, TYPE_INT:
 			return valor
+		TYPE_FLOAT:
+			# NaN e infinito nao existem em JSON: a API recusa o lote (400) e o
+			# lote inteiro seria descartado por causa de uma medida (ex.: fps).
+			var numero: float = valor as float
+			return null if is_nan(numero) or is_inf(numero) else numero
 		TYPE_VECTOR2, TYPE_VECTOR2I:
 			# Posicao no labirinto e dado de jogo legitimo, mas JSON nao conhece
 			# Vector2: converter aqui evita que JSON.stringify emita "(3, 4)".

@@ -144,3 +144,8 @@ func _preparar_diretorio_temporario() -> void:
 		for arquivo: String in fases.get_files():
 			fases.remove(arquivo)
 	CarregadorFaseJson.pasta_das_fases = pasta_de_fases
+	# Idem para a aparencia do gato: teste que troca para calico nao pode mudar
+	# o gatinho de quem joga nesta maquina.
+	AparenciaGato.caminho = CasoDeTeste.DIR_TEMPORARIO.path_join("preferencias.cfg")
+	if FileAccess.file_exists(AparenciaGato.caminho):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(AparenciaGato.caminho))

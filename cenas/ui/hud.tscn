@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://cenas/ui/hud.gd" id="1_hud"]
 
@@ -10,6 +10,13 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(1, 0.851, 0.482, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_faixa"]
+bg_color = Color(1, 1, 1, 0.82)
+border_width_bottom = 1
+border_color = Color(1, 0.851, 0.482, 1)
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
 [node name="Hud" type="CanvasLayer"]
 layer = 1
 script = ExtResource("1_hud")
@@ -20,6 +27,15 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="Faixa" type="Panel" parent="Raiz"]
+anchor_right = 1.0
+offset_left = 2.0
+offset_right = -2.0
+offset_bottom = 19.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_faixa")
 
 [node name="Linha" type="HBoxContainer" parent="Raiz"]
 anchor_right = 1.0

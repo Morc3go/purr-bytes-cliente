@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://cenas/ui/menu_principal.gd" id="1_menu"]
-[ext_resource type="SpriteFrames" path="res://recursos/arte/gato_frames.tres" id="2_gato"]
+[ext_resource type="SpriteFrames" path="res://recursos/arte/gato_tuxedo_frames.tres" id="2_gato"]
+[ext_resource type="SpriteFrames" path="res://recursos/arte/cachorro_frames.tres" id="5_cachorro"]
 [ext_resource type="Theme" path="res://recursos/temas/tema_telas_secundarias.tres" id="3_tema"]
 [ext_resource type="Texture2D" path="res://recursos/arte/wallpaper_menu.png" id="4_wallpaper"]
 
@@ -49,14 +50,29 @@ text = "letramento digital e criptografia"
 horizontal_alignment = 1
 
 [node name="Mascote" type="Control" parent="Cartao/Coluna"]
-custom_minimum_size = Vector2(0, 26)
+custom_minimum_size = Vector2(0, 34)
 mouse_filter = 2
 
 [node name="Gato" type="AnimatedSprite2D" parent="Cartao/Coluna/Mascote"]
-position = Vector2(130, 12)
+position = Vector2(114, 14)
 sprite_frames = ExtResource("2_gato")
 animation = &"parado"
 autoplay = "parado"
+
+[node name="Cachorro" type="AnimatedSprite2D" parent="Cartao/Coluna/Mascote"]
+position = Vector2(146, 14)
+sprite_frames = ExtResource("5_cachorro")
+animation = &"parado"
+frame = 1
+
+[node name="TrocarGato" type="Button" parent="Cartao/Coluna"]
+custom_minimum_size = Vector2(0, 14)
+size_flags_horizontal = 4
+focus_mode = 0
+tooltip_text = "escolher a aparencia do gatinho"
+theme_override_font_sizes/font_size = 8
+flat = true
+text = "< gatinho: tuxedo >"
 
 [node name="Botoes" type="VBoxContainer" parent="Cartao/Coluna"]
 theme_override_constants/separation = 4

@@ -1,0 +1,72 @@
+{
+	"titulo": "3. SHA-256: o pacote foi alterado?",
+	"id_fase": "3c0b9d2e-1a41-4f6e-9b11-0c5e2a7d0303",
+	"briefing": "hash não esconde nada: ele gera um resumo de mão única para conferir se o conteúdo chegou inteiro.\nantes de cada vigia, calcule e confira o resumo no terminal (T):\n  'hash contrato' mostra o resumo; 'verificar contrato <8 primeiros>' confere\n  o mesmo vale para 'boleto'\no vigia vermelho só persegue. F4 mostra o efeito avalanche: mude uma letra e veja o resumo inteiro mudar.",
+	"mostrar_comandos": true,
+	"vidas": 3,
+	"mapa": {
+		"largura": 21,
+		"altura": 15,
+		"seed": 20261103
+	},
+	"cachorros": [
+		{
+			"cor": "#ffe066",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "SHA256",
+			"palavra": "contrato"
+		},
+		{
+			"cor": "#ffb44d",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "SHA256",
+			"palavra": "boleto"
+		},
+		{
+			"cor": "#ff6b6b",
+			"comando_para_bloquear": ""
+		}
+	],
+	"terminais": [
+		{
+			"enunciado": "dá para descobrir a palavra original a partir do hash?",
+			"opcoes": [
+				"não: o hash é de mão única",
+				"sim, aplicando o hash ao contrário",
+				"sim, se você souber a chave"
+			],
+			"correta": "não: o hash é de mão única",
+			"explicacao": "não existe 'des-hash': só dá para calcular de novo e comparar."
+		},
+		{
+			"enunciado": "você muda uma única letra de um arquivo. o que acontece com o sha-256 dele?",
+			"opcoes": [
+				"muda quase inteiro (efeito avalanche)",
+				"muda só um caractere",
+				"continua igual"
+			],
+			"correta": "muda quase inteiro (efeito avalanche)",
+			"explicacao": "é por isso que qualquer adulteração, por menor que seja, aparece."
+		},
+		{
+			"enunciado": "para que um site guarda o hash da sua senha, e não a senha?",
+			"opcoes": [
+				"para conferir o login sem guardar a senha em texto claro",
+				"para te mostrar a senha se você esquecer",
+				"para o login ficar mais rápido"
+			],
+			"correta": "para conferir o login sem guardar a senha em texto claro",
+			"explicacao": "se o banco de dados vazar, quem pegar só vê resumos, não as senhas."
+		},
+		{
+			"enunciado": "o site de um programa mostra o sha-256 do instalador. para quê?",
+			"opcoes": [
+				"para você conferir se o arquivo baixado não foi alterado",
+				"para instalar mais rápido",
+				"para provar que o programa é gratuito"
+			],
+			"correta": "para você conferir se o arquivo baixado não foi alterado",
+			"explicacao": "calcule o hash do que você baixou: se bater, o arquivo é o original."
+		}
+	]
+}

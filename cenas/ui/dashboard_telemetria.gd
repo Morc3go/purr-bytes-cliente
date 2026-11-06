@@ -154,7 +154,8 @@ func _rotulo(id_fase: String) -> String:
 ## contraste, que e o ponto fraco historico das telas deste projeto.
 func _desenhar_grafico() -> void:
 	var area: Vector2 = _grafico.size
-	var fonte: Font = ThemeDB.fallback_font
+	# Fonte do tema (Silkscreen), nao a fallback: o grafico destoava do resto da tela.
+	var fonte: Font = _grafico.get_theme_default_font()
 	var altura_util: float = area.y - 24.0
 
 	# Linha de base: sem ela, barra zerada e area vazia ficam iguais.
@@ -175,9 +176,9 @@ func _desenhar_grafico() -> void:
 
 		_grafico.draw_rect(Rect2(x, topo, largura_barra, altura), dados[i]["cor"])
 		_grafico.draw_string(fonte, Vector2(x, topo - 3.0), str(valor),
-			HORIZONTAL_ALIGNMENT_LEFT, largura_barra, 10, COR_TEXTO)
-		_grafico.draw_string(fonte, Vector2(x, altura_util + 12.0), String(dados[i]["rotulo"]),
-			HORIZONTAL_ALIGNMENT_LEFT, largura_barra + 20.0, 9, COR_TEXTO)
+			HORIZONTAL_ALIGNMENT_CENTER, largura_barra, 10, COR_TEXTO)
+		_grafico.draw_string(fonte, Vector2(x - 10.0, altura_util + 12.0), String(dados[i]["rotulo"]),
+			HORIZONTAL_ALIGNMENT_CENTER, largura_barra + 20.0, 8, COR_TEXTO)
 
 
 func _montar_tabela() -> void:

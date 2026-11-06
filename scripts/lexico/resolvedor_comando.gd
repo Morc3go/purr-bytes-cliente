@@ -75,8 +75,7 @@ static func resolver(
 
 static func _resolver_status(configuracao: FaseConfig, desafio: DesafioConfig) -> VeredictoComando:
 	var enunciado: String = desafio.enunciado if desafio != null else "todos os desafios resolvidos."
-	return VeredictoComando.sucesso("fase %d -- %s\n%s"
-		% [configuracao.numero, configuracao.titulo, enunciado])
+	return VeredictoComando.sucesso("%s\n%s" % [configuracao.titulo, enunciado])
 
 
 static func _resolver_dica(desafio: DesafioConfig) -> VeredictoComando:
@@ -195,7 +194,14 @@ static func _resolver_verificar(
 		return VeredictoComando.semantico(_CODIGO_ARGUMENTO_AUSENTE,
 			"digite 'verificar <palavra> <prefixo_hash>'.")
 
-	var prefixo_digitado: String = soltos[1]
+	# O AFD separa um prefixo como "4a4d23dd" em NUMERO "4" + IDENTIFICADOR
+	# "a4d23dd": cada classe de token e lida por inteiro (maior casamento), e
+	# hexadecimal nao e classe da gramatica. Quem sabe que ali vem UM digest e a
+	# semantica do verificar, entao e aqui que os pedacos sao reunidos. Antes
+	# disto, todo digest comecando por digito (10 em 16 palavras) era impossivel
+	# de verificar -- a fase de exemplo so passava porque sha256("senha") comeca
+	# com letra. A gramatica e o AFD da monografia nao mudam.
+	var prefixo_digitado: String = "".join(soltos.slice(1))
 	if prefixo_digitado != desafio.resposta_esperada:
 		return VeredictoComando.semantico(_CODIGO_DIGEST_INCORRETO,
 			"esse prefixo nao bate com o digest do pacote. o conteudo pode ter sido adulterado.")

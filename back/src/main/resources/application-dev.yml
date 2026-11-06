@@ -1,13 +1,19 @@
 # Perfil de desenvolvimento local. Ative com:  --spring.profiles.active=dev
 #
-# ATENCAO: os valores abaixo sao apenas para a maquina de desenvolvimento.
-# Em qualquer ambiente com dados reais de participantes, use variaveis de
-# ambiente (perfil padrao) e um pepper gerado aleatoriamente.
+# ATENCAO: os valores abaixo sao apenas para a maquina de desenvolvimento e
+# casam com back/docker-compose.yml. O projeto NAO usa dados de pessoas reais
+# (ADR 0019); ainda assim, fora do perfil dev use variaveis de ambiente e um
+# pepper gerado aleatoriamente.
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/purrbytes
     username: purrbytes
     password: ${PB_DB_PASSWORD:purrbytes_dev}
+
+  flyway:
+    # db/seed-dev: populacao FICTICIA para o dashboard e as visoes analiticas
+    # terem o que mostrar. Nunca entra fora do perfil dev.
+    locations: classpath:db/migration,classpath:db/seed-dev
 
   jpa:
     properties:

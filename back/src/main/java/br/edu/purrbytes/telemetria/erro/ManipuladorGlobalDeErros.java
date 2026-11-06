@@ -1,12 +1,18 @@
 package br.edu.purrbytes.telemetria.erro;
 
+import jakarta.servlet.ServletException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,6 +37,10 @@ public class ManipuladorGlobalDeErros {
         Map<String, String> campos = new LinkedHashMap<>();
         e.getBindingResult().getFieldErrors().forEach(erro ->
                 campos.put(erro.getField(), erro.getDefaultMessage()));
+        // 400 faz o cliente descartar o lote: sem este log, a perda nao deixava
+        // rastro no servidor. So nome do campo e regra -- nunca o valor, que
+        // pode ser texto livre digitado pelo participante.
+        log.warn("lote rejeitado na validacao: {}", campos);
         Map<String, Object> corpo = corpo("validacao", "um ou mais campos nao passaram na validacao");
         corpo.put("campos", campos);
         return ResponseEntity.badRequest().body(corpo);
@@ -43,6 +53,32 @@ public class ManipuladorGlobalDeErros {
         log.warn("lote rejeitado por violar restricao do banco: {}", e.getMostSpecificCause().getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(corpo("dado_invalido", "o lote viola uma restricao do banco (codigo fora do catalogo ou duplicidade)"));
+    }
+
+    // Sem estes dois handlers, JSON ilegivel, timestamp sem fuso ou UUID
+    // invalido na rota caiam no handler generico abaixo e voltavam 500. O
+    // cliente trata 5xx como transitorio e para a drenagem no primeiro lote
+    // que falha: um unico lote malformado travava a fila inteira para sempre.
+    @ExceptionHandler({HttpMessageNotReadableException.class, TypeMismatchException.class})
+    public ResponseEntity<Map<String, Object>> tratarRequisicaoMalformada(Exception e) {
+        // So o tipo: a mensagem do Jackson pode trazer trecho do corpo recebido.
+        log.warn("requisicao malformada rejeitada: {}", e.getClass().getSimpleName());
+        return ResponseEntity.badRequest()
+                .body(corpo("requisicao_malformada", "corpo ou parametro fora do formato do contrato"));
+    }
+
+    // Erros do proprio Spring MVC (rota inexistente, metodo ou content-type
+    // errado) ja sabem o status certo; so faltava respeita-lo. 404 continua
+    // transitorio para o cliente (URL errada no config.cfg nao apaga a coleta).
+    @ExceptionHandler({ServletException.class, ErrorResponseException.class})
+    public ResponseEntity<Map<String, Object>> tratarErroDoMvc(Exception e) {
+        HttpStatusCode status = e instanceof ErrorResponse resposta
+                ? resposta.getStatusCode()
+                : HttpStatus.INTERNAL_SERVER_ERROR;
+        if (status.is5xxServerError()) {
+            log.error("erro do MVC ao processar ingestao", e);
+        }
+        return ResponseEntity.status(status).body(corpo("requisicao_invalida", "rota, metodo ou cabecalho fora do contrato"));
     }
 
     @ExceptionHandler(Exception.class)

@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://cenas/base/jogador.gd" id="1_jogador"]
-[ext_resource type="SpriteFrames" path="res://recursos/arte/gato_frames.tres" id="2_sprite"]
+[ext_resource type="SpriteFrames" path="res://recursos/arte/gato_tuxedo_frames.tres" id="2_sprite"]
 [ext_resource type="Script" path="res://scripts/visual/animador_direcional.gd" id="3_animador"]
+[ext_resource type="Script" path="res://scripts/visual/marcador_de_cor.gd" id="4_sombra"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jogador"]
 size = Vector2(10, 10)
@@ -12,6 +13,14 @@ collision_layer = 2
 collision_mask = 1
 motion_mode = 1
 script = ExtResource("1_jogador")
+
+[node name="Sombra" type="Node2D" parent="."]
+position = Vector2(0, 6)
+script = ExtResource("4_sombra")
+cor = Color(0.145, 0.129, 0.106, 0)
+raio = 6.0
+achatamento = 0.4
+opacidade_do_preenchimento = 0.22
 
 [node name="Sprite" type="AnimatedSprite2D" parent="."]
 offset = Vector2(0, -4)

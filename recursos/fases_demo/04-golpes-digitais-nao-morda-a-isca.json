@@ -1,0 +1,72 @@
+{
+	"titulo": "4. Golpes digitais: não morda a isca",
+	"id_fase": "3c0b9d2e-1a41-4f6e-9b11-0c5e2a7d0404",
+	"briefing": "nem todo ataque quebra cifra: muitos só enganam a pessoa (phishing e engenharia social).\ncada vigia representa um golpe. no terminal (T), digite a atitude que protege:\n  vigia azul: conferir remetente\n  vigia laranja: desconfiar do link\n  vigia rosa: ativar 2fa\no vigia vermelho não tem comando: desse você foge.",
+	"mostrar_comandos": true,
+	"vidas": 3,
+	"mapa": {
+		"largura": 21,
+		"altura": 15,
+		"seed": 20261104
+	},
+	"cachorros": [
+		{
+			"cor": "#4da3ff",
+			"comando_para_bloquear": "conferir remetente"
+		},
+		{
+			"cor": "#ffb44d",
+			"comando_para_bloquear": "desconfiar do link"
+		},
+		{
+			"cor": "#ff8fc7",
+			"comando_para_bloquear": "ativar 2fa"
+		},
+		{
+			"cor": "#ff6b6b",
+			"comando_para_bloquear": ""
+		}
+	],
+	"terminais": [
+		{
+			"enunciado": "chega um sms: 'sua conta será bloqueada hoje, clique aqui'. o que fazer?",
+			"opcoes": [
+				"abrir o app do banco por conta própria, sem usar o link",
+				"clicar rápido para não perder a conta",
+				"responder o sms pedindo mais informações"
+			],
+			"correta": "abrir o app do banco por conta própria, sem usar o link",
+			"explicacao": "pressa é a isca: o caminho seguro é sempre o canal oficial que você mesmo abre."
+		},
+		{
+			"enunciado": "alguém liga dizendo ser do banco e pede o código que chegou por sms. você:",
+			"opcoes": [
+				"não passa: o banco nunca pede esse código",
+				"passa, porque a pessoa sabia seu nome",
+				"passa só a metade do código"
+			],
+			"correta": "não passa: o banco nunca pede esse código",
+			"explicacao": "esse código é o segundo fator. quem tem ele entra na sua conta."
+		},
+		{
+			"enunciado": "um amigo pede um pix urgente por mensagem, de um número novo. primeiro passo?",
+			"opcoes": [
+				"ligar para o número antigo dele e confirmar",
+				"fazer o pix, ele é seu amigo",
+				"pedir uma foto dele antes"
+			],
+			"correta": "ligar para o número antigo dele e confirmar",
+			"explicacao": "golpe do número novo: confirme por outro canal antes de qualquer pagamento."
+		},
+		{
+			"enunciado": "qual destes sinais mais indica um e-mail de phishing?",
+			"opcoes": [
+				"remetente estranho e pressa para você agir",
+				"e-mail com a logo da empresa",
+				"e-mail enviado de manhã"
+			],
+			"correta": "remetente estranho e pressa para você agir",
+			"explicacao": "logo é fácil de copiar; o endereço do remetente e a urgência denunciam o golpe."
+		}
+	]
+}

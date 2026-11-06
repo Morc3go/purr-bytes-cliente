@@ -758,3 +758,25 @@ outros 25 arquivos de teste do projeto.
 5. **Opacidade:** confirme visualmente que nenhuma tela deixa o fundo aparecer através do
    painel (checagem automatizada em `teste_telas_opacas.gd`, mas vale conferir também no
    editor rodando).
+
+---
+
+# 2026-11-01 — Arte final dos personagens e check-up geral
+
+- **Arte:** gato tuxedo e cachorro husky da artista da equipe, em quadros de 32×32
+  (ADR 0020). Fundo pastel na fase, faixa do HUD, sombra do gato, husky no menu, abas do
+  editor e gráfico do painel acertados.
+- **Suíte:** roda inteira numa invocação só (269 testes, 0 falhas, Godot 4.6) — o
+  travamento relatado acima não se repetiu.
+- **Banco:** as migrations V1–V8 e o seed fictício aplicam limpas num PostgreSQL 16 novo;
+  `tools/verificar_backend.gd` entregou uma sessão completa (6 eventos, 2 tentativas) ao
+  schema real, e as visões analíticas já mostram a partida.
+- **Ferramenta nova:** `tools/capturar_telas.gd` gera os prints de `docs/imagens/`.
+
+## 2026-11-01 (tarde) — aparência do gato, trilha de demonstração, bugs do terminal
+
+- Gato **tuxedo ou calico**, à escolha no menu; o husky do menu fica sentado e parado.
+- Cinco fases de demonstração em `recursos/fases_demo/` (ADR 0021).
+- Corrigidos: `verificar` recusava resumos SHA-256 começando com dígito; comando livre
+  exigia maiúsculas/espaços exatos; HUD mostrava "fase 1" em toda fase.
+- Suíte: 280 testes, 0 falhas.
