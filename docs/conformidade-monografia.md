@@ -1,6 +1,6 @@
 # Conformidade com a monografia — estado do cliente
 
-**Atualizado em:** 2026-09-27 · Referência: *Purr Bytes: jogo educacional para letramento
+**Atualizado em:** 2026-11-01 · Referência: *Purr Bytes: jogo educacional para letramento
 em segurança digital* (TCC I, Universidade Positivo, 2026).
 
 Este documento existe para a defesa: para cada item declarado na monografia, o que o
@@ -26,7 +26,7 @@ está na seção [Desvios a defender](#desvios-a-defender), com o porquê.
 | Inserir comandos por interface de análise léxica para ações de defesa | ✅ terminal (`T`); vigia de **cifra** exige `cifrar <palavra> chave=<k>` ou `verificar`, validado por AFD → parser → semântica | `cenas/base/terminal.tscn`, `FaseBase._analisar_comando`, `tests/teste_vigia_de_cifra.gd` |
 | Simular rotas de pacotes e comportamento dinâmico de ameaças | ✅ labirinto gerado (topologia), cachorros com A\* (`AStarGrid2D`), patrulha e linha de visão; `F3` desenha a rota | `scripts/ia/navegacao.gd`, `scripts/geracao/gerador_de_mapa.gd`, `tests/teste_astar.gd` |
 | Registrar tempo de resolução, taxa de acerto e taxa de erro | ✅ por resposta (`tentativa_comando.tempo_resposta_ms`, `resultado`), por partida e por fase (`id_fase`) | `autoload/telemetria.gd`, `scripts/telemetria/resumo_telemetria.gd`, ADR 0014 |
-| Aplicar visualmente cifras e hashing como proteção | ✅ acerto mostra a transformação letra a letra no terminal; `F4` abre o painel de demonstração (César/Vigenère alinhado à chave; SHA-256 com efeito avalanche) | `FaseBase._explicar_no_terminal`, `cenas/base/painel_cifra.tscn`, ADR 0008 |
+| Aplicar visualmente cifras e hashing como proteção | ✅ acerto mostra a transformação letra a letra no terminal; `F4` abre o painel de demonstração (César/Vigenère alinhado à chave; SHA-256 com efeito avalanche); a trilha de demonstração tem uma fase por algoritmo (ADR 0021) | `FaseBase._explicar_no_terminal`, `cenas/base/painel_cifra.tscn`, ADR 0008 |
 
 ## Requisitos não funcionais (seção 4.1.2)
 
@@ -129,7 +129,8 @@ como a seção 2.1 especifica. Os casos TC-01 a TC-04 foram refeitos sobre ele.
 3. **Rotas do A\* na telemetria.** A seção 2.4 cita "rotas calculadas no algoritmo A\*"
    entre os dados coletados. Hoje vai o **custo** do replanejamento
    (`AMOSTRA_DESEMPENHO`), não a rota.
-4. **Arte dos tiles** do labirinto ainda é placeholder (personagens já têm pixel art).
+4. **Arte dos tiles** do labirinto ainda é placeholder. Os personagens já têm a arte final
+   (gato tuxedo e husky, 32×32, ADR 0020).
 5. **Validação com usuários** (pré/pós-teste, análise estatística) acontece fora do jogo;
    antes da coleta, jogar uma partida completa na máquina da escola e conferir o painel de
    diagnóstico.

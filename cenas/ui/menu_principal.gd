@@ -28,6 +28,7 @@ var _tempo_sem_entrada_s: float = 0.0
 var _gato_descansando: bool = false
 
 @onready var _gato: AnimatedSprite2D = $Cartao/Coluna/Mascote/Gato
+@onready var _trocar_gato: Button = $Cartao/Coluna/TrocarGato
 
 
 func _ready() -> void:
@@ -36,6 +37,7 @@ func _ready() -> void:
 	# headless seria efeito colateral escondido.
 	CarregadorFaseJson.semear_exemplo()
 	CarregadorFaseJson.atualizar_exemplo()
+	CarregadorFaseJson.semear_fases_demo()
 
 	$Cartao/Coluna/Botoes/EscolherFase.pressed.connect(_ao_escolher_fase)
 	$Cartao/Coluna/Botoes/CriarFase.pressed.connect(_ao_criar_fase)
@@ -43,7 +45,23 @@ func _ready() -> void:
 	$DialogoDeImportacao.file_selected.connect(_ao_escolher_arquivo_para_subir)
 	$Cartao/Coluna/Botoes/Telemetria.pressed.connect(_ao_abrir_telemetria)
 	$Cartao/Coluna/Botoes/Sair.pressed.connect(_ao_sair)
+	_trocar_gato.pressed.connect(_ao_trocar_gato)
+	_mostrar_aparencia(AparenciaGato.atual())
 	$Cartao/Coluna/Botoes/EscolherFase.grab_focus()
+
+
+## O cachorro do menu fica SENTADO e parado (quadro 1 de "parado", sem tocar):
+## pedido da equipe -- o gato e quem se mexe e dorme; o husky so faz companhia.
+## O gato alterna entre tuxedo e calico; a escolha vale para as fases (ADR 0021).
+func _ao_trocar_gato() -> void:
+	var nova: StringName = AparenciaGato.proxima(AparenciaGato.atual())
+	AparenciaGato.definir(nova)
+	_mostrar_aparencia(nova)
+
+
+func _mostrar_aparencia(aparencia: StringName) -> void:
+	AparenciaGato.aplicar(_gato, aparencia)
+	_trocar_gato.text = "< gatinho: %s >" % AparenciaGato.nome(aparencia)
 
 
 func _process(delta: float) -> void:

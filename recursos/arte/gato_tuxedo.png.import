@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://hg5wqhj6gsd4"
-path="res://.godot/imported/gato.png-6896a74fb5f9eb9572b04f16261be082.ctex"
+uid="uid://c0pq11honpnty"
+path="res://.godot/imported/gato_tuxedo.png-c2956dd668d138fbed5b10d012878588.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://recursos/arte/gato.png"
-dest_files=["res://.godot/imported/gato.png-6896a74fb5f9eb9572b04f16261be082.ctex"]
+source_file="res://recursos/arte/gato_tuxedo.png"
+dest_files=["res://.godot/imported/gato_tuxedo.png-c2956dd668d138fbed5b10d012878588.ctex"]
 
 [params]
 

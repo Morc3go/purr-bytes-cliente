@@ -33,7 +33,7 @@ Encostar num vigia sem a proteção certa **intercepta o pacote**: o jogador per
 e pontos e volta ao início. Não é game over: é o custo pedagógico do erro. A tela de
 captura explica o que teria protegido e congela a ação; `Enter` continua. Na volta, os
 cachorros retornam aos pontos onde nasceram e o gato fica alguns segundos invulnerável,
-piscando. Parado por 10 segundos, o gato senta e dorme.
+piscando. Parado por 10 segundos, o gato (tuxedo ou calico, à escolha no menu) senta e dorme; os vigias são huskies.
 
 Espalhados pelo labirinto há **pacotes** com perguntas curtas. A porta só abre depois de
 coletar todos.
@@ -56,10 +56,24 @@ descrita no [ADR 0017](docs/decisoes/0017-identidade-visual-fofa.md).
 
 ---
 
+## Fases prontas para demonstração
+
+O jogo já vem com uma trilha de cinco fases ([ADR 0021](docs/decisoes/0021-aparencia-do-gato-e-fases-de-demonstracao.md)),
+instaladas em **escolher fase** na primeira abertura: **1. César**, **2. Vigenère**,
+**3. SHA-256**, **4. Golpes digitais** (phishing, 2FA) e **5. Avaliação final**, sem os
+comandos na tela. São fases de autoria comuns: dá para editar, exportar ou excluir. Os
+arquivos ficam em `recursos/fases_demo/`, e cada um tem `id_fase` fixo para a telemetria
+de máquinas diferentes cair na mesma fase.
+
+![Escolher fase com a trilha de demonstração](docs/imagens/fases_demo.png)
+
+No menu, o botão **< gatinho: tuxedo >** troca a aparência do gato entre **tuxedo** e
+**calico**. É só cosmética e não entra na telemetria.
+
 ## Criando fases (ferramenta de autoria)
 
-O jogo não traz fases fixas: o professor as cria. Na primeira execução é criada uma
-**fase de exemplo** ("Senhas fortes"), que já traz os três tipos de vigia.
+O jogo não traz fases fixas: o professor as cria. Na primeira execução são criadas a
+**fase de exemplo** ("Senhas fortes"), que já traz os três tipos de vigia, e a trilha de demonstração acima.
 
 **Menu → criar fase** abre o editor, em três abas:
 
@@ -190,20 +204,24 @@ API e auditoria). A chave de API só é guardada como hash SHA-256.
 
 ### Rodando localmente
 
-Precisa de **Java 21**, **Maven** e **PostgreSQL 16**.
+Precisa de **Java 21**, **Maven** e **Docker** ([ADR 0019](docs/decisoes/0019-banco-de-dados-e-dados-ficticios.md)).
+
+> **LGPD:** o projeto não usa dados de pessoas reais. Nenhum usuário real é cadastrado e
+> nenhum cliente real testa o sistema; o banco contém apenas dados fictícios.
 
 ```powershell
-# 1. banco e usuário (uma vez), no psql como superusuário:
-#    CREATE ROLE purrbytes LOGIN PASSWORD '<escolha uma senha>';
-#    CREATE DATABASE purrbytes OWNER purrbytes;
-
-# 2. variáveis de ambiente (nunca versionar; back/.gitignore já ignora local-dev.env.ps1)
-$env:PB_DB_PASSWORD = '<a senha do passo 1>'
-
-# 3. subir no perfil de desenvolvimento
 cd back
-mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+docker compose up -d                                   # PostgreSQL 16, banco e usuário purrbytes
+mvn spring-boot:run "-Dspring-boot.run.profiles=dev"   # o Flyway cria tudo e aplica o seed fictício
 ```
+
+O banco sobe vazio; quem cria schemas, tabelas e visões é o Flyway, quando a API sobe. No
+perfil `dev` ele também aplica `db/seed-dev/R__dados_ficticios.sql`: 6 sujeitos, avaliações
+pré/pós e 2 partidas, todos fictícios (UUIDs começando com `f1c71c10`). Os dados ficam no
+volume Docker, nunca no repositório; `docker compose down -v` devolve um banco do zero.
+
+Sem Docker, um PostgreSQL 16 instalado também serve: crie o usuário e o banco `purrbytes`
+com a senha `purrbytes_dev` (ou defina `PB_DB_PASSWORD`).
 
 No perfil `dev` a API cria uma **chave de desenvolvimento** e a imprime no log de boot:
 `pb_ingestao_dev_nao_usar_em_coleta_real`. Para o jogo usar a API, no `config.cfg`:
@@ -274,8 +292,11 @@ importada. A segunda importação sai limpa; no 4.7 isso não acontece.
 | `tools/sessao_de_demonstracao.gd` | abre e encerra uma sessão MOCK e imprime o JSONL (gera os exemplos do contrato) |
 | `tools/simular_queda.gd -- encher` / `-- drenar` | demonstra a resiliência: a fila sobrevive ao processo morto e drena sem perder nem duplicar evento |
 | `python tools/servidor_eco.py 8091 log.jsonl` | servidor de eco das quatro rotas, para o modo HTTP sem a API |
-| `python tools/arte/extrair_gato.py`, `extrair_cachorro.py` | normalizam as folhas de sprite originais |
-| `tools/gerar_sprite_frames.gd` | monta os `SpriteFrames` a partir das folhas |
+| `python tools/arte/montar_folhas_32.py` | monta as folhas do gato tuxedo e do husky a partir dos quadros da artista ([ADR 0020](docs/decisoes/0020-arte-final-tuxedo-e-husky.md)) |
+| `python tools/arte/extrair_gato.py`, `extrair_cachorro.py` | (histórico) normalizavam as folhas antigas, de 24×24 |
+| `tools/gerar_sprite_frames.gd` | monta os `SpriteFrames` (tuxedo, calico e husky) a partir das folhas |
+| `tools/capturar_telas.gd -- <pasta>` | salva prints do menu, das telas e da fase (precisa de janela; gera `docs/imagens/`) |
+| `tools/gravar_video_demo.gd` (com `--write-movie demo.avi --fixed-fps 30`) | grava um vídeo de ~3 min mostrando as funções do jogo com legenda: menu, criar fase, F3, F4, terminal, as quatro primeiras fases demo e a telemetria (precisa de janela; no Linux sem monitor, use `xvfb-run`) |
 
 Os scripts `.gd` rodam com `& $godot --headless --path . --script res://<caminho>`.
 

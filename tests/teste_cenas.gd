@@ -61,6 +61,23 @@ func teste_arvore_da_cena_pai() -> void:
 	fase.free()
 
 
+## Regressao do F3 invisivel: a FaseBase tem y_sort, entao o que decide quem
+## fica por cima entre filhos na mesma altura e a ordem na arvore. A rota do A*
+## precisa vir depois do Labirinto (por cima dos tiles) e antes do Jogador.
+func teste_rota_do_astar_fica_por_cima_do_labirinto() -> void:
+	var fase: Node = load("res://cenas/base/fase_base.tscn").instantiate()
+	var rotas: Node2D = fase.get_node_or_null("RotasDoAStar") as Node2D
+	if afirmar_nao_nulo(rotas, "fase_base tem o no RotasDoAStar"):
+		var labirinto: Node2D = fase.get_node("Labirinto") as Node2D
+		afirmar_verdadeiro(rotas.get_index() > labirinto.get_index(),
+			"a rota e desenhada depois do labirinto")
+		afirmar_verdadeiro(rotas.get_index() < fase.get_node("Jogador").get_index(),
+			"a rota fica abaixo do jogador")
+		afirmar_igual(rotas.position.y, labirinto.position.y,
+			"mesma altura do labirinto: o y_sort desempata pela ordem da arvore")
+	fase.free()
+
+
 func teste_cena_pai_recusa_rodar_sem_configuracao() -> void:
 	var fase: FaseBase = load("res://cenas/base/fase_base.tscn").instantiate() as FaseBase
 	afirmar_nulo(fase.configuracao, "fase_base nasce sem FaseConfig")

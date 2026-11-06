@@ -196,6 +196,10 @@ estatística do trabalho.
 8. **A chave de API embutida no cliente tem escopo `INGESTAO` (só escreve).** Ela vai vazar —
    é um binário distribuído. Trate como pública: nunca logue, nunca exiba na tela, e não
    guarde nada além dela no arquivo de configuração.
+9. **Somente dados fictícios (LGPD).** Nenhum usuário real é cadastrado e nenhum cliente
+   real testa o sistema. Banco, seeds, testes e exemplos usam apenas dados inventados e
+   reconhecíveis como tal (UUID `f1c71c10…`, coorte `DADOS_FICTICIOS`, e-mail
+   `@exemplo.invalid`). Ver ADR 0019.
 
 ---
 
@@ -520,3 +524,4 @@ Cada um tem justificativa completa no ADR indicado.
 | Back-end em `Morc3go/prototipo`, "rotas REST ainda não implementadas" | A API da equipe (Java 21 + Spring Boot + PostgreSQL + Flyway) está em `back/` deste repositório, com as quatro rotas implementadas e integradas ao cliente; migrations até V8 | ADR 0018 |
 | `id_fase` "sempre presente" em todo evento | `null` em eventos de sessão (não pertencem a fase); tentativa continua exigindo | ADR 0018, `docs/contrato-telemetria.md` |
 | `4xx` sempre permanente (lote descartado) | `401/403/404/408/425/429` são transitórios: chave ou URL errada não apaga a coleta | ADR 0018 |
+| Coleta com participantes reais (TCLE, pré/pós-teste) | Somente dados fictícios por decisão de LGPD; PostgreSQL 16 local via Docker Compose, seed fictício no perfil `dev` | ADR 0019 |

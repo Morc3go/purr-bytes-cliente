@@ -21,7 +21,7 @@ public record TentativaRequest(
         @Min(1) @Max(4) Integer fase,
         @NotBlank @Size(max = 60) String desafio,
         @NotNull @Size(max = 240) String entradaNormalizada,
-        @Valid List<TokenRequest> tokens,
+        List<@NotNull @Valid TokenRequest> tokens,
         @NotBlank @Pattern(regexp = "SUCESSO|ERRO_LEXICO|ERRO_SINTATICO|ERRO_SEMANTICO|TIMEOUT|ABANDONO")
         String resultado,
         @Size(max = 40) String codigoErro,

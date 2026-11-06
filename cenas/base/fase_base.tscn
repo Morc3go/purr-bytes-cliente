@@ -22,6 +22,8 @@ script = ExtResource("1_fase")
 [node name="Labirinto" type="TileMapLayer" parent="."]
 tile_set = ExtResource("2_tileset")
 
+[node name="RotasDoAStar" type="Node2D" parent="."]
+
 [node name="Marcadores" type="Node2D" parent="."]
 
 [node name="PontoDeEntrada" type="Marker2D" parent="Marcadores"]

@@ -50,7 +50,20 @@ var _tempo_sem_entrada_s: float = 0.0
 var _descansando: bool = false
 
 @onready var _zzz: Label = $Zzz
+@onready var _sombra: CanvasItem = $Sombra
 var _tween_do_zzz: Tween = null
+
+
+## A aparencia (tuxedo ou calico) e escolhida no menu e lida aqui, ao nascer:
+## a fase nao precisa saber dela (ADR 0021).
+func _ready() -> void:
+	aplicar_aparencia(AparenciaGato.atual())
+
+
+func aplicar_aparencia(aparencia: StringName) -> void:
+	AparenciaGato.aplicar(_sprite, aparencia)
+	# Folha que ja traz sombra desenhada nao ganha uma segunda.
+	_sombra.visible = not AparenciaGato.tem_sombra_propria(aparencia)
 
 
 func _physics_process(delta: float) -> void:

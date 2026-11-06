@@ -1,0 +1,88 @@
+{
+	"titulo": "5. Avaliação final: sem colinha",
+	"id_fase": "3c0b9d2e-1a41-4f6e-9b11-0c5e2a7d0505",
+	"briefing": "hora de mostrar o que aprendeu! nesta fase os comandos não aparecem na tela.\ndigite 'status' no terminal (T) para ver o desafio de cifra atual, e 'dica' se precisar (custa pontos).\no vigia azul só deixa passar quem confere de quem veio a mensagem.\ndois vigias vermelhos só perseguem. você tem 2 vidas.",
+	"mostrar_comandos": false,
+	"vidas": 2,
+	"mapa": {
+		"largura": 25,
+		"altura": 17,
+		"seed": 20261105
+	},
+	"cachorros": [
+		{
+			"cor": "#7ee081",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "CESAR",
+			"palavra": "cofre",
+			"chave": "4"
+		},
+		{
+			"cor": "#b48cff",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "VIGENERE",
+			"palavra": "senha",
+			"chave": "lua"
+		},
+		{
+			"cor": "#ffe066",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "SHA256",
+			"palavra": "recibo"
+		},
+		{
+			"cor": "#4da3ff",
+			"comando_para_bloquear": "conferir remetente"
+		},
+		{
+			"cor": "#ff6b6b",
+			"comando_para_bloquear": ""
+		},
+		{
+			"cor": "#ff4d6d",
+			"comando_para_bloquear": ""
+		}
+	],
+	"terminais": [
+		{
+			"enunciado": "césar com chave 4: como fica 'abc'?",
+			"opcoes": [
+				"efg",
+				"bcd",
+				"abc"
+			],
+			"correta": "efg",
+			"explicacao": "cada letra anda 4 casas: a vira e, b vira f, c vira g."
+		},
+		{
+			"enunciado": "qual a diferença principal entre vigenère e césar?",
+			"opcoes": [
+				"na vigenère o deslocamento muda conforme a letra da chave",
+				"a vigenère só funciona com números",
+				"a césar usa uma chave em palavra"
+			],
+			"correta": "na vigenère o deslocamento muda conforme a letra da chave",
+			"explicacao": "césar = um deslocamento fixo; vigenère = vários, que se repetem."
+		},
+		{
+			"enunciado": "cifra e hash: qual frase está certa?",
+			"opcoes": [
+				"cifra se desfaz com a chave; hash não se desfaz",
+				"os dois se desfazem com a chave",
+				"hash esconde a mensagem para ler depois"
+			],
+			"correta": "cifra se desfaz com a chave; hash não se desfaz",
+			"explicacao": "cifra serve para esconder e recuperar; hash serve para conferir."
+		},
+		{
+			"enunciado": "um e-mail pede sua senha 'para atualizar o cadastro'. o que você faz?",
+			"opcoes": [
+				"não responde e acessa o site oficial por conta própria",
+				"responde, se o e-mail tiver a logo certa",
+				"manda só a senha antiga"
+			],
+			"correta": "não responde e acessa o site oficial por conta própria",
+			"explicacao": "nenhum serviço sério pede senha por e-mail."
+		}
+	]
+}

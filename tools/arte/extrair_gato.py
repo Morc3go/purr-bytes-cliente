@@ -3,7 +3,7 @@
     python tools/arte/extrair_gato.py
 
 Entrada: tools/arte/gato_original.webp (5 linhas x 4 quadros, ampliada 10x, fundo
-preto). Saida: recursos/arte/gato.png (quadros de 24x24). Depois rode
+preto). Saida: recursos/arte/gato_calico.png (quadros de 24x24). Depois rode
 tools/gerar_sprite_frames.gd no Godot para atualizar o SpriteFrames.
 Requer: pip install pillow numpy
 """
@@ -53,5 +53,5 @@ img = Image.fromarray(folha, 'RGBA')
 rgb = img.convert('RGB').quantize(colors=14, method=Image.Quantize.MEDIANCUT).convert('RGB')
 out = np.dstack([np.array(rgb), folha[:, :, 3]])
 out[out[:, :, 3] == 0, :3] = 0
-Image.fromarray(out.astype(np.uint8), 'RGBA').save(RAIZ / 'recursos/arte/gato.png')
+Image.fromarray(out.astype(np.uint8), 'RGBA').save(RAIZ / 'recursos/arte/gato_calico.png')
 print('gravado recursos/arte/gato.png')

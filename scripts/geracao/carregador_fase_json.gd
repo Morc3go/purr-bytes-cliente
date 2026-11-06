@@ -90,6 +90,54 @@ static func semear_exemplo() -> void:
 	Registro.info("Fases", "fase de exemplo criada em %s" % caminho)
 
 
+## Fases de demonstracao que vem com o jogo (ADR 0021): uma trilha pronta para
+## a banca e para a primeira coleta -- Cesar, Vigenere, SHA-256, golpes
+## digitais e uma avaliacao final sem os comandos na tela.
+##
+## Continuam sendo fases de AUTORIA comuns: JSON copiado para user://fases,
+## que o professor edita, exporta ou exclui como qualquer outra. O id_fase de
+## cada uma e FIXO no arquivo, entao a telemetria de maquinas diferentes cai na
+## mesma fase no banco.
+const PASTA_DAS_FASES_DEMO: String = "res://recursos/fases_demo"
+## Sobe quando entrar fase nova na trilha. A marca fica num arquivo oculto da
+## pasta de fases: fase demo que o professor excluiu nao volta sozinha.
+const VERSAO_DAS_FASES_DEMO: int = 1
+const _MARCA_DAS_FASES_DEMO: String = ".fases_demo"
+
+
+static func semear_fases_demo() -> void:
+	garantir_pasta()
+	var marca: String = pasta_das_fases.path_join(_MARCA_DAS_FASES_DEMO)
+	if FileAccess.file_exists(marca) \
+			and FileAccess.get_file_as_string(marca).strip_edges().to_int() >= VERSAO_DAS_FASES_DEMO:
+		return
+
+	var copiadas: int = 0
+	for nome: String in DirAccess.get_files_at(PASTA_DAS_FASES_DEMO):
+		if nome.get_extension().to_lower() != "json":
+			continue
+		var destino: String = pasta_das_fases.path_join(nome)
+		if FileAccess.file_exists(destino):
+			continue  # nunca por cima do que esta la
+		var texto: String = FileAccess.get_file_as_string(PASTA_DAS_FASES_DEMO.path_join(nome))
+		if texto.is_empty():
+			continue
+		var arquivo: FileAccess = FileAccess.open(destino, FileAccess.WRITE)
+		if arquivo == null:
+			Registro.aviso("Fases", "nao foi possivel gravar %s" % destino)
+			continue
+		arquivo.store_string(texto)
+		arquivo.close()
+		copiadas += 1
+
+	var arquivo_marca: FileAccess = FileAccess.open(marca, FileAccess.WRITE)
+	if arquivo_marca != null:
+		arquivo_marca.store_string(str(VERSAO_DAS_FASES_DEMO))
+		arquivo_marca.close()
+	if copiadas > 0:
+		Registro.info("Fases", "%d fase(s) de demonstracao instalada(s)" % copiadas)
+
+
 const NOME_DO_EXEMPLO: String = "exemplo-senhas-fortes.json"
 ## Sobe quando o exemplo muda de um jeito que vale levar para quem ja tem o
 ## arquivo gravado (ver atualizar_exemplo).

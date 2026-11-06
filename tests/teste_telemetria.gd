@@ -283,6 +283,26 @@ func teste_payload_e_sanitizado_em_profundidade() -> void:
 		"texto dentro de lista tambem e truncado")
 
 
+func teste_nan_e_infinito_viram_nulo_no_payload() -> void:
+	_preparar_mock("nan")
+	Telemetria.iniciar_sessao(Identificador.uuid_v4(), Identificador.uuid_v4())
+
+	var evento: Dictionary = Telemetria.registrar_evento(CatalogoEventos.AMOSTRA_DESEMPENHO, {
+		"fps": NAN,
+		"replanejamento_medio_ms": INF,
+		"memoria": {"pico": -INF, "media": 12.5},
+	})
+
+	var payload: Dictionary = evento["payload"] as Dictionary
+	afirmar_nulo(payload["fps"], "NaN vira null")
+	afirmar_nulo(payload["replanejamento_medio_ms"], "infinito vira null")
+	afirmar_nulo((payload["memoria"] as Dictionary)["pico"], "infinito aninhado vira null")
+	afirmar_igual((payload["memoria"] as Dictionary)["media"], 12.5, "numero finito passa intacto")
+	# NaN no corpo faz a API recusar o lote inteiro (400 = lote descartado).
+	afirmar_nao_nulo(JSON.parse_string(JSON.stringify(evento)),
+		"o evento serializa como JSON valido")
+
+
 func teste_tentativa_com_resultado_invalido_e_recusada() -> void:
 	_preparar_mock("resultado")
 	Telemetria.iniciar_sessao(Identificador.uuid_v4(), Identificador.uuid_v4())

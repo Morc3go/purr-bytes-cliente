@@ -219,6 +219,23 @@ func teste_verificar_prefixo_correto_confirma_integridade() -> void:
 		"verificar tambem libera o pacote para entrega, como cifrar/decifrar liberam protecao")
 
 
+## Regressao: sha256("contrato") = 4a4d23dd... O AFD le "4a4d23dd" como
+## NUMERO "4" + IDENTIFICADOR "a4d23dd"; antes o verificar so olhava o primeiro
+## pedaco e recusava o prefixo certo de 10 em cada 16 palavras.
+func teste_verificar_prefixo_que_comeca_com_digito() -> void:
+	var desafio: DesafioConfig = _desafio_sha256()
+	desafio.texto_claro = "contrato"
+	desafio.resposta_esperada = Sha256.digest_hex("contrato").substr(0, 8)
+	afirmar_verdadeiro(desafio.resposta_esperada.left(1).is_valid_int(),
+		"premissa: o digest de 'contrato' comeca com digito")
+	var veredicto: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_sha256(), desafio, 1, _resultado("verificar contrato %s" % desafio.resposta_esperada))
+	afirmar_igual(veredicto.resultado, CatalogoResultados.SUCESSO, "o prefixo certo e aceito")
+	var errado: VeredictoComando = ResolvedorComando.resolver(
+		_configuracao_sha256(), desafio, 1, _resultado("verificar contrato 4a4d23de"))
+	afirmar_igual(errado.codigo_erro, "digest_incorreto", "e um digito trocado continua recusado")
+
+
 # ---------------------------------------------------------------------------
 # Vigenere (Marco 2) -- o MESMO resolvedor, sem alterar uma linha alem do
 # dispatch de algoritmo (ResolvedorComando._cifra_para_algoritmo). Se isto nao

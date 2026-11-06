@@ -2,14 +2,20 @@ extends CasoDeTeste
 
 ## Arte dos personagens: folhas PNG -> SpriteFrames -> AnimatedSprite2D.
 ##
-## O que protege: (a) as 5 animacoes com 4 quadros existirem nos dois .tres
+## O que protege: (a) as 5 animacoes existirem nos dois .tres, com ciclo de
+## andar de 4 passos
 ## (um quadro faltando so apareceria jogando), (b) a regra de direcao do
 ## AnimadorDirecional e (c) as cenas base usarem a arte nova sem perder o
 ## tingimento por cor do cachorro, que e mecanica e nao enfeite.
 
 const QUADROS: Dictionary = {
-	"gato": "res://recursos/arte/gato_frames.tres",
+	"gato_tuxedo": "res://recursos/arte/gato_tuxedo_frames.tres",
+	"gato_calico": "res://recursos/arte/gato_calico_frames.tres",
 	"cachorro": "res://recursos/arte/cachorro_frames.tres",
+}
+## O calico manteve a folha original de 24x24 (ADR 0013); os outros sao 32x32.
+const TAMANHO_DO_QUADRO: Dictionary = {
+	"gato_tuxedo": Vector2(32, 32), "gato_calico": Vector2(24, 24), "cachorro": Vector2(32, 32),
 }
 const ANIMACOES: Array[StringName] = [
 	AnimadorDirecional.ANDAR_BAIXO, AnimadorDirecional.ANDAR_DIREITA,
@@ -27,8 +33,8 @@ func teste_sprite_frames_tem_as_animacoes_completas() -> void:
 			if not afirmar_verdadeiro(quadros.has_animation(animacao),
 					"%s tem a animacao %s" % [nome, animacao]):
 				continue
-			# Andar tem ciclo de 4 passos; o parado do gato e um quadro so
-			# desde a ADR 0017 (a pose sentada virou "descansar").
+			# Andar tem ciclo de 4 passos (3 desenhados viram 0-1-2-1, ADR
+			# 0020); o parado pode ter 1 quadro (gato) ou 2 (rabo do cachorro).
 			if animacao != AnimadorDirecional.PARADO:
 				afirmar_igual(quadros.get_frame_count(animacao), 4,
 					"%s/%s tem 4 quadros" % [nome, animacao])
@@ -38,14 +44,15 @@ func teste_sprite_frames_tem_as_animacoes_completas() -> void:
 			afirmar_verdadeiro(quadros.get_animation_loop(animacao),
 				"%s/%s repete em ciclo" % [nome, animacao])
 			var primeiro: Texture2D = quadros.get_frame_texture(animacao, 0)
-			afirmar_igual(primeiro.get_size(), Vector2(24, 24),
-				"%s/%s: quadro de 24x24" % [nome, animacao])
+			afirmar_igual(primeiro.get_size(), TAMANHO_DO_QUADRO[nome],
+				"%s/%s: tamanho do quadro" % [nome, animacao])
 
-	var gato: SpriteFrames = load(QUADROS["gato"]) as SpriteFrames
-	afirmar_verdadeiro(gato.has_animation(AnimadorDirecional.DESCANSAR),
-		"o gato tem a animacao de descansar (ADR 0017)")
-	afirmar_igual(gato.get_frame_count(AnimadorDirecional.DESCANSAR), 4,
-		"descansar usa os 4 quadros sentado")
+	for nome: String in ["gato_tuxedo", "gato_calico"]:
+		var gato: SpriteFrames = load(QUADROS[nome]) as SpriteFrames
+		afirmar_verdadeiro(gato.has_animation(AnimadorDirecional.DESCANSAR),
+			"%s tem a animacao de descansar (ADR 0017)" % nome)
+		afirmar_verdadeiro(gato.get_frame_count(AnimadorDirecional.DESCANSAR) >= 2,
+			"%s: descansar alterna ao menos 2 quadros sentado (respiracao)" % nome)
 
 
 ## O .tres foi ajustado a mao pela equipe (ADR 0017). Se o gerador nao

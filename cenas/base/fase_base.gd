@@ -24,6 +24,7 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 @export var configuracao: FaseConfig
 
 @onready var labirinto: TileMapLayer = $Labirinto
+@onready var rotas_astar: Node2D = $RotasDoAStar
 @onready var jogador: Jogador = $Jogador
 ## Cachorro que ja vem na cena pai. Continua sendo o cachorro numero 1 da fase
 ## (as fases nao precisam instanciar o primeiro); os demais nascem de
@@ -122,6 +123,7 @@ func _ready() -> void:
 
 	_configurada = true
 	_conectar_sinais()
+	rotas_astar.draw.connect(_desenhar_rotas)
 
 	# O mapa e a PRIMEIRA coisa: ele repinta o labirinto e reposiciona entrada e
 	# saida, e todo o resto (navegacao, cachorros, pacotes, camera) depende
@@ -144,7 +146,9 @@ func _ready() -> void:
 	# ja precisa sair com id_fase preenchido.
 	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais,
 		configuracao.garantir_id_fase(), configuracao.titulo)
-	hud.definir_titulo("fase %d -- %s" % [configuracao.numero, configuracao.titulo])
+	# So o titulo: toda fase de autoria tem numero 1 (legado da constraint do
+	# banco, ADR 0012), e o HUD dizia "fase 1" ate na quarta fase da trilha.
+	hud.definir_titulo(configuracao.titulo)
 	if configuracao.mostrar_comandos:
 		hud.mostrar_comandos(_legenda_de_comandos())
 
@@ -174,7 +178,12 @@ func _physics_process(_delta: float) -> void:
 	_conferir_contato_apos_invulnerabilidade()
 
 
-func _draw() -> void:
+## Desenhado no no RotasDoAStar, e nao no _draw() da propria fase: a FaseBase
+## tem y_sort_enabled, e o desenho do pai empatava com o Labirinto (os dois em
+## y = 0) e ficava por baixo dos tiles -- o F3 ligava, a rota era calculada e
+## nada aparecia na tela. Um filho logo depois do Labirinto desempata pela
+## ordem da arvore e continua abaixo dos personagens.
+func _desenhar_rotas() -> void:
 	# Depuracao visual obrigatoria (secao 6 do CLAUDE.md, apontamento 7): F3
 	# mostra o caminho que o AStarGrid2D calculou por ultimo. Os "nos
 	# expandidos" do algoritmo NAO aparecem aqui de proposito -- AStarGrid2D
@@ -194,13 +203,13 @@ func _draw() -> void:
 
 		var pontos_locais := PackedVector2Array()
 		for ponto: Vector2 in caminho:
-			pontos_locais.append(to_local(ponto))
+			pontos_locais.append(rotas_astar.to_local(ponto))
 
 		var cor_do_caminho: Color = alvo.cor()
 		cor_do_caminho.a = 0.9
-		draw_polyline(pontos_locais, cor_do_caminho, 1.5)
+		rotas_astar.draw_polyline(pontos_locais, cor_do_caminho, 1.5)
 		for ponto_local: Vector2 in pontos_locais:
-			draw_circle(ponto_local, 2.0, cor_do_caminho)
+			rotas_astar.draw_circle(ponto_local, 2.0, cor_do_caminho)
 
 
 func _unhandled_input(evento: InputEvent) -> void:
@@ -209,7 +218,7 @@ func _unhandled_input(evento: InputEvent) -> void:
 
 	if evento.is_action_pressed("alternar_depuracao"):
 		_depuracao_astar_visivel = not _depuracao_astar_visivel
-		queue_redraw()
+		rotas_astar.queue_redraw()
 		get_viewport().set_input_as_handled()
 		return
 
@@ -438,7 +447,7 @@ func _protegido_contra(cachorro_alvo: Cachorro) -> bool:
 		return false
 
 	if cachorro_alvo.bloqueia_por_comando():
-		return jogador.comando_protegido == cachorro_alvo.comando_para_bloquear
+		return jogador.comando_protegido == normalizar_comando_livre(cachorro_alvo.comando_para_bloquear)
 
 	return jogador.algoritmo_protegido == cachorro_alvo.algoritmo_exigido
 
@@ -546,12 +555,12 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 ## Devolve true quando o texto bloqueou algum cachorro -- e ai o comando ja foi
 ## tratado e registrado, e o pipeline lexico nao roda.
 func _tentar_comando_de_bloqueio(texto: String, tempo_resposta_ms: int) -> bool:
-	var limpo: String = texto.strip_edges()
+	var limpo: String = normalizar_comando_livre(texto)
 	if limpo.is_empty():
 		return false
 
 	for alvo: Cachorro in cachorros:
-		if not alvo.bloqueia_por_comando() or alvo.comando_para_bloquear != limpo:
+		if not alvo.bloqueia_por_comando() or normalizar_comando_livre(alvo.comando_para_bloquear) != limpo:
 			continue
 
 		jogador.ativar_protecao(configuracao.duracao_cifra_s, "", limpo)
@@ -566,6 +575,14 @@ func _tentar_comando_de_bloqueio(texto: String, tempo_resposta_ms: int) -> bool:
 		return true
 
 	return false
+
+
+## Frase de conduta comparada sem ligar para maiusculas nem espacos repetidos:
+## o mesmo "trim + minusculas" que o analisador lexico aplica aos comandos de
+## cifra (ADR 0006). Antes, "Ativar 2FA" ou "ativar  2fa" eram recusados e o
+## aluno perdia vida por digitacao, nao por nao saber a conduta.
+static func normalizar_comando_livre(texto: String) -> String:
+	return " ".join(texto.strip_edges().to_lower().split(" ", false))
 
 
 func _analisar_comando(texto: String, tempo_resposta_ms: int) -> void:
@@ -1099,7 +1116,7 @@ func _replanejar_caminho_do_cachorro() -> void:
 			_indice_varredura += 1
 
 	if _depuracao_astar_visivel:
-		queue_redraw()
+		rotas_astar.queue_redraw()
 
 
 ## CACHORRO_DETECTOU/CACHORRO_PERDEU sao emitidos na borda de subida/descida da

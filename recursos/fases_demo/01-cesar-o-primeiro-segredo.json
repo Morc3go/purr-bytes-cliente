@@ -1,0 +1,64 @@
+{
+	"titulo": "1. César: o primeiro segredo",
+	"id_fase": "3c0b9d2e-1a41-4f6e-9b11-0c5e2a7d0101",
+	"briefing": "há dois mil anos, júlio césar protegia mensagens trocando cada letra pela que vem algumas casas depois no alfabeto.\nleve o pacote até a porta. antes de cruzar um vigia, abra o terminal (T) e proteja o pacote:\n  vigia verde: cifrar senha chave=3\n  vigia azul: cifrar pacote chave=5\no vigia vermelho não tem comando: desse você foge. F4 mostra a cifra letra a letra.",
+	"mostrar_comandos": true,
+	"vidas": 3,
+	"mapa": {
+		"largura": 21,
+		"altura": 15,
+		"seed": 20261101
+	},
+	"cachorros": [
+		{
+			"cor": "#7ee081",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "CESAR",
+			"palavra": "senha",
+			"chave": "3"
+		},
+		{
+			"cor": "#4da3ff",
+			"modo_de_bloqueio": "CIFRA",
+			"algoritmo_exigido": "CESAR",
+			"palavra": "pacote",
+			"chave": "5"
+		},
+		{
+			"cor": "#ff6b6b",
+			"comando_para_bloquear": ""
+		}
+	],
+	"terminais": [
+		{
+			"enunciado": "na cifra de césar com chave 3, a letra 'a' vira:",
+			"opcoes": [
+				"d",
+				"c",
+				"z"
+			],
+			"correta": "d",
+			"explicacao": "cada letra anda 3 casas: a, b, c, d."
+		},
+		{
+			"enunciado": "e a letra 'z', com a mesma chave 3?",
+			"opcoes": [
+				"c",
+				"w",
+				"z"
+			],
+			"correta": "c",
+			"explicacao": "o alfabeto dá a volta: depois do z vem o a de novo (z, a, b, c)."
+		},
+		{
+			"enunciado": "por que a cifra de césar é fraca hoje em dia?",
+			"opcoes": [
+				"só existem 25 chaves: um computador testa todas na hora",
+				"porque só funciona com letras minúsculas",
+				"porque ninguém mais conhece ela"
+			],
+			"correta": "só existem 25 chaves: um computador testa todas na hora",
+			"explicacao": "poucas chaves possíveis = ataque de força bruta em segundos."
+		}
+	]
+}
