@@ -24,6 +24,7 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 @export var configuracao: FaseConfig
 
 @onready var labirinto: TileMapLayer = $Labirinto
+@onready var rotas_astar: Node2D = $RotasDoAStar
 @onready var jogador: Jogador = $Jogador
 ## Cachorro que ja vem na cena pai. Continua sendo o cachorro numero 1 da fase
 ## (as fases nao precisam instanciar o primeiro); os demais nascem de
@@ -122,6 +123,7 @@ func _ready() -> void:
 
 	_configurada = true
 	_conectar_sinais()
+	rotas_astar.draw.connect(_desenhar_rotas)
 
 	# O mapa e a PRIMEIRA coisa: ele repinta o labirinto e reposiciona entrada e
 	# saida, e todo o resto (navegacao, cachorros, pacotes, camera) depende
@@ -176,7 +178,12 @@ func _physics_process(_delta: float) -> void:
 	_conferir_contato_apos_invulnerabilidade()
 
 
-func _draw() -> void:
+## Desenhado no no RotasDoAStar, e nao no _draw() da propria fase: a FaseBase
+## tem y_sort_enabled, e o desenho do pai empatava com o Labirinto (os dois em
+## y = 0) e ficava por baixo dos tiles -- o F3 ligava, a rota era calculada e
+## nada aparecia na tela. Um filho logo depois do Labirinto desempata pela
+## ordem da arvore e continua abaixo dos personagens.
+func _desenhar_rotas() -> void:
 	# Depuracao visual obrigatoria (secao 6 do CLAUDE.md, apontamento 7): F3
 	# mostra o caminho que o AStarGrid2D calculou por ultimo. Os "nos
 	# expandidos" do algoritmo NAO aparecem aqui de proposito -- AStarGrid2D
@@ -196,13 +203,13 @@ func _draw() -> void:
 
 		var pontos_locais := PackedVector2Array()
 		for ponto: Vector2 in caminho:
-			pontos_locais.append(to_local(ponto))
+			pontos_locais.append(rotas_astar.to_local(ponto))
 
 		var cor_do_caminho: Color = alvo.cor()
 		cor_do_caminho.a = 0.9
-		draw_polyline(pontos_locais, cor_do_caminho, 1.5)
+		rotas_astar.draw_polyline(pontos_locais, cor_do_caminho, 1.5)
 		for ponto_local: Vector2 in pontos_locais:
-			draw_circle(ponto_local, 2.0, cor_do_caminho)
+			rotas_astar.draw_circle(ponto_local, 2.0, cor_do_caminho)
 
 
 func _unhandled_input(evento: InputEvent) -> void:
@@ -211,7 +218,7 @@ func _unhandled_input(evento: InputEvent) -> void:
 
 	if evento.is_action_pressed("alternar_depuracao"):
 		_depuracao_astar_visivel = not _depuracao_astar_visivel
-		queue_redraw()
+		rotas_astar.queue_redraw()
 		get_viewport().set_input_as_handled()
 		return
 
@@ -1109,7 +1116,7 @@ func _replanejar_caminho_do_cachorro() -> void:
 			_indice_varredura += 1
 
 	if _depuracao_astar_visivel:
-		queue_redraw()
+		rotas_astar.queue_redraw()
 
 
 ## CACHORRO_DETECTOU/CACHORRO_PERDEU sao emitidos na borda de subida/descida da

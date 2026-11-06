@@ -296,6 +296,7 @@ importada. A segunda importação sai limpa; no 4.7 isso não acontece.
 | `python tools/arte/extrair_gato.py`, `extrair_cachorro.py` | (histórico) normalizavam as folhas antigas, de 24×24 |
 | `tools/gerar_sprite_frames.gd` | monta os `SpriteFrames` (tuxedo, calico e husky) a partir das folhas |
 | `tools/capturar_telas.gd -- <pasta>` | salva prints do menu, das telas e da fase (precisa de janela; gera `docs/imagens/`) |
+| `tools/gravar_video_demo.gd` (com `--write-movie demo.avi --fixed-fps 30`) | grava um vídeo de ~3 min mostrando as funções do jogo com legenda: menu, criar fase, F3, F4, terminal, as quatro primeiras fases demo e a telemetria (precisa de janela; no Linux sem monitor, use `xvfb-run`) |
 
 Os scripts `.gd` rodam com `& $godot --headless --path . --script res://<caminho>`.
 
