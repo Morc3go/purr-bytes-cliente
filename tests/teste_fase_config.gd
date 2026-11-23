@@ -34,7 +34,7 @@ func teste_fase_sem_desafio_e_sem_verbo() -> void:
 func teste_verbo_do_desafio_precisa_estar_permitido() -> void:
 	var config: FaseConfig = _fase_cesar()
 	config.desafios[0].verbo_esperado = "hashear"
-	afirmar_verdadeiro(_tem_problema(config, "nao esta em verbos_permitidos"),
+	afirmar_verdadeiro(_tem_problema(config, "não está em verbos_permitidos"),
 		"desafio que espera verbo nao permitido e impossivel de resolver")
 
 

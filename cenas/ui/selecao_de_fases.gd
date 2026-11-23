@@ -13,6 +13,8 @@ extends Control
 
 const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 const CENA_DO_EDITOR: String = "res://cenas/ui/editor_de_fase.tscn"
+const CENA_DA_ESCOLHA_DE_GATO: String = "res://cenas/ui/escolha_de_gato.tscn"
+const CENA_DA_ESCOLHA_DE_CENARIO: String = "res://cenas/ui/escolha_de_cenario.tscn"
 
 @onready var _lista: ItemList = $Raiz/Margem/Coluna/Corpo/Lista
 @onready var _detalhe: RichTextLabel = $Raiz/Margem/Coluna/Corpo/Detalhe
@@ -20,9 +22,16 @@ const CENA_DO_EDITOR: String = "res://cenas/ui/editor_de_fase.tscn"
 @onready var _confirmacao: ConfirmationDialog = $ConfirmacaoDeExclusao
 
 var _caminhos: PackedStringArray = PackedStringArray()
+## Tela "escolha seu gatinho" aberta por cima da lista (ADR 0030), ou null.
+var _escolha_de_gato: EscolhaDeGato = null
+## Tela "escolha o cenario", aberta depois do gatinho (ADR 0036), ou null.
+var _escolha_de_cenario: EscolhaDeCenario = null
 
 
 func _ready() -> void:
+	# Mesma cara do menu: vidro fosco sobre o wallpaper, vinhas em volta e os
+	# baloes no tom do fundo escolhido (ADR 0034).
+	EnfeiteDaGaleria.enfeitar(self, [$Raiz] as Array[Control])
 	$Raiz/Margem/Coluna/Acoes/Jogar.pressed.connect(_ao_jogar)
 	$Raiz/Margem/Coluna/Acoes/Editar.pressed.connect(_ao_editar)
 	$Raiz/Margem/Coluna/Acoes/Exportar.pressed.connect(_ao_exportar)
@@ -68,7 +77,7 @@ func _ao_selecionar(indice: int) -> void:
 
 	_detalhe.clear()
 	if not resultado.ok():
-		_detalhe.append_text("[b]%s[/b]\n\n[color=#bf2a19]esta fase nao pode ser jogada:[/color]\n%s"
+		_detalhe.append_text("[b]%s[/b]\n\n[color=#ffb4a8]esta fase não pode ser jogada:[/color]\n%s"
 			% [caminho.get_file(), resultado.mensagem()])
 		# Excluir continua valendo: e como o professor se livra de um arquivo ruim.
 		$Raiz/Margem/Coluna/Acoes/Jogar.disabled = true
@@ -91,9 +100,10 @@ func _ao_selecionar(indice: int) -> void:
 			else "[i]sem briefing[/i]",
 		"",
 		"vidas: %d" % config.vidas_iniciais,
-		"vigias: %d (%d so perseguem)" % [vigias, so_perseguem],
+		"vigias: %d (%d só perseguem)" % [vigias, so_perseguem],
 		"terminais: %d" % config.pacotes.size(),
 		"mapa: %dx%d" % [config.mapa.largura(), config.mapa.altura()],
+		"cenário: %s" % CenarioDoLabirinto.nome(config.cenario),
 		"arquivo: %s" % caminho.get_file(),
 	])))
 
@@ -113,17 +123,66 @@ func _caminho_selecionado() -> String:
 	return _caminhos[indice] if indice < _caminhos.size() else ""
 
 
+## Jogar primeiro pergunta qual gatinho (ADR 0030); a fase so comeca depois
+## da escolha. O arquivo e validado ANTES de perguntar: uma fase quebrada
+## mostra o erro na hora, sem fazer o jogador escolher um gato a toa.
 func _ao_jogar() -> void:
 	var caminho: String = _caminho_selecionado()
-	if caminho.is_empty():
+	if caminho.is_empty() or _escolha_de_gato != null or _escolha_de_cenario != null:
 		return
 
+	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(caminho)
+	if not resultado.ok():
+		_rodape.text = "não foi possível jogar: %s" % " | ".join(resultado.erros)
+		return
+
+	_abrir_escolha_de_gato(caminho, resultado.config.cenario)
+
+
+## Primeiro o gatinho (ADR 0030), depois o cenario (ADR 0036), e so entao a fase.
+func _abrir_escolha_de_gato(caminho: String, cenario_sugerido: String) -> void:
+	_escolha_de_gato = (load(CENA_DA_ESCOLHA_DE_GATO) as PackedScene).instantiate() as EscolhaDeGato
+	_escolha_de_gato.escolhido.connect(_ao_escolher_gato.bind(caminho, cenario_sugerido))
+	_escolha_de_gato.cancelado.connect(_fechar_escolha_de_gato)
+	add_child(_escolha_de_gato)
+
+
+func _ao_escolher_gato(pelagem: String, caminho: String, cenario_sugerido: String) -> void:
+	PelagemGato.salvar_preferida(pelagem)
+	_fechar_escolha_de_gato(false)
+	_escolha_de_cenario = (load(CENA_DA_ESCOLHA_DE_CENARIO) as PackedScene).instantiate() as EscolhaDeCenario
+	_escolha_de_cenario.sugerido = cenario_sugerido
+	_escolha_de_cenario.escolhido.connect(_ao_escolher_cenario.bind(caminho, pelagem))
+	# Esc no cenario volta para o gatinho, que ja abre no gato escolhido.
+	_escolha_de_cenario.cancelado.connect(func() -> void:
+		_fechar_escolha_de_cenario()
+		_abrir_escolha_de_gato(caminho, cenario_sugerido))
+	add_child(_escolha_de_cenario)
+
+
+func _ao_escolher_cenario(cenario: String, caminho: String, pelagem: String) -> void:
 	if not Sessao.ativa:
 		Sessao.iniciar()
 
-	var erros: PackedStringArray = IniciadorDeFase.jogar_arquivo(get_tree(), caminho)
+	var erros: PackedStringArray = IniciadorDeFase.jogar_arquivo(get_tree(), caminho, pelagem, cenario)
 	if not erros.is_empty():
-		_rodape.text = "nao foi possivel jogar: %s" % " | ".join(erros)
+		_fechar_escolha_de_cenario()
+		_rodape.text = "não foi possível jogar: %s" % " | ".join(erros)
+
+
+func _fechar_escolha_de_gato(devolver_foco: bool = true) -> void:
+	if _escolha_de_gato != null:
+		_escolha_de_gato.queue_free()
+		_escolha_de_gato = null
+	if devolver_foco:
+		$Raiz/Margem/Coluna/Acoes/Jogar.grab_focus()
+
+
+func _fechar_escolha_de_cenario() -> void:
+	if _escolha_de_cenario != null:
+		_escolha_de_cenario.queue_free()
+		_escolha_de_cenario = null
+	$Raiz/Margem/Coluna/Acoes/Jogar.grab_focus()
 
 
 func _ao_editar() -> void:
@@ -133,7 +192,7 @@ func _ao_editar() -> void:
 	# O editor le o caminho daqui; e a unica informacao que precisa atravessar
 	# a troca de tela, e um caminho de arquivo nao justifica um autoload.
 	if not ResourceLoader.exists(CENA_DO_EDITOR):
-		_rodape.text = "o editor visual entra na proxima etapa da reconstrucao."
+		_rodape.text = "o editor visual entra na próxima etapa da reconstrução."
 		return
 	EditorDeFaseEstado.caminho_para_editar = caminho
 	get_tree().change_scene_to_file(CENA_DO_EDITOR)
@@ -157,7 +216,7 @@ func _ao_escolher_destino(destino: String) -> void:
 
 	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(origem)
 	if not resultado.ok():
-		_rodape.text = "a fase esta invalida e nao foi exportada."
+		_rodape.text = "a fase está inválida e não foi exportada."
 		return
 
 	var erros: PackedStringArray = CarregadorFaseJson.salvar(resultado.config, destino)
@@ -172,7 +231,7 @@ func _ao_pedir_exclusao() -> void:
 	if caminho.is_empty():
 		return
 	# Exclusao de arquivo do professor NUNCA e imediata.
-	_confirmacao.dialog_text = "excluir a fase '%s'?\nisto apaga o arquivo e nao tem volta." \
+	_confirmacao.dialog_text = "excluir a fase '%s'?\nisto apaga o arquivo e não tem volta." \
 		% caminho.get_file()
 	_confirmacao.popup_centered()
 
@@ -184,7 +243,7 @@ func _ao_confirmar_exclusao() -> void:
 
 	var erro: Error = DirAccess.remove_absolute(ProjectSettings.globalize_path(caminho))
 	if erro != OK:
-		_rodape.text = "nao foi possivel excluir %s (erro %d)" % [caminho.get_file(), erro]
+		_rodape.text = "não foi possível excluir %s (erro %d)" % [caminho.get_file(), erro]
 		return
 
 	_rodape.text = "fase '%s' excluida." % caminho.get_file()

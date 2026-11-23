@@ -37,8 +37,8 @@ const _CORES: Dictionary = {
 }
 
 const _NOMES: Dictionary = {
-	"CESAR": "Cesar",
-	"VIGENERE": "Vigenere",
+	"CESAR": "César",
+	"VIGENERE": "Vigenère",
 	"SHA256": "SHA-256",
 	"AES": "AES",
 }

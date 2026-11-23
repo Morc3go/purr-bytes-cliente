@@ -87,23 +87,28 @@ func teste_reiniciar_fase_de_autoria_volta_com_a_mesma_configuracao() -> void:
 # Comandos a vista
 # ---------------------------------------------------------------------------
 
-func teste_fase_de_exemplo_mostra_os_comandos_na_hud() -> void:
+func teste_fase_de_exemplo_mostra_os_comandos_e_as_teclas() -> void:
 	var config: FaseConfig = _config_do_exemplo()
 	afirmar_verdadeiro(config.mostrar_comandos, "o exemplo liga mostrar_comandos")
 	afirmar_contem(config.briefing_pedagogico, "trocar senha", "o briefing diz o comando azul")
 	afirmar_contem(config.briefing_pedagogico, "ativar 2fa", "e o laranja")
 
 	var fase: FaseBase = await _jogar(config)
-	afirmar_igual(fase.hud.comandos_visiveis(),
-		PackedStringArray(["trocar senha", "ativar 2fa", "cifrar senha chave=3", "sem comando: fuja"]),
-		"a legenda da HUD lista o comando de cada vigia, na ordem da fase")
+	# O rodape mostra as TECLAS (ADR 0026); o comando de cada vigia fica no
+	# texto de abertura do terminal e na tela de captura.
+	var teclas: PackedStringArray = fase.hud.teclas_visiveis()
+	afirmar_igual(teclas[0], "T", "a primeira dica e a tecla do terminal")
+	afirmar_contem(teclas[1], "terminal", "e diz para que ela serve")
+	afirmar_verdadeiro(teclas.has("F4"), "F4 mostra a cifra")
+	afirmar_falso(fase.hud.get_node("Raiz/Linha/Protecao").visible, "sem 'texto claro' fixo no alto")
 
 
 func teste_fase_sem_mostrar_comandos_nao_entrega_a_resposta() -> void:
 	var config: FaseConfig = _config_do_exemplo()
 	config.mostrar_comandos = false
 	var fase: FaseBase = await _jogar(config)
-	afirmar_tamanho(fase.hud.comandos_visiveis(), 0, "fase de avaliacao: legenda escondida")
+	for texto: String in fase.hud.teclas_visiveis():
+		afirmar_falso(texto.contains("trocar senha"), "o rodape nao entrega o comando")
 
 	var azul: Cachorro = _cachorro_com_comando(fase, "trocar senha")
 	var explicacao: String = fase._explicacao_da_captura(azul)

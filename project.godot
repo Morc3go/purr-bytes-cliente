@@ -10,7 +10,9 @@ config_version=5
 
 [application]
 
-config/name="Purr Bytes"
+config/name="Crypto Cats"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Godot/app_userdata/Purr Bytes"
 config/version="0.1.0"
 run/main_scene="res://cenas/ui/menu_principal.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
@@ -36,6 +38,7 @@ window/size/viewport_width=640
 window/size/viewport_height=360
 window/size/window_width_override=1280
 window/size/window_height_override=720
+window/size/mode=2
 window/stretch/mode="canvas_items"
 
 [gui]
@@ -91,6 +94,8 @@ mostrar_demonstracao={
 }
 
 [rendering]
+
+environment/defaults/default_clear_color=Color(0.89, 0.953, 0.867, 1)
 
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="mobile"

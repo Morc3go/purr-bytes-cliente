@@ -1,0 +1,80 @@
+[gd_resource type="Theme" load_steps=6 format=3]
+
+; Menu principal (ADR 0023 e 0027): botoes e contorno dos textos. Este tema vai
+; no no Cartao/Coluna: o Godot procura cada item primeiro no tema mais proximo e,
+; se nao achar, sobe a arvore -- por isso aqui so existem os estilos e o contorno
+; do texto de Button e Label; a fonte continua vindo de tema_telas_secundarias.tres.
+; As outras telas nao mudam.
+;
+; Botoes: a moldura verde com flores (balao_botao.png) em "nine-patch". As quinas
+; com flores ficam do tamanho desenhado e so o miolo verde estica, entao o
+; texto cabe em qualquer largura. Passar o mouse clareia, apertar escurece.
+; Todo texto do menu e branco e sem contorno nenhum, a pedido da equipe
+; (ADR 0032): nos botoes, sobre o verde da moldura; no subtitulo, sobre o vidro.
+
+[ext_resource type="Texture2D" path="res://recursos/arte/balao_botao.png" id="1_balao"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_menu_normal"]
+texture = ExtResource("1_balao")
+texture_margin_left = 13.0
+texture_margin_top = 12.0
+texture_margin_right = 13.0
+texture_margin_bottom = 12.0
+content_margin_left = 14.0
+content_margin_top = 4.0
+content_margin_right = 14.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_menu_hover"]
+texture = ExtResource("1_balao")
+texture_margin_left = 13.0
+texture_margin_top = 12.0
+texture_margin_right = 13.0
+texture_margin_bottom = 12.0
+content_margin_left = 14.0
+content_margin_top = 4.0
+content_margin_right = 14.0
+content_margin_bottom = 5.0
+modulate_color = Color(1.15, 1.15, 1.1, 1)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_menu_pressed"]
+texture = ExtResource("1_balao")
+texture_margin_left = 13.0
+texture_margin_top = 12.0
+texture_margin_right = 13.0
+texture_margin_bottom = 12.0
+content_margin_left = 14.0
+content_margin_top = 5.0
+content_margin_right = 14.0
+content_margin_bottom = 4.0
+modulate_color = Color(0.8, 0.8, 0.8, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_foco"]
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.96, 0.8, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+expand_margin_left = 1.0
+expand_margin_top = 1.0
+expand_margin_right = 1.0
+expand_margin_bottom = 1.0
+
+[resource]
+Button/styles/normal = SubResource("StyleBoxTexture_menu_normal")
+Button/styles/hover = SubResource("StyleBoxTexture_menu_hover")
+Button/styles/pressed = SubResource("StyleBoxTexture_menu_pressed")
+Button/styles/disabled = SubResource("StyleBoxTexture_menu_normal")
+Button/styles/focus = SubResource("StyleBoxFlat_menu_foco")
+Button/colors/font_color = Color(1, 1, 1, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
+Button/colors/font_focus_color = Color(1, 1, 1, 1)
+Button/constants/outline_size = 0
+Label/colors/font_color = Color(1, 1, 1, 1)
+Label/constants/outline_size = 0

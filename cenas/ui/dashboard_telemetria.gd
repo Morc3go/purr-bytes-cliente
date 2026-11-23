@@ -25,14 +25,12 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 const CAMINHO_DA_EXPORTACAO: String = "user://resumo_telemetria.json"
 const PASTA_DE_EXPORTACAO: String = "user://exportacoes"
 
-## As quatro cores do grafico foram clareadas junto com o resto do painel:
-## dashboard_telemetria.tscn passou a ter fundo escuro (tema_telas_secundarias,
-## ver ADR 0017 adendo), e as cores antigas (tuned para fundo branco/creme)
-## ficariam ilegiveis desenhadas por cima do painel escuro no _draw() abaixo.
-const COR_ACERTO: Color = Color(0.42, 0.78, 0.48)
-const COR_ERRO: Color = Color(0.92, 0.42, 0.38)
-const COR_EIXO: Color = Color(0.69, 0.729, 0.859)
-const COR_TEXTO: Color = Color(0.937, 0.945, 0.973)
+## Cores do grafico, para o vidro escuro no tom do fundo (ADR 0034): barras
+## em verde e rosa claros, eixo e numeros em branco, como o resto do texto.
+const COR_ACERTO: Color = Color("a8e89a")
+const COR_ERRO: Color = Color("ffb4a8")
+const COR_EIXO: Color = Color(1.0, 1.0, 1.0, 0.6)
+const COR_TEXTO: Color = Color.WHITE
 
 @onready var _grafico: Control = $Raiz/Margem/Coluna/Corpo/Grafico
 @onready var _tabela: RichTextLabel = $Raiz/Margem/Coluna/Corpo/Tabela
@@ -63,6 +61,9 @@ var _fase_aberta: String = ""
 
 
 func _ready() -> void:
+	# Mesma cara do menu: cada painel e um vidro com vinhas, no tom do fundo
+	# escolhido na galeria (ADR 0034).
+	EnfeiteDaGaleria.enfeitar(self, [$Raiz, $PainelFases, $PainelDetalhe, $PainelDiagnostico] as Array[Control])
 	$Raiz/Margem/Coluna/Acoes/Atualizar.pressed.connect(_carregar)
 	$Raiz/Margem/Coluna/Acoes/FasesJogadas.pressed.connect(_ao_abrir_fases)
 	$Raiz/Margem/Coluna/Acoes/Exportar.pressed.connect(_ao_exportar)
@@ -128,11 +129,11 @@ func _recalcular_visao_geral() -> void:
 	_botao_limpar_filtro.visible = not _filtro.is_empty()
 
 	var escopo: String = "todas as fases" if _filtro.is_empty() \
-		else "media de %d fase(s) selecionada(s)" % _filtro.size()
+		else "média de %d fase(s) selecionada(s)" % _filtro.size()
 	if _resumo.vazio():
-		_cabecalho.text = "nenhuma partida registrada ainda -- jogue uma fase e volte aqui."
+		_cabecalho.text = "nenhuma partida registrada ainda. jogue uma fase e volte aqui."
 	else:
-		_cabecalho.text = "%s - %d sessao(oes) - %d partida(s) - %.0f%% de acerto" % [
+		_cabecalho.text = "%s - %d sessão(ões) - %d partida(s) - %.0f%% de acerto" % [
 			escopo, _resumo.sessoes, _resumo.total_de_partidas(), _resumo.taxa_de_acerto() * 100.0]
 
 	_montar_tabela()
@@ -140,6 +141,15 @@ func _recalcular_visao_geral() -> void:
 
 
 ## Rotulo de uma fase pelo id -- usado na lista e no detalhe.
+## Corta no fim de uma palavra, nunca no meio ("1. César: o primeiro seg"
+## parecia erro de digitacao na tabela).
+static func _abreviar(texto: String, limite: int) -> String:
+	if texto.length() <= limite:
+		return texto
+	var corte: int = texto.substr(0, limite).rfind(" ")
+	return texto.substr(0, corte if corte > 0 else limite).rstrip(" :,.-") + "..."
+
+
 func _rotulo(id_fase: String) -> String:
 	var item: ResumoTelemetria.ResumoDeFase = _resumo_completo.fase(id_fase)
 	return item.rotulo() if item != null else "fase %s" % id_fase.substr(0, 8)
@@ -154,7 +164,8 @@ func _rotulo(id_fase: String) -> String:
 ## contraste, que e o ponto fraco historico das telas deste projeto.
 func _desenhar_grafico() -> void:
 	var area: Vector2 = _grafico.size
-	var fonte: Font = ThemeDB.fallback_font
+	# Fonte do tema (Silkscreen), nao a fallback: o grafico destoava do resto da tela.
+	var fonte: Font = _grafico.get_theme_default_font()
 	var altura_util: float = area.y - 24.0
 
 	# Linha de base: sem ela, barra zerada e area vazia ficam iguais.
@@ -175,21 +186,21 @@ func _desenhar_grafico() -> void:
 
 		_grafico.draw_rect(Rect2(x, topo, largura_barra, altura), dados[i]["cor"])
 		_grafico.draw_string(fonte, Vector2(x, topo - 3.0), str(valor),
-			HORIZONTAL_ALIGNMENT_LEFT, largura_barra, 10, COR_TEXTO)
-		_grafico.draw_string(fonte, Vector2(x, altura_util + 12.0), String(dados[i]["rotulo"]),
-			HORIZONTAL_ALIGNMENT_LEFT, largura_barra + 20.0, 9, COR_TEXTO)
+			HORIZONTAL_ALIGNMENT_CENTER, largura_barra, 10, COR_TEXTO)
+		_grafico.draw_string(fonte, Vector2(x - 10.0, altura_util + 12.0), String(dados[i]["rotulo"]),
+			HORIZONTAL_ALIGNMENT_CENTER, largura_barra + 20.0, 8, COR_TEXTO)
 
 
 func _montar_tabela() -> void:
 	var linhas: PackedStringArray = PackedStringArray([
-		"[b]medias[/b]",
-		"acerto: %.0f%%  |  resposta media: %.1fs" % [
+		"[b]médias[/b]",
+		"acerto: %.0f%%  |  resposta média: %.1fs" % [
 			_resumo.taxa_de_acerto() * 100.0, _resumo.tempo_medio_de_resposta_ms() / 1000.0],
-		"conclusao: %.0f%% (%d de %d)  |  tempo medio: %.1fs" % [
+		"conclusão: %.0f%% (%d de %d)  |  tempo médio: %.1fs" % [
 			_resumo.taxa_de_conclusao() * 100.0, _resumo.total_concluidas(),
 			_resumo.total_concluidas() + _resumo.total_abandonadas(),
 			_resumo.tempo_medio_de_conclusao_ms() / 1000.0],
-		"pontuacao media: %.0f  |  capturas/partida: %.1f  |  dicas: %d" % [
+		"pontuação média: %.0f  |  capturas/partida: %.1f  |  dicas: %d" % [
 			_resumo.pontuacao_media(), _resumo.capturas_por_partida(), _resumo.total_dicas()],
 		"",
 		"[b]por fase[/b]",
@@ -201,10 +212,10 @@ func _montar_tabela() -> void:
 		# [table] do RichTextLabel alinha as colunas com a fonte proporcional do
 		# tema, o que o alinhamento por espacos (%-20s) nao consegue.
 		var celulas: PackedStringArray = PackedStringArray([
-			_cabecalho_de_tabela(["fase", "partidas", "acerto", "tempo med."])])
+			_cabecalho_de_tabela(["fase", "partidas", "acerto", "tempo méd."])])
 		for fase: ResumoTelemetria.ResumoDeFase in _resumo.por_fase:
 			celulas.append(_linha_de_tabela([
-				fase.rotulo().substr(0, 24),
+				_abreviar(fase.rotulo(), 36),
 				str(fase.partidas.size()),
 				"%.0f%%" % (fase.taxa_de_acerto() * 100.0),
 				"%.1fs" % (fase.tempo_medio_de_conclusao_ms() / 1000.0),
@@ -218,7 +229,7 @@ func _montar_tabela() -> void:
 func _ao_limpar_filtro() -> void:
 	_filtro = PackedStringArray()
 	_recalcular_visao_geral()
-	_rodape.text = "mostrando a media de todas as fases."
+	_rodape.text = "mostrando a média de todas as fases."
 
 
 func _ao_exportar() -> void:
@@ -247,7 +258,7 @@ func _montar_lista_de_fases() -> void:
 	for fase: ResumoTelemetria.ResumoDeFase in _resumo_completo.por_fase:
 		if fase.id_fase.is_empty():
 			continue  # registro legado sem id: nao da para abrir nem filtrar
-		var texto: String = "%s  -  %d partida(s)  -  %.0f%% acerto  -  %d concluida(s)" % [
+		var texto: String = "%s  -  %d partida(s)  -  %.0f%% acerto  -  %d concluída(s)" % [
 			fase.rotulo(), fase.partidas.size(), fase.taxa_de_acerto() * 100.0, fase.concluidas()]
 		var indice: int = _lista_fases.add_item(texto)
 		_lista_fases.set_item_metadata(indice, fase.id_fase)
@@ -276,12 +287,12 @@ func _ao_ver_fase_selecionada() -> void:
 func _ao_calcular_media_das_selecionadas() -> void:
 	var ids: PackedStringArray = ids_selecionados()
 	if ids.is_empty():
-		_aviso_fases.text = "selecione ao menos uma fase para tirar a media."
+		_aviso_fases.text = "selecione ao menos uma fase para tirar a média."
 		return
 	_filtro = ids
 	_recalcular_visao_geral()
 	_painel_fases.visible = false
-	_rodape.text = "mostrando a media de %d fase(s) selecionada(s)." % ids.size()
+	_rodape.text = "mostrando a média de %d fase(s) selecionada(s)." % ids.size()
 	_botao_limpar_filtro.grab_focus()
 
 
@@ -310,29 +321,29 @@ func _abrir_detalhe(id_fase: String) -> void:
 	_aviso_detalhe.text = "id_fase %s" % id_fase
 
 	var linhas: PackedStringArray = PackedStringArray([
-		"[b]partidas[/b]: %d  (concluidas %d, abandonadas %d)  -  conclusao %.0f%%" % [
+		"[b]partidas[/b]: %d  (concluídas %d, abandonadas %d)  -  conclusão %.0f%%" % [
 			fase.partidas.size(), fase.concluidas(), fase.abandonadas(),
 			fase.taxa_de_conclusao() * 100.0],
-		"[b]tempo medio de conclusao[/b]: %.1fs  -  [b]pontuacao[/b] media %.0f, melhor %d" % [
+		"[b]tempo médio de conclusão[/b]: %.1fs  -  [b]pontuação[/b] média %.0f, melhor %d" % [
 			fase.tempo_medio_de_conclusao_ms() / 1000.0, fase.pontuacao_media(), fase.melhor_pontuacao()],
-		"[b]respostas[/b]: %d acerto(s), %d erro(s)  -  %.0f%% acerto  -  resposta media %.1fs" % [
+		"[b]respostas[/b]: %d acerto(s), %d erro(s)  -  %.0f%% acerto  -  resposta média %.1fs" % [
 			fase.acertos, fase.erros, fase.taxa_de_acerto() * 100.0, fase.tempo_medio_ms() / 1000.0],
-		"[b]capturas[/b]: %d  -  [b]dicas[/b]: %d  -  ultima vez: %s" % [
+		"[b]capturas[/b]: %d  -  [b]dicas[/b]: %d  -  última vez: %s" % [
 			fase.capturas, fase.dicas, fase.ultima_vez.substr(0, 16).replace("T", " ")],
 		"",
-		"[b]historico de partidas[/b]",
+		"[b]histórico de partidas[/b]",
 	])
 	if fase.partidas.is_empty():
-		linhas.append("nenhuma partida iniciada (so respostas avulsas registradas).")
+		linhas.append("nenhuma partida iniciada (só respostas avulsas registradas).")
 	else:
 		var celulas: PackedStringArray = PackedStringArray([_cabecalho_de_tabela(
-			["#", "inicio (UTC)", "resultado", "duracao", "pontos", "capturas"])])
+			["#", "início (UTC)", "resultado", "duração", "pontos", "capturas"])])
 		for i: int in range(fase.partidas.size() - 1, -1, -1):  # mais recente primeiro
 			var partida: ResumoTelemetria.Partida = fase.partidas[i]
 			celulas.append(_linha_de_tabela([
 				str(i + 1),
 				partida.iniciada_em.substr(0, 16).replace("T", " "),
-				partida.resultado.to_lower().replace("_", " "),
+				("concluída" if partida.resultado == ResumoTelemetria.PARTIDA_CONCLUIDA else partida.resultado.to_lower().replace("_", " ")),
 				"--" if partida.duracao_ms < 0 else "%.1fs" % (partida.duracao_ms / 1000.0),
 				str(partida.pontuacao),
 				str(partida.capturas),
@@ -406,13 +417,13 @@ func _ao_abrir_diagnostico() -> void:
 		"url: %s" % config["url_api"],
 		"chave definida: %s" % ("sim" if bool(config["chave_api_definida"]) else "nao"),
 		"id_sujeito: %s" % config["id_sujeito"],
-		"versao: %s | plataforma: %s" % [config["versao_jogo"], config["plataforma"]],
+		"versão: %s | plataforma: %s" % [config["versao_jogo"], config["plataforma"]],
 		"registro local: %s" % Telemetria.caminho_do_registro_local(),
 		"",
 		"[b]fila[/b]",
 		"transporte: %s" % fila["transporte"],
-		"sessao: %s" % ("aberta" if bool(fila["sessao_aberta"]) else "fechada"),
-		"proxima sequencia: %d" % int(fila["proxima_sequencia"]),
+		"sessão: %s" % ("aberta" if bool(fila["sessao_aberta"]) else "fechada"),
+		"próxima sequência: %d" % int(fila["proxima_sequencia"]),
 		"eventos na fila: %d" % int(fila["eventos_na_fila"]),
 		"tentativas na fila: %d" % int(fila["tentativas_na_fila"]),
 		"falhas consecutivas: %d" % int(fila["falhas_consecutivas"]),

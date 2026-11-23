@@ -1,14 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://cenas/ui/hud.gd" id="1_hud"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_comandos"]
-bg_color = Color(1, 1, 1, 0.92)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.851, 0.482, 1)
 
 [node name="Hud" type="CanvasLayer"]
 layer = 1
@@ -19,6 +11,14 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+
+[node name="Faixa" type="Panel" parent="Raiz"]
+anchor_right = 1.0
+offset_left = 2.0
+offset_right = -2.0
+offset_bottom = 19.0
+grow_horizontal = 2
 mouse_filter = 2
 
 [node name="Linha" type="HBoxContainer" parent="Raiz"]
@@ -49,12 +49,12 @@ text = ""
 horizontal_alignment = 1
 
 [node name="Protecao" type="Label" parent="Raiz/Linha"]
+visible = false
 theme_override_font_sizes/font_size = 8
-text = "texto claro"
+text = ""
 horizontal_alignment = 2
 
 [node name="Comandos" type="PanelContainer" parent="Raiz"]
-visible = false
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
@@ -64,7 +64,6 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_comandos")
 
 [node name="Margem" type="MarginContainer" parent="Raiz/Comandos"]
 mouse_filter = 2

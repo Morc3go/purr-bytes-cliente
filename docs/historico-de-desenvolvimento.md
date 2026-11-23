@@ -758,3 +758,233 @@ outros 25 arquivos de teste do projeto.
 5. **Opacidade:** confirme visualmente que nenhuma tela deixa o fundo aparecer através do
    painel (checagem automatizada em `teste_telas_opacas.gd`, mas vale conferir também no
    editor rodando).
+
+---
+
+# 2026-11-01 — Arte final dos personagens e check-up geral
+
+- **Arte:** gato tuxedo e cachorro husky da artista da equipe, em quadros de 32×32
+  (ADR 0020). Fundo pastel na fase, faixa do HUD, sombra do gato, husky no menu, abas do
+  editor e gráfico do painel acertados.
+- **Suíte:** roda inteira numa invocação só (269 testes, 0 falhas, Godot 4.6) — o
+  travamento relatado acima não se repetiu.
+- **Banco:** as migrations V1–V8 e o seed fictício aplicam limpas num PostgreSQL 16 novo;
+  `tools/verificar_backend.gd` entregou uma sessão completa (6 eventos, 2 tentativas) ao
+  schema real, e as visões analíticas já mostram a partida.
+- **Ferramenta nova:** `tools/capturar_telas.gd` gera os prints de `docs/imagens/`.
+
+## 2026-11-01 (tarde) — aparência do gato, trilha de demonstração, bugs do terminal
+
+- Gato **tuxedo ou calico**, à escolha no menu; o husky do menu fica sentado e parado.
+- Cinco fases de demonstração em `recursos/fases_demo/` (ADR 0021).
+- Corrigidos: `verificar` recusava resumos SHA-256 começando com dígito; comando livre
+  exigia maiúsculas/espaços exatos; HUD mostrava "fase 1" em toda fase.
+- Suíte: 282 testes, 0 falhas. Corrigidos também: rota do A* (F3) escondida sob o labirinto e painel de telemetria lendo dados pela metade. Ferramenta nova: `tools/figuras_monografia.gd`.
+
+## 2026-11-01 (noite) — revisão de textos visíveis
+
+- Mensagens do terminal, telas de captura, perguntas, editor e painel de telemetria
+  passaram a ter acentuação correta ("não", "você", "César", "Vigenère", "médias"...),
+  e o traço duplo "--" saiu dos textos que o jogador lê.
+- Fase de exemplo foi para a versão 3 (texto acentuado); quem tem a v2 intocada recebe
+  a atualização automaticamente.
+- Tabela "por fase" do painel corta o nome da fase no fim de uma palavra, com "...".
+- Suíte: 282 testes, 0 falhas.
+
+## 2026-11-09 — cachorro caramelo
+
+- Vigias agora têm duas pelagens, husky e caramelo (ADR 0022): escolha no editor,
+  alternância automática nas fases antigas, caramelo sentado no menu.
+- Dica do editor sobre comando livre atualizada (maiúsculas não importam desde a
+  normalização da ADR 0021).
+- Suíte: 287 testes, 0 falhas.
+
+## 2026-11-09 — Crypto Cats e menu de neve
+
+- O jogo passou a se chamar **Crypto Cats**; Purr Bytes segue como nome do projeto
+  (ADR 0023). A pasta de dados do jogador não mudou.
+- Menu com papel de parede de neve, cartão de vidro fosco (transparente e levemente
+  desfocado) e botões num azul mais claro.
+- Gato calico sem a sombra desenhada embaixo.
+- Suíte: 289 testes, 0 falhas.
+
+## 2026-11-11 — Calico autoral e labirinto do tamanho da tela
+
+- O gato calico agora é a arte desenhada pela equipe; o tuxedo saiu do jogo, junto com
+  o seletor de aparência do menu (ADR 0024).
+- No menu, o gato fica sentado de olho aberto entre os dois cachorros.
+- Labirinto padrão de 39x19, que ocupa a tela; a câmera escolhe o zoom para não
+  distorcer a pixel art. Fases de demonstração ampliadas, inclusive as já instaladas.
+- Suíte: 291 testes, 0 falhas.
+
+## 2026-11-11 (tarde) — Grama e cerca viva provisórias
+
+- O labirinto ganhou grama no chão e cercas vivas nas paredes, como arte provisória
+  (ADR 0025). É só uma camada visual por cima do TileMapLayer, então colisão e A* não
+  mudaram. A porta ganhou fundo creme para não sumir na grama.
+- Suíte: 294 testes, 0 falhas.
+
+## 2026-11-11 (fim da tarde) — Rodapé de teclas
+
+- O rodapé da fase passou a mostrar as teclas: T (terminal para cifrar), F4, Esc e setas.
+  Os comandos de cada vigia ficam no terminal. O "texto claro" fixo no alto saiu; o aviso
+  só aparece com a cifra ativa (ADR 0026).
+- Suíte: 294 testes, 0 falhas.
+
+## 2026-11-11 (noite) — Menu de floresta e porta de madeira
+
+- Menu com wallpaper de floresta e botões na moldura verde com flores, que estica para
+  caber o texto. A porta de saída é de madeira: fechada até o gato juntar todos os
+  pacotes, aberta depois (ADR 0027).
+- Suíte: 296 testes, 0 falhas.
+
+## 2026-11-11 (noite) — Paleta verde e cochilo do gato
+
+- O jogo inteiro passou para os tons de verde da moldura do menu, e as telas
+  secundárias ganharam o fundo de floresta (ADR 0028).
+- O gato para virado para onde andava. Com 5 s parado ele senta e, 2 s depois, dorme.
+- Suíte: 297 testes, 0 falhas.
+
+## 2026-11-11 (noite) — Tons pastéis e brejo no menu
+
+- Paleta de branco e verde-bebê no jogo inteiro, no lugar do verde forte. Menu e telas
+  secundárias com o wallpaper do brejo (ADR 0029).
+- Suíte: 297 testes, 0 falhas.
+
+## 2026-11-14 — Três gatos e escolha antes da fase
+
+- Entraram as pranchas autorais do gato amarelo (o gato base) e do siamês, ao lado do
+  cálico. Uma só ferramenta monta as três folhas (ADR 0030).
+- Ao apertar "jogar", o jogador escolhe o gatinho num cartão com o desenho de cada um.
+  O jogo lembra a escolha, e reiniciar a fase mantém o mesmo gato. O menu mostra o amarelo.
+- Suíte: 305 testes, 0 falhas.
+
+## 2026-11-15 — Logo, gatinho e vinhas no menu
+
+- O menu ganhou o logo desenhado pela equipe e, no lugar dos três bichinhos parados, o
+  gato amarelo mexendo o rabo em loop de ida e volta.
+- O cartão perdeu o contorno e ganhou uma moldura de vinhas e flores com os motivos do
+  logo (ADR 0031).
+- Suíte: 308 testes, 0 falhas.
+
+## 2026-11-15 (madrugada) — Texto branco no menu
+
+- As escritas do menu ficaram brancas e sem contorno, e as letras do logo também
+  passaram a ser brancas (ADR 0032).
+- Suíte: 308 testes, 0 falhas.
+- A linha "letramento digital e criptografia" saiu do menu; logo, gatinho e botões
+  ficaram centralizados no cartão.
+
+## 2026-11-15 — Galeria de fundos do menu
+
+- Um botão com ícone de galeria, no canto superior direito do menu, troca o fundo a cada
+  toque entre seis paisagens. Os botões mudam para um tom que combina com cada uma, e
+  as telas secundárias usam o mesmo fundo (ADR 0033).
+- As preferências de aparência (gato e fundo) passaram a usar `Preferencias`.
+- Suíte: 311 testes, 0 falhas.
+- Corrigida uma corrida rara na telemetria: uma descarga iniciada antes de `reiniciar()`
+  podia, ao acordar, remover itens da fila nova. Agora ela confere a geração da fila e
+  sai sem mexer em nada. Aparecia como falha intermitente em `teste_telemetria_por_fase`.
+
+## 2026-11-15 — Vídeo de demonstração
+
+- `tools/video_demonstracao.gd` grava, com o Movie Maker da Godot (30 quadros por
+  segundo, quadro a quadro), um vídeo legendado de 2 min 42 s. O vídeo mostra o menu,
+  a galeria, a escolha do gato, as fases de César, SHA-256 e golpes, a telemetria e o
+  editor, sempre com um participante fictício.
+- A gravação revelou uma falha: ao chegar na porta, `concluir()` trocava de cena dentro
+  do callback de física da área da porta, o que a engine proíbe. Agora a chamada é
+  diferida.
+
+## 2026-11-20 — Todas as telas no estilo do menu
+
+- Seleção de fases, escolha do gato, editor, telemetria, diálogos e os painéis do jogo
+  (terminal, F4, pergunta, captura e pausa) ficaram iguais ao menu (ADR 0034):
+  - wallpaper escolhido ao fundo, com vidro desfocado;
+  - moldura de vinhas com flores;
+  - botões no balãozinho de flores;
+  - todo o texto branco.
+- Tudo acompanha o fundo da galeria: o tom dos balões, a tinta do vidro, as listas e
+  as abas mudam junto. O labirinto também ganhou o wallpaper por trás.
+- A moldura de vinhas passou a ser desenhada pelo jogo para qualquer tamanho de cartão.
+- A tinta de cada fundo garante contraste de pelo menos 4,5:1 para o texto branco, e um
+  teste confere isso.
+- Suíte: 318 testes, 0 falhas.
+
+## 2026-11-21 — Cenários do labirinto e porta em arco
+
+- A equipe aprovou, por simulação, sete cenários novos além do jardim: outono,
+  cerejeira, lago com passarelas, inverno (com dois bonecos de neve), ruínas de pedra,
+  bosque encantado e campo de lavanda (ADR 0035).
+- O cenário é um campo da fase (`"cenario"` no JSON), escolhido no editor. É só
+  aparência: paredes, regras e telemetria não mudam.
+- A trilha de demonstração ganhou um cenário por fase: César no outono, Vigenère na
+  cerejeira, SHA-256 no lago, golpes no bosque e a avaliação final no inverno.
+- Os enfeites são poucos, ficam dentro da célula e nunca vão em cima da cerca nem perto
+  da entrada, da saída, dos pacotes ou dos cachorros.
+- A porta virou um arco de pedra do tamanho de uma célula.
+- Suíte: 328 testes, 0 falhas.
+
+## 2026-11-21 — O jogador escolhe o cenário
+
+- Ao jogar, depois da escolha do gatinho, vem a escolha do cenário: um cartão por
+  cenário, com a miniatura do labirinto tirada do próprio jogo (ADR 0036).
+- O cenário da fase virou sugestão: já vem marcado, e quem só aperta Enter joga como o
+  professor montou. Esc volta ao gatinho.
+- Suíte: 332 testes, 0 falhas.
+
+## 2026-11-21 — Husky novo
+
+- O cachorro husky ganhou o desenho novo da equipe (ADR 0037): frente e costas com 4
+  passos, lados com 3, e quando para, ele senta.
+- A pelagem caramelo saiu por enquanto, até a versão marrom no traço novo ficar pronta.
+  Os vigias marcados "caramelo" aparecem como husky e guardam a escolha para quando o
+  marrom voltar.
+- Suíte: 332 testes, 0 falhas.
+
+## 2026-11-21 — Fundo da fase no cenário
+
+- Em volta do labirinto, no lugar do wallpaper da galeria, o próprio cenário continua até
+  a borda da tela: a cerca nos cenários de arbusto e a água no lago (ADR 0038).
+- Suíte: 333 testes, 0 falhas.
+
+
+## 2026-11-21 — Siamês no menu
+
+- O gatinho do menu agora é o siamês deitado abanando o rabo, desenhado pela equipe
+  (ADR 0039). O corpo fica parado e só o rabo vai e volta.
+- Suíte: 333 testes, 0 falhas.
+
+## 2026-11-21 — Vídeo no tema do piquenique
+
+- `tools/video_demonstracao.gd` aceita `-- --fundo=<nome>`: o vídeo inteiro (menu, telas,
+  legendas e cartelas) segue o wallpaper escolhido. Sem o argumento, continua no fundo
+  noite.
+- Gravado um vídeo de demonstração com o fundo do piquenique, em 1920 × 1080.
+- Os cachorros pararam de "tremer" no corredor a cada replanejamento e não sobem mais
+  em cima do gato quando não podem pegá-lo (ADR 0040).
+- O vídeo mostra os oito cenários no próprio labirinto da fase 1, com o jogo em pausa.
+- Suíte: 338 testes, 0 falhas.
+- O gato nunca mais nasce num beco de uma saída só: a entrada do labirinto fica sempre
+  num ciclo, para dar a volta no cachorro (ADR 0041). Antes, 26% dos mapas gerados
+  nasciam com a entrada presa, inclusive a fase demo de Vigenère.
+- Suíte: 341 testes, 0 falhas.
+
+## 2026-11-22 — Pastor
+
+- Entrou o pastor, desenhado pela equipe no traço novo. Toda fase mistura os dois
+  cachorros, alternando husky e pastor pela ordem dos vigias, sem escolha no editor
+  (ADR 0042). O antigo "caramelo" passou a ser desenhado como o pastor.
+- Suíte: 341 testes, 3.293 verificações, 0 falhas.
+- Os pacotes deixaram de ser losangos amarelos: agora são os itens desenhados pela
+  equipe (novelo, peixe de olho preto e rato), revezando pela ordem dos pacotes
+  (ADR 0043). As prévias dos cenários foram geradas de novo.
+- Suíte: 343 testes, 3.305 verificações, 0 falhas.
+
+## 2026-11-22 — Vinhas no tom do wallpaper
+
+- A vinha da moldura dos cartões passou a acompanhar o wallpaper da galeria, como na
+  apresentação do piquenique (ADR 0044). O brejo continua verde. Na noite e no céu a
+  vinha é azul, na estufa verde-água, no lago das carpas laranja e no piquenique
+  marrom. As flores e o logo não mudam.
+- Suíte: 345 testes, 3.429 verificações, 0 falhas.

@@ -30,7 +30,7 @@ extends Resource
 ##
 ## Antes, o labirinto so existia pintado dentro do .tscn, e a navegacao tratava
 ## celula NAO PINTADA como parede (Navegacao._e_solido). Um tile esquecido no
-## editor virava, entao, parede invisivel: cachorro preso, pacote inalcancavel,
+## editor virava, entao, parede invisivel: cachorro preso, pacote inalcançável,
 ## porta impossivel -- tudo sem uma linha de erro. Em texto, o mesmo mapa cabe
 ## num diff, se le de uma vez e passa por um validador antes de virar jogo.
 ##
@@ -180,10 +180,10 @@ func problemas(config: FaseConfig = null) -> PackedStringArray:
 	var jogadores: Array[Vector2i] = celulas_de(JOGADOR)
 	var saidas: Array[Vector2i] = celulas_de(SAIDA)
 	if jogadores.size() != 1:
-		lista.append("o mapa precisa de exatamente um '%s' (inicio do jogador); achei %d"
+		lista.append("o mapa precisa de exatamente um '%s' (início do jogador); achei %d"
 			% [JOGADOR, jogadores.size()])
 	if saidas.size() != 1:
-		lista.append("o mapa precisa de exatamente um '%s' (porta de saida); achei %d"
+		lista.append("o mapa precisa de exatamente um '%s' (porta de saída); achei %d"
 			% [SAIDA, saidas.size()])
 
 	var pacotes: Array[Vector2i] = celulas_de(PACOTE)
@@ -204,11 +204,11 @@ func problemas(config: FaseConfig = null) -> PackedStringArray:
 	var alcancaveis: Dictionary = alcancaveis_a_partir_de(jogadores[0])
 	for celula: Vector2i in saidas:
 		if not alcancaveis.has(celula):
-			lista.append("a porta em (%d,%d) e inalcancavel a partir do inicio do jogador"
+			lista.append("a porta em (%d,%d) é inalcançável a partir do início do jogador"
 				% [celula.x, celula.y])
 	for i: int in pacotes.size():
 		if not alcancaveis.has(pacotes[i]):
-			lista.append("o pacote %d, em (%d,%d), e inalcancavel a partir do inicio do jogador"
+			lista.append("o pacote %d, em (%d,%d), é inalcançável a partir do início do jogador"
 				% [i + 1, pacotes[i].x, pacotes[i].y])
 
 	for i: int in cachorros.size():
@@ -224,7 +224,7 @@ func problemas(config: FaseConfig = null) -> PackedStringArray:
 		elif not alcancaveis.has(celula):
 			# Cachorro numa area isolada nunca encontra o jogador: a ameaca
 			# existe no desenho e nao existe no jogo.
-			lista.append("o cachorro %d, em (%d,%d), esta numa area separada da do jogador"
+			lista.append("o cachorro %d, em (%d,%d), está numa área separada da do jogador"
 				% [i + 1, celula.x, celula.y])
 
 		if config == null or i >= config.cachorros.size():
@@ -237,7 +237,7 @@ func problemas(config: FaseConfig = null) -> PackedStringArray:
 				lista.append("a ancora (%d,%d) do cachorro '%s' cai em parede"
 					% [ancora.x, ancora.y, config_do_cachorro.identificador])
 			elif not alcancaveis.has(ancora):
-				lista.append("a ancora (%d,%d) do cachorro '%s' e inalcancavel"
+				lista.append("a ancora (%d,%d) do cachorro '%s' é inalcançável"
 					% [ancora.x, ancora.y, config_do_cachorro.identificador])
 
 	return lista

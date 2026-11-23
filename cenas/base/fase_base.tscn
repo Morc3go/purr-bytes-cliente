@@ -70,7 +70,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.145, 0.129, 0.106, 0.94)
+color = Color(0.184, 0.29, 0.208, 0.55)
 
 [node name="Texto" type="Label" parent="AvisoDeConfiguracao/Fundo"]
 anchor_right = 1.0
@@ -82,7 +82,7 @@ offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 10
-text = "fase_base.tscn e a cena pai e nao roda sozinha."
+text = "fase_base.tscn é a cena pai e não roda sozinha."
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3

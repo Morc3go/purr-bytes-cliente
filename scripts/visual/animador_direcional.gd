@@ -18,6 +18,10 @@ const ANDAR_DIREITA: StringName = &"andar_direita"
 const ANDAR_ESQUERDA: StringName = &"andar_esquerda"
 const PARADO: StringName = &"parado"
 const DESCANSAR: StringName = &"descansar"
+const SENTADO: StringName = &"sentado"
+
+## Quadro do ciclo de andar usado como pose parada naquela direcao.
+const QUADRO_PARADO_NA_DIRECAO: int = 0
 
 ## Abaixo disto o corpo esta "parado": o lerp do jogador leva alguns quadros
 ## para zerar, e sem limiar o gato ficaria andando no lugar ao soltar a tecla.
@@ -33,7 +37,13 @@ const DESCANSAR: StringName = &"descansar"
 ## frente, sentado, ele pareceria deslizar pelo corredor.
 @export var lateral_no_eixo_vertical: bool = false
 
+## Ao parar, fica virado para onde andava (primeiro quadro do andar daquela
+## direcao, congelado) em vez de voltar a olhar para a frente. Ligado no gato
+## (pedido da equipe); o cachorro continua com o "parado" dele, que abana o rabo.
+@export var parar_olhando_para_onde_andava: bool = false
+
 var _ultima_lateral: StringName = ANDAR_DIREITA
+var _ultima_andanca: StringName = &""
 
 
 func _ready() -> void:
@@ -46,6 +56,11 @@ func atualizar(velocidade: Vector2) -> void:
 	var nome: StringName = animacao_para(velocidade)
 	if nome == ANDAR_DIREITA or nome == ANDAR_ESQUERDA:
 		_ultima_lateral = nome
+	if nome != PARADO:
+		_ultima_andanca = nome
+	elif _pode_parar_na_direcao():
+		_parar_na_direcao()
+		return
 	if nome == PARADO:
 		speed_scale = 1.0
 	else:
@@ -54,8 +69,35 @@ func atualizar(velocidade: Vector2) -> void:
 		play(nome)
 
 
+func _pode_parar_na_direcao() -> bool:
+	return parar_olhando_para_onde_andava and _ultima_andanca != &"" \
+		and sprite_frames != null and sprite_frames.has_animation(_ultima_andanca)
+
+
+func _parar_na_direcao() -> void:
+	speed_scale = 1.0
+	if animation != _ultima_andanca:
+		animation = _ultima_andanca
+	if is_playing():
+		pause()
+	frame = QUADRO_PARADO_NA_DIRECAO
+
+
+## Parado e virado para a direcao em que andava (so com
+## parar_olhando_para_onde_andava). Para os testes.
+func parado_na_direcao() -> bool:
+	return not is_playing() and animation == _ultima_andanca and _ultima_andanca != &""
+
+
+## Primeiro passo do cochilo: senta de olho aberto (o rabo mexe devagar).
+func sentar() -> void:
+	if sprite_frames != null and sprite_frames.has_animation(SENTADO) and animation != SENTADO:
+		speed_scale = 1.0
+		play(SENTADO)
+
+
 ## Chamado pelo Jogador apos alguns segundos sem entrada (ver
-## tempo_sem_entrada_para_descansar_s em jogador.gd). So troca de fato se a
+## tempo_para_sentar_s em jogador.gd). So troca de fato se a
 ## SpriteFrames tiver a animacao "descansar" -- e por isso que o Cachorro, que
 ## usa este MESMO script (regra de ouro da secao 3), nunca entra nesse estado:
 ## ninguem chama descansar() nele, e cachorro_frames.tres nem precisa da

@@ -2,14 +2,22 @@ extends CasoDeTeste
 
 ## Arte dos personagens: folhas PNG -> SpriteFrames -> AnimatedSprite2D.
 ##
-## O que protege: (a) as 5 animacoes com 4 quadros existirem nos dois .tres
+## O que protege: (a) as 5 animacoes existirem nos dois .tres, com ciclo de
+## andar de 4 passos
 ## (um quadro faltando so apareceria jogando), (b) a regra de direcao do
 ## AnimadorDirecional e (c) as cenas base usarem a arte nova sem perder o
 ## tingimento por cor do cachorro, que e mecanica e nao enfeite.
 
 const QUADROS: Dictionary = {
-	"gato": "res://recursos/arte/gato_frames.tres",
+	"gato_amarelo": "res://recursos/arte/gato_amarelo_frames.tres",
+	"gato_calico": "res://recursos/arte/gato_calico_frames.tres",
+	"gato_siames": "res://recursos/arte/gato_siames_frames.tres",
 	"cachorro": "res://recursos/arte/cachorro_frames.tres",
+}
+## Todas as folhas sao de 32x32 (ADR 0020 e 0024).
+const TAMANHO_DO_QUADRO: Dictionary = {
+	"gato_amarelo": Vector2(32, 32), "gato_calico": Vector2(32, 32), "gato_siames": Vector2(32, 32),
+	"cachorro": Vector2(32, 32),
 }
 const ANIMACOES: Array[StringName] = [
 	AnimadorDirecional.ANDAR_BAIXO, AnimadorDirecional.ANDAR_DIREITA,
@@ -27,25 +35,32 @@ func teste_sprite_frames_tem_as_animacoes_completas() -> void:
 			if not afirmar_verdadeiro(quadros.has_animation(animacao),
 					"%s tem a animacao %s" % [nome, animacao]):
 				continue
-			# Andar tem ciclo de 4 passos; o parado do gato e um quadro so
-			# desde a ADR 0017 (a pose sentada virou "descansar").
+			# Andar tem ciclo de 4 passos (3 desenhados viram 0-1-2-1, ADR
+			# 0020); o parado pode ter 1 quadro (gato) ou 2 (rabo do cachorro).
 			if animacao != AnimadorDirecional.PARADO:
 				afirmar_igual(quadros.get_frame_count(animacao), 4,
 					"%s/%s tem 4 quadros" % [nome, animacao])
 			else:
 				afirmar_verdadeiro(quadros.get_frame_count(animacao) >= 1,
 					"%s/%s tem ao menos um quadro" % [nome, animacao])
-			afirmar_verdadeiro(quadros.get_animation_loop(animacao),
-				"%s/%s repete em ciclo" % [nome, animacao])
+			# O parado do cachorro e ele sentando (ADR 0037): toca uma vez e fica
+			# sentado. Todo o resto repete em ciclo.
+			var senta: bool = nome == "cachorro" and animacao == AnimadorDirecional.PARADO
+			afirmar_igual(quadros.get_animation_loop(animacao), not senta,
+				"%s/%s %s" % [nome, animacao, "senta e fica" if senta else "repete em ciclo"])
 			var primeiro: Texture2D = quadros.get_frame_texture(animacao, 0)
-			afirmar_igual(primeiro.get_size(), Vector2(24, 24),
-				"%s/%s: quadro de 24x24" % [nome, animacao])
+			afirmar_igual(primeiro.get_size(), TAMANHO_DO_QUADRO[nome],
+				"%s/%s: tamanho do quadro" % [nome, animacao])
 
-	var gato: SpriteFrames = load(QUADROS["gato"]) as SpriteFrames
-	afirmar_verdadeiro(gato.has_animation(AnimadorDirecional.DESCANSAR),
-		"o gato tem a animacao de descansar (ADR 0017)")
-	afirmar_igual(gato.get_frame_count(AnimadorDirecional.DESCANSAR), 4,
-		"descansar usa os 4 quadros sentado")
+	# Os tres gatos (ADR 0024 e 0030): sentado de olho fechado para dormir e
+	# sentado de olho aberto, que e a pose do gato no menu e na escolha.
+	for nome: String in ["gato_amarelo", "gato_calico", "gato_siames"]:
+		var gato: SpriteFrames = load(QUADROS[nome]) as SpriteFrames
+		afirmar_verdadeiro(gato.has_animation(AnimadorDirecional.DESCANSAR),
+			"%s tem a animacao de descansar (ADR 0017)" % nome)
+		afirmar_igual(gato.get_frame_count(AnimadorDirecional.DESCANSAR), 1, "%s dorme num quadro" % nome)
+		afirmar_verdadeiro(gato.has_animation(&"sentado"), "%s tem a pose sentado" % nome)
+		afirmar_igual(gato.get_frame_count(&"sentado"), 2, "%s sentado: dois quadros" % nome)
 
 
 ## O .tres foi ajustado a mao pela equipe (ADR 0017). Se o gerador nao
@@ -126,7 +141,38 @@ func teste_jogador_anima_ao_andar_e_senta_ao_parar() -> void:
 	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_CIMA, "andando para cima")
 	afirmar_verdadeiro(sprite.is_playing(), "a animacao roda")
 	sprite.atualizar(Vector2.ZERO)
-	afirmar_igual(sprite.animation, AnimadorDirecional.PARADO, "soltou a tecla: senta")
+	# Pedido da equipe: parado, o gato continua virado para onde andava.
+	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_CIMA, "soltou a tecla: fica de costas")
+	afirmar_falso(sprite.is_playing(), "e parado, sem andar no lugar")
+	afirmar_igual(sprite.frame, AnimadorDirecional.QUADRO_PARADO_NA_DIRECAO, "no quadro de pose")
+	sprite.atualizar(Vector2(jogador.velocidade, 0))
+	sprite.atualizar(Vector2.ZERO)
+	afirmar_igual(sprite.animation, AnimadorDirecional.ANDAR_DIREITA, "e de lado, se andava de lado")
+	jogador.free()
+
+
+func teste_gato_senta_aos_5_s_e_dorme_2_s_depois() -> void:
+	var jogador: Jogador = (load("res://cenas/base/jogador.tscn") as PackedScene).instantiate() as Jogador
+	get_tree().root.add_child(jogador)
+	var sprite: AnimadorDirecional = jogador.get_node("Sprite") as AnimadorDirecional
+	var zzz: CanvasItem = jogador.get_node("Zzz") as CanvasItem
+	afirmar_igual(jogador.tempo_para_sentar_s, 5.0, "senta depois de 5 s parado")
+	afirmar_igual(jogador.tempo_sentado_antes_de_dormir_s, 2.0, "e dorme 2 s depois")
+	jogador._atualizar_descanso(Vector2.ZERO, 4.9)
+	afirmar_igual(jogador.repouso(), Jogador.Repouso.ACORDADO, "4,9 s: ainda acordado")
+	jogador._atualizar_descanso(Vector2.ZERO, 0.2)
+	afirmar_igual(jogador.repouso(), Jogador.Repouso.SENTADO, "5 s: sentado")
+	afirmar_igual(sprite.animation, AnimadorDirecional.SENTADO, "pose sentado de olho aberto")
+	afirmar_falso(zzz.visible, "sentado ainda nao tem zzz")
+	jogador._atualizar_descanso(Vector2.ZERO, 1.8)
+	afirmar_igual(jogador.repouso(), Jogador.Repouso.SENTADO, "6,9 s: ainda sentado")
+	jogador._atualizar_descanso(Vector2.ZERO, 0.2)
+	afirmar_igual(jogador.repouso(), Jogador.Repouso.DORMINDO, "7 s: dormindo")
+	afirmar_igual(sprite.animation, AnimadorDirecional.DESCANSAR, "olho fechado")
+	afirmar_verdadeiro(zzz.visible, "com zzz")
+	jogador._atualizar_descanso(Vector2.RIGHT, 0.016)
+	afirmar_igual(jogador.repouso(), Jogador.Repouso.ACORDADO, "uma tecla acorda")
+	afirmar_falso(zzz.visible, "e o zzz some")
 	jogador.free()
 
 

@@ -4,36 +4,73 @@ extends SceneTree
 ##
 ##   godot --headless --path . --script res://tools/gerar_sprite_frames.gd
 ##
-## Por que um script e nao o painel SpriteFrames do editor: as duas folhas
-## seguem a mesma grade (5 linhas x 4 quadros de 24x24), e montar 40 quadros a
-## mao e onde nasce o erro de quadro trocado. O resultado e um .tres comum --
-## depois de gerado, da para abrir e ajustar no editor normalmente.
+## Por que um script e nao o painel SpriteFrames do editor: montar dezenas de
+## quadros a mao e onde nasce o erro de quadro trocado. O resultado e um .tres
+## comum -- depois de gerado, da para abrir e ajustar no editor normalmente.
 ##
-## Grade da folha (linha -> animacao), a mesma da arte original do gato:
-##   0 andar_baixo | 1 andar_direita | 2 andar_cima | 3 andar_esquerda
-##   4 descansar (gato) / parado (cachorro) -- ver FOLHAS
+## Folhas, todas de quadros 32x32:
+##   * gatos amarelo (o base), calico e siames: arte autoral da equipe, montada
+##     por tools/arte/montar_gatos_autorais.py (ADR 0024 e 0030). As tres folhas
+##     tem a mesma grade, por isso usam a mesma tabela LINHAS_GATO;
+##   * cachorros husky e pastor: tools/arte/montar_folhas_32.py (ADR 0020, 0037
+##     e 0042), uma linha por animacao, na ordem de LINHAS_CACHORRO; as duas
+##     folhas tem a mesma grade.
 
-const TAMANHO_QUADRO: Vector2i = Vector2i(24, 24)
-const QUADROS_POR_LINHA: int = 4
-## Linhas 0..3 da folha: andar nas quatro direcoes, iguais para os dois.
-const ANIMACOES_DE_ANDAR: Array[StringName] = [
-	&"andar_baixo", &"andar_direita", &"andar_cima", &"andar_esquerda",
-]
+const QUADRO_32: Vector2i = Vector2i(32, 32)
+
+## Ritmo dos passos. O ciclo de andar tem sempre 4 passos (ver _ciclo()).
 const QPS_ANDAR: float = 8.0
 
-## O que cada folha faz com a linha 4 e com o "parado". O gato ganhou em ADR
-## 0017 (pedido da equipe) um "parado" de um quadro so, de olho aberto, e a
-## linha 4 (sentado) virou "descansar" -- o gato que dorme apos 10 s sem
-## entrada. O cachorro nao descansa: a linha 4 dele continua sendo o parado.
+## Cada entrada: [animacao, quadros desenhados na linha, quadros por segundo]
+## e, opcional, a celula (coluna, linha) do primeiro quadro. Sem ela, a linha
+## da folha e a posicao na lista e a coluna comeca em 0.
+##
+## A linha 4 das folhas dos gatos tem quatro poses lado a lado: em pe, sentado de
+## olho aberto (dois quadros, o rabo mexe) e sentado de olho fechado.
+const LINHAS_GATO: Array = [
+	[&"andar_baixo", 4, QPS_ANDAR],
+	[&"andar_direita", 3, QPS_ANDAR],
+	[&"andar_cima", 4, QPS_ANDAR],
+	[&"andar_esquerda", 3, QPS_ANDAR],
+	[&"parado", 1, 1.0, Vector2i(0, 4)],
+	# Sentado de olho aberto: e o gato do menu, quieto entre os cachorros.
+	[&"sentado", 2, 1.5, Vector2i(1, 4)],
+	# Gato que cochila depois de um tempo sem entrada (ADR 0028): olho fechado.
+	[&"descansar", 1, 1.0, Vector2i(3, 4)],
+]
+## Husky novo (ADR 0037): frente e costas com 4 passos, lados com 3.
+const LINHAS_CACHORRO: Array = [
+	[&"andar_baixo", 4, QPS_ANDAR],
+	[&"andar_direita", 3, QPS_ANDAR],
+	[&"andar_cima", 4, QPS_ANDAR],
+	[&"andar_esquerda", 3, QPS_ANDAR],
+	# Parado, o cachorro senta (em pe -> sentado) e fica sentado: nao repete.
+	[&"parado", 2, 4.0],
+]
+
+## Animacoes que tocam uma vez e param no ultimo quadro.
+const SEM_REPETIR: Array[StringName] = [&"parado"]
+
 const FOLHAS: Dictionary = {
-	"res://recursos/arte/gato.png": {
-		"destino": "res://recursos/arte/gato_frames.tres",
-		"linha_4": &"descansar", "qps_linha_4": 1.5,
-		"parado_de_um_quadro": Vector2i(0, 0), "qps_parado": 1.0,
+	"res://recursos/arte/gato_amarelo.png": {
+		"destino": "res://recursos/arte/gato_amarelo_frames.tres", "linhas": LINHAS_GATO,
+		"quadro": QUADRO_32,
+	},
+	"res://recursos/arte/gato_calico.png": {
+		"destino": "res://recursos/arte/gato_calico_frames.tres", "linhas": LINHAS_GATO,
+		"quadro": QUADRO_32,
+	},
+	"res://recursos/arte/gato_siames.png": {
+		"destino": "res://recursos/arte/gato_siames_frames.tres", "linhas": LINHAS_GATO,
+		"quadro": QUADRO_32,
 	},
 	"res://recursos/arte/cachorro.png": {
-		"destino": "res://recursos/arte/cachorro_frames.tres",
-		"linha_4": &"parado", "qps_linha_4": 3.0,
+		"destino": "res://recursos/arte/cachorro_frames.tres", "linhas": LINHAS_CACHORRO,
+		"quadro": QUADRO_32,
+	},
+	"res://recursos/arte/cachorro_pastor.png": {
+		"destino": "res://recursos/arte/cachorro_pastor_frames.tres", "linhas": LINHAS_CACHORRO,
+		"quadro": QUADRO_32,
 	},
 }
 
@@ -56,14 +93,25 @@ func _initialize() -> void:
 	quit(codigo)
 
 
-static func _recorte(folha: Texture2D, coluna: int, linha: int) -> AtlasTexture:
+static func _recorte(folha: Texture2D, coluna: int, linha: int, quadro: Vector2i) -> AtlasTexture:
 	# AtlasTexture recorta a folha sem duplicar pixels: um PNG so no disco,
 	# as regioes dentro do .tres.
 	var recorte := AtlasTexture.new()
 	recorte.atlas = folha
-	recorte.region = Rect2(Vector2(coluna * TAMANHO_QUADRO.x, linha * TAMANHO_QUADRO.y),
-		Vector2(TAMANHO_QUADRO))
+	recorte.region = Rect2(Vector2(coluna * quadro.x, linha * quadro.y), Vector2(quadro))
 	return recorte
+
+
+## Ordem de reproducao das colunas. Um andar de 3 quadros desenhados (passo,
+## meio, passo) vira 0-1-2-1: e o vai-e-vem que fecha o ciclo sem a perna
+## "teleportar" do ultimo passo para o primeiro.
+static func _ciclo(nome: StringName, desenhados: int) -> Array[int]:
+	var ordem: Array[int] = []
+	for i: int in desenhados:
+		ordem.append(i)
+	if String(nome).begins_with("andar_") and desenhados == 3:
+		ordem.append(1)
+	return ordem
 
 
 static func montar(caminho_folha: String, opcoes: Dictionary) -> SpriteFrames:
@@ -74,22 +122,19 @@ static func montar(caminho_folha: String, opcoes: Dictionary) -> SpriteFrames:
 
 	var quadros := SpriteFrames.new()
 	quadros.remove_animation(&"default")
-	var linhas: Array[StringName] = ANIMACOES_DE_ANDAR.duplicate()
-	linhas.append(opcoes["linha_4"] as StringName)
-	for linha: int in linhas.size():
-		var nome: StringName = linhas[linha]
+	var linhas: Array = opcoes["linhas"]
+	var quadro: Vector2i = opcoes["quadro"]
+	for i: int in linhas.size():
+		var entrada: Array = linhas[i]
+		var nome: StringName = entrada[0]
+		var origem: Vector2i = entrada[3] if entrada.size() > 3 else Vector2i(0, i)
 		quadros.add_animation(nome)
-		quadros.set_animation_loop(nome, true)
-		quadros.set_animation_speed(nome, QPS_ANDAR if linha < 4 else float(opcoes["qps_linha_4"]))
-		for coluna: int in QUADROS_POR_LINHA:
-			quadros.add_frame(nome, _recorte(folha, coluna, linha))
-
-	if opcoes.has("parado_de_um_quadro"):
-		var celula: Vector2i = opcoes["parado_de_um_quadro"]
-		quadros.add_animation(&"parado")
-		quadros.set_animation_loop(&"parado", true)
-		quadros.set_animation_speed(&"parado", float(opcoes["qps_parado"]))
-		quadros.add_frame(&"parado", _recorte(folha, celula.x, celula.y))
+		# O parado do gato repete (rabo mexendo); o do cachorro, que senta, nao.
+		var repete: bool = not (SEM_REPETIR.has(nome) and linhas == LINHAS_CACHORRO)
+		quadros.set_animation_loop(nome, repete)
+		quadros.set_animation_speed(nome, float(entrada[2]))
+		for coluna: int in _ciclo(nome, int(entrada[1])):
+			quadros.add_frame(nome, _recorte(folha, origem.x + coluna, origem.y, quadro))
 	return quadros
 
 

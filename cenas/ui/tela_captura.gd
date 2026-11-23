@@ -24,6 +24,9 @@ var _aberta_em_ms: int = 0
 
 func _ready() -> void:
 	visible = false
+	# Vidro com vinhas e veu no tom do fundo escolhido na galeria (ADR 0034).
+	EnfeiteDaGaleria.enfeitar($Raiz, [$Raiz/Painel] as Array[Control])
+	EnfeiteDaGaleria.veu($Raiz/Fundo)
 	# A fase pausa a arvore durante a captura (os cachorros nao podem seguir
 	# andando ate o jogador parado); esta tela precisa continuar contando o
 	# tempo e ouvindo o Enter mesmo assim -- o mesmo arranjo do terminal.

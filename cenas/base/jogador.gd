@@ -39,17 +39,41 @@ var _restante_de_protecao_s: float = 0.0
 @onready var _sprite: AnimadorDirecional = $Sprite
 var _entrada_habilitada: bool = true
 
-## Pedido da Day: depois de tempo_sem_entrada_para_descansar_s sem NENHUMA
-## tecla de movimento (nao so parado por um instante entre passos), o gato
-## senta e descansa em vez de continuar no "parado" de olho aberto -- e volta
-## ao normal no primeiro input. @export por causa da secao 9 do CLAUDE.md
-## (zero numero magico): e um valor de balanceamento, nao implementacao.
-@export_range(1.0, 60.0, 0.5) var tempo_sem_entrada_para_descansar_s: float = 10.0
+## Cochilo do gato (pedido da equipe): sem NENHUMA tecla de movimento por
+## tempo_para_sentar_s, ele senta de olho aberto; tempo_sentado_antes_de_dormir_s
+## depois, fecha os olhos e dorme (com o "zzz"). O primeiro input acorda. Conta
+## a intencao do jogador, nao a velocidade: uma pausa curta entre passos nao
+## faz o gato sentar. @export por causa da secao 9 do CLAUDE.md (zero numero
+## magico): sao valores de balanceamento, nao implementacao.
+@export_range(1.0, 60.0, 0.5) var tempo_para_sentar_s: float = 5.0
+@export_range(0.0, 30.0, 0.5) var tempo_sentado_antes_de_dormir_s: float = 2.0
+
+enum Repouso { ACORDADO, SENTADO, DORMINDO }
 
 var _tempo_sem_entrada_s: float = 0.0
-var _descansando: bool = false
+var _repouso: Repouso = Repouso.ACORDADO
 
 @onready var _zzz: Label = $Zzz
+
+## Pelagem em uso (ADR 0030). So muda o desenho: regra, colisao e velocidade
+## sao as mesmas para os tres gatos.
+var _pelagem: String = PelagemGato.PADRAO
+
+
+## Troca a folha do desenho mantendo a animacao e o quadro em curso.
+func definir_pelagem(pelagem: String) -> void:
+	var nova: String = pelagem if PelagemGato.conhece(pelagem) else PelagemGato.PADRAO
+	var animacao: StringName = _sprite.animation
+	var quadro: int = _sprite.frame
+	_sprite.sprite_frames = PelagemGato.quadros(nova)
+	_pelagem = nova
+	if _sprite.sprite_frames.has_animation(animacao):
+		_sprite.play(animacao)
+		_sprite.frame = mini(quadro, _sprite.sprite_frames.get_frame_count(animacao) - 1)
+
+
+func pelagem() -> String:
+	return _pelagem
 var _tween_do_zzz: Tween = null
 
 
@@ -81,40 +105,41 @@ func _physics_process(delta: float) -> void:
 func _atualizar_descanso(direcao: Vector2, delta: float) -> void:
 	if direcao != Vector2.ZERO:
 		_tempo_sem_entrada_s = 0.0
-		if _descansando:
+		if _repouso != Repouso.ACORDADO:
 			_sair_do_descanso()
 		_sprite.atualizar(velocity)
 		return
 
 	_tempo_sem_entrada_s += delta
-	if not _descansando and _tempo_sem_entrada_s >= tempo_sem_entrada_para_descansar_s:
-		_entrar_em_descanso()
-
-	if _descansando:
+	if _tempo_sem_entrada_s >= tempo_para_sentar_s + tempo_sentado_antes_de_dormir_s:
+		if _repouso != Repouso.DORMINDO:
+			_entrar_em_descanso()
 		_sprite.descansar()
+	elif _tempo_sem_entrada_s >= tempo_para_sentar_s:
+		_repouso = Repouso.SENTADO
+		_sprite.sentar()
 	else:
 		_sprite.atualizar(velocity)
 
 
+func repouso() -> Repouso:
+	return _repouso
+
+
 func _entrar_em_descanso() -> void:
-	_descansando = true
+	_repouso = Repouso.DORMINDO
 	_zzz.visible = true
 	_zzz.modulate.a = 1.0
 	if _tween_do_zzz != null and _tween_do_zzz.is_valid():
 		_tween_do_zzz.kill()
-	# "zzz" pulsando bem devagar por cima do gato: e o substituto honesto para
-	# o sprite de olho fechado -- gato_frames.tres nao tem esse quadro
-	# desenhado (so as 5 animacoes originais), entao em vez de arriscar editar
-	# pixel a pixel um rosto de 24x24 as cegas, o sono fica claro por este
-	# indicador. Trocar por um quadro de "olho fechado" de verdade, quando
-	# alguem desenhar um, e so adicionar a textura e apontar para ela aqui.
+	# "zzz" pulsando devagar por cima do gato de olho fechado.
 	_tween_do_zzz = create_tween().set_loops()
 	_tween_do_zzz.tween_property(_zzz, "modulate:a", 0.35, 0.6)
 	_tween_do_zzz.tween_property(_zzz, "modulate:a", 1.0, 0.6)
 
 
 func _sair_do_descanso() -> void:
-	_descansando = false
+	_repouso = Repouso.ACORDADO
 	if _tween_do_zzz != null and _tween_do_zzz.is_valid():
 		_tween_do_zzz.kill()
 	_zzz.visible = false

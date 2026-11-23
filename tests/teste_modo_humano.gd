@@ -98,7 +98,7 @@ func teste_o_tutorial_saiu_mas_a_cor_e_o_aviso_de_protecao_ficaram() -> void:
 	_fase.jogador.ativar_protecao(10.0, "CESAR")
 	await get_tree().process_frame
 	var rotulo: Label = _fase.hud.get_node("Raiz/Linha/Protecao") as Label
-	afirmar_contem(rotulo.text, "Cesar", "a HUD continua dizendo qual cifra protege")
+	afirmar_contem(rotulo.text, "César", "a HUD continua dizendo qual cifra protege")
 	# ...mas em cor neutra: a cor deixou de ser codigo semantico.
 	afirmar_igual(rotulo.modulate, Color.WHITE, "sem cor semantica no aviso")
 

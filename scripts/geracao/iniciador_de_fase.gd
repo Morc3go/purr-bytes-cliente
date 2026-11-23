@@ -19,7 +19,9 @@ extends RefCounted
 const CENA_BASE: String = "res://cenas/base/fase_base.tscn"
 
 
-static func jogar(arvore: SceneTree, config: FaseConfig) -> FaseBase:
+## `pelagem` e o gato escolhido pelo jogador (ADR 0030). Vazia = a ultima
+## escolha guardada, ou o amarelo; e o que o editor e os testes usam.
+static func jogar(arvore: SceneTree, config: FaseConfig, pelagem: String = "") -> FaseBase:
 	if config == null:
 		Registro.erro("IniciadorDeFase", "tentativa de jogar uma fase nula")
 		return null
@@ -31,6 +33,7 @@ static func jogar(arvore: SceneTree, config: FaseConfig) -> FaseBase:
 
 	var fase: FaseBase = cena.instantiate() as FaseBase
 	fase.configuracao = config
+	fase.pelagem_do_gato = PelagemGato.resolver(pelagem)
 
 	var anterior: Node = arvore.current_scene
 	arvore.root.add_child(fase)
@@ -46,10 +49,15 @@ static func jogar(arvore: SceneTree, config: FaseConfig) -> FaseBase:
 
 ## Abre direto do arquivo, devolvendo os erros de validacao quando houver --
 ## quem chama decide se mostra na tela ou so registra.
-static func jogar_arquivo(arvore: SceneTree, caminho: String) -> PackedStringArray:
+## `cenario` vazio = o cenario que a propria fase sugere; preenchido = o que o
+## jogador escolheu antes de entrar (ADR 0036). So muda a aparencia.
+static func jogar_arquivo(arvore: SceneTree, caminho: String, pelagem: String = "",
+		cenario: String = "") -> PackedStringArray:
 	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(caminho)
 	if not resultado.ok():
 		return resultado.erros
 
-	jogar(arvore, resultado.config)
+	if CenarioDoLabirinto.conhece(cenario):
+		resultado.config.cenario = cenario
+	jogar(arvore, resultado.config, pelagem)
 	return PackedStringArray()

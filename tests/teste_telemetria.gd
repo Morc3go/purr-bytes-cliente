@@ -119,6 +119,24 @@ func teste_sessao_mock_completa() -> void:
 		"iniciada_em em UTC explicito")
 
 
+## Regressao: o temporizador comeca uma descarga e, no meio dela, o painel de
+## telemetria pede outra com await. Antes a segunda voltava NA HORA (a primeira
+## ainda enviando) e o painel lia o registro pela metade.
+func teste_descarregar_durante_descarga_espera_ela_terminar() -> void:
+	var mock: TransporteMock = _preparar_mock("descarga_concorrente")
+	Telemetria.iniciar_sessao(Identificador.uuid_v4(), Identificador.uuid_v4())
+	for i: int in 20:
+		Telemetria.registrar_evento(CatalogoEventos.DICA_SOLICITADA, {"i": i})
+	Telemetria.encerrar_sessao()
+
+	Telemetria.descarregar()  # como o temporizador: sem await
+	await Telemetria.descarregar()  # como o painel: com await
+
+	afirmar_verdadeiro(Telemetria.fila_vazia(), "quem esperou viu a fila inteira drenada")
+	afirmar_tamanho(_filtrar(_ler_jsonl(mock.caminho()), "evento"), 22,
+		"e o registro local ja tem todos os eventos ao voltar")
+
+
 func teste_fila_sobrevive_ao_processo_morto() -> void:
 	var caminho_fila: String = caminho_temporario("fila_reinicio.json")
 	var id_sessao: String = Identificador.uuid_v4()
@@ -281,6 +299,26 @@ func teste_payload_e_sanitizado_em_profundidade() -> void:
 		"texto aninhado tambem e truncado")
 	afirmar_igual(String((payload["lista"] as Array)[0]).length(), 240,
 		"texto dentro de lista tambem e truncado")
+
+
+func teste_nan_e_infinito_viram_nulo_no_payload() -> void:
+	_preparar_mock("nan")
+	Telemetria.iniciar_sessao(Identificador.uuid_v4(), Identificador.uuid_v4())
+
+	var evento: Dictionary = Telemetria.registrar_evento(CatalogoEventos.AMOSTRA_DESEMPENHO, {
+		"fps": NAN,
+		"replanejamento_medio_ms": INF,
+		"memoria": {"pico": -INF, "media": 12.5},
+	})
+
+	var payload: Dictionary = evento["payload"] as Dictionary
+	afirmar_nulo(payload["fps"], "NaN vira null")
+	afirmar_nulo(payload["replanejamento_medio_ms"], "infinito vira null")
+	afirmar_nulo((payload["memoria"] as Dictionary)["pico"], "infinito aninhado vira null")
+	afirmar_igual((payload["memoria"] as Dictionary)["media"], 12.5, "numero finito passa intacto")
+	# NaN no corpo faz a API recusar o lote inteiro (400 = lote descartado).
+	afirmar_nao_nulo(JSON.parse_string(JSON.stringify(evento)),
+		"o evento serializa como JSON valido")
 
 
 func teste_tentativa_com_resultado_invalido_e_recusada() -> void:

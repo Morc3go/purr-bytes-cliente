@@ -31,6 +31,9 @@ var _marca_de_abertura: int = 0
 
 func _ready() -> void:
 	visible = false
+	# Vidro com vinhas e veu no tom do fundo escolhido na galeria (ADR 0034).
+	EnfeiteDaGaleria.enfeitar($Raiz, [$Raiz/Painel] as Array[Control])
+	EnfeiteDaGaleria.veu($Raiz/Fundo)
 
 
 ## A arvore fica pausada enquanto a caixa esta aberta, e no pausada nao recebe
@@ -145,10 +148,10 @@ func _ao_escolher(opcao: String) -> void:
 		# encheria o painel. O retorno diz so que errou e devolve para o
 		# enunciado, que continua na tela.
 		if _configuracao.opcoes_de_algoritmo():
-			_retorno.text = "%s nao resolve este caso. leia de novo e tente outra." \
+			_retorno.text = "%s não resolve este caso. leia de novo e tente outra." \
 				% LegendaCores.nome(opcao)
 		else:
-			_retorno.text = "nao e essa. leia o enunciado de novo e tente outra."
+			_retorno.text = "não é essa. leia o enunciado de novo e tente outra."
 		_retorno.modulate = Color(1.0, 0.55, 0.5)
 		# O cronometro reinicia a cada tentativa, como no terminal: cada
 		# tentativa_comando mede o tempo DAQUELA decisao, nao o acumulado.

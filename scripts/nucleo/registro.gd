@@ -28,7 +28,7 @@ static var nivel: Nivel = Nivel.INFO
 static func definir_nivel_por_nome(nome: String) -> void:
 	var normalizado: String = nome.strip_edges().to_upper()
 	if not Nivel.has(normalizado):
-		push_warning("[Registro] nivel de log desconhecido: %s" % normalizado)
+		push_warning("[Registro] nível de log desconhecido: %s" % normalizado)
 		return
 	nivel = Nivel[normalizado] as Nivel
 

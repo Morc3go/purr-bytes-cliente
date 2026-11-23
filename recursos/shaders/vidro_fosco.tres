@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+; Vidro fosco compartilhado pelos cartoes das telas e dos paineis do jogo
+; (ADR 0034). O do menu continua como sub-recurso da propria cena.
+
+[ext_resource type="Shader" path="res://recursos/shaders/vidro_fosco.gdshader" id="1_vidro"]
+
+[resource]
+shader = ExtResource("1_vidro")
+shader_parameter/raio_px = 3.0

@@ -1,13 +1,13 @@
 # Purr Bytes
 
-Jogo educacional 2D em pixel art para o ensino de **letramento digital, criptografia e
+Projeto do **Crypto Cats**, jogo educacional 2D em pixel art para o ensino de **letramento digital, criptografia e
 segurança cibernética**, com a **API de telemetria** que coleta os dados da pesquisa.
 Trabalho de Conclusão de Curso de Ciência da Computação da Universidade Positivo
 (Curitiba, 2026), orientado pelo Prof. Me. Leandro Escobar.
 
 | Parte | Onde | Tecnologia |
 |---|---|---|
-| **Jogo** (cliente) | raiz do repositório | Godot 4.4+ (testado em 4.6 e 4.7.2), GDScript tipado, renderizador Mobile, 640×360, sem addons |
+| **Jogo** (cliente) | raiz do repositório | Godot 4.6+ (testado em 4.6 e 4.7.2), GDScript tipado, renderizador Mobile, 640×360, sem addons |
 | **API de telemetria** (back-end) | [`back/`](back/) | Java 21, Spring Boot 3.4, PostgreSQL 16, Flyway |
 
 ![Menu principal](docs/imagens/menu.png)
@@ -27,16 +27,25 @@ jeito:
 | **de comando** | digitar a frase de conduta que o professor definiu, por exemplo `trocar senha` |
 | **que só persegue** | não há comando: a defesa é fugir |
 
-![Fase de exemplo com os vigias e a legenda de comandos no rodapé](docs/imagens/fase.png)
+![Fase de exemplo: o gato, os vigias husky e pastor, os itens dos pacotes e o rodapé de teclas](docs/imagens/fase.png)
 
 Encostar num vigia sem a proteção certa **intercepta o pacote**: o jogador perde uma vida
 e pontos e volta ao início. Não é game over: é o custo pedagógico do erro. A tela de
 captura explica o que teria protegido e congela a ação; `Enter` continua. Na volta, os
 cachorros retornam aos pontos onde nasceram e o gato fica alguns segundos invulnerável,
-piscando. Parado por 10 segundos, o gato senta e dorme.
+piscando. Antes da fase o jogador escolhe o gatinho (amarelo, cálico ou siamês, todos arte autoral da equipe). Parado, o gato continua virado para onde andava; após 5 segundos sem movimento ele senta e, 2 segundos depois, dorme. Os vigias são cachorros husky e pastor, desenhados pela equipe; toda fase mistura os dois, alternando pela ordem dos vigias ([ADR 0042](docs/decisoes/0042-pastor-e-mistura-de-cachorros.md)). Quando não podem pegar o gato (logo depois de uma captura ou com a proteção certa), os cachorros param uma célula antes dele ([ADR 0040](docs/decisoes/0040-cachorro-sem-meia-volta-e-sem-pisar-no-gato.md)).
 
-Espalhados pelo labirinto há **pacotes** com perguntas curtas. A porta só abre depois de
-coletar todos.
+Espalhados pelo labirinto há **pacotes** com perguntas curtas, desenhados como itens para
+o gato buscar: novelo, peixe e rato, revezando pela ordem dos pacotes
+([ADR 0043](docs/decisoes/0043-itens-nos-pacotes.md)). A porta (um arco de pedra do tamanho
+de uma célula) só abre depois de coletar todos.
+
+Depois do gatinho, o jogador escolhe o **cenário** do labirinto, também num cartão com
+a miniatura de cada um ([ADR 0035](docs/decisoes/0035-cenarios-do-labirinto-e-porta-em-arco.md),
+[ADR 0036](docs/decisoes/0036-escolha-do-cenario-antes-da-fase.md)). As opções são jardim
+(o verde de sempre), outono, cerejeira, lago com passarelas, inverno, ruínas de pedra,
+bosque encantado e campo de lavanda. A fase sugere um, que já vem marcado. É só
+aparência: paredes, regras e telemetria são as mesmas em todos.
 
 | Tecla | Ação |
 |---|---|
@@ -51,19 +60,35 @@ coletar todos.
 
 ![Terminal: erro de sintaxe em "cyfrar", depois "cifrar" aceito e a transformação letra a letra](docs/imagens/terminal.png)
 
-A identidade visual (paleta amarelo pastel, fonte pixelada Silkscreen, wallpapers) está
-descrita no [ADR 0017](docs/decisoes/0017-identidade-visual-fofa.md).
+Todas as telas seguem o menu: o wallpaper escolhido na galeria ao fundo, com vidro
+desfocado, a moldura de vinhas com flores, os botões no balãozinho de flores no tom do
+wallpaper e o texto branco ([ADR 0034](docs/decisoes/0034-todas-as-telas-no-estilo-do-menu.md)).
+A vinha da moldura também muda com o wallpaper: verde no brejo, azul na noite e no céu,
+verde-água na estufa, laranja no lago das carpas e marrom no piquenique; as flores são
+sempre as do logo ([ADR 0044](docs/decisoes/0044-vinhas-no-tom-do-wallpaper.md)).
+A fonte é a pixelada Silkscreen ([ADR 0017](docs/decisoes/0017-identidade-visual-fofa.md)).
 
 ---
 
+## Fases prontas para demonstração
+
+O jogo já vem com uma trilha de cinco fases ([ADR 0021](docs/decisoes/0021-aparencia-do-gato-e-fases-de-demonstracao.md)),
+instaladas em **escolher fase** na primeira abertura: **1. César**, **2. Vigenère**,
+**3. SHA-256**, **4. Golpes digitais** (phishing, 2FA) e **5. Avaliação final**, sem os
+comandos na tela. São fases de autoria comuns: dá para editar, exportar ou excluir. Os
+arquivos ficam em `recursos/fases_demo/`, e cada um tem `id_fase` fixo para a telemetria
+de máquinas diferentes cair na mesma fase.
+
+![Escolher fase com a trilha de demonstração](docs/imagens/fases_demo.png)
+
 ## Criando fases (ferramenta de autoria)
 
-O jogo não traz fases fixas: o professor as cria. Na primeira execução é criada uma
-**fase de exemplo** ("Senhas fortes"), que já traz os três tipos de vigia.
+O jogo não traz fases fixas: o professor as cria. Na primeira execução são criadas a
+**fase de exemplo** ("Senhas fortes"), que já traz os três tipos de vigia, e a trilha de demonstração acima.
 
 **Menu → criar fase** abre o editor, em três abas:
 
-- **geral**: título, briefing, vidas, tamanho do mapa e semente. A caixa *mostrar ao
+- **geral**: título, briefing, vidas, tamanho do mapa, semente e cenário sugerido. A caixa *mostrar ao
   jogador o comando que para cada vigia* põe uma legenda no rodapé da fase. Desligue numa
   fase de avaliação, em que ver o comando entregaria a resposta.
 - **cachorros**: um botão por tipo de vigia (**+ comando livre**, **+ cifra de César**,
@@ -74,7 +99,9 @@ O jogo não traz fases fixas: o professor as cria. Na primeira execução é cri
 
 **Salvar** valida pelo mesmo caminho que o jogo usa: fase inválida não é gravada, e os
 erros aparecem na tela. O labirinto é gerado a partir da semente e é **sempre
-solucionável**. Em **escolher fase** dá para jogar, editar, exportar e excluir, e **subir
+solucionável**, com ciclos para dar a volta nos cachorros. A entrada fica sempre num
+ciclo, então o gato nunca nasce num beco de uma saída só
+([ADR 0041](docs/decisoes/0041-entrada-com-rota-de-fuga.md)). Em **escolher fase** dá para jogar, editar, exportar e excluir, e **subir
 fase** importa um arquivo `.json`.
 
 A fase é um JSON pequeno. O mapa viaja como semente, não desenhado:
@@ -85,6 +112,7 @@ A fase é um JSON pequeno. O mapa viaja como semente, não desenhado:
   "id_fase": "uuid-v4 (gerado se ausente; liga a fase à telemetria)",
   "briefing": "texto mostrado ao entrar",
   "mostrar_comandos": true,
+  "cenario": "outono",
   "vidas": 3,
   "mapa": {"largura": 21, "altura": 15, "seed": 20260914},
   "cachorros": [
@@ -132,7 +160,7 @@ Há dois modos, escolhidos no `config.cfg`:
 
 Dá para exportar o geral, a seleção ou uma fase (com os registros crus) em JSON.
 
-![Painel de telemetria](docs/imagens/telemetria.png)
+![Painel de telemetria com dados fictícios](docs/imagens/telemetria.png)
 
 ### Configuração da coleta
 
@@ -190,20 +218,24 @@ API e auditoria). A chave de API só é guardada como hash SHA-256.
 
 ### Rodando localmente
 
-Precisa de **Java 21**, **Maven** e **PostgreSQL 16**.
+Precisa de **Java 21**, **Maven** e **Docker** ([ADR 0019](docs/decisoes/0019-banco-de-dados-e-dados-ficticios.md)).
+
+> **LGPD:** o projeto não usa dados de pessoas reais. Nenhum usuário real é cadastrado e
+> nenhum cliente real testa o sistema; o banco contém apenas dados fictícios.
 
 ```powershell
-# 1. banco e usuário (uma vez), no psql como superusuário:
-#    CREATE ROLE purrbytes LOGIN PASSWORD '<escolha uma senha>';
-#    CREATE DATABASE purrbytes OWNER purrbytes;
-
-# 2. variáveis de ambiente (nunca versionar; back/.gitignore já ignora local-dev.env.ps1)
-$env:PB_DB_PASSWORD = '<a senha do passo 1>'
-
-# 3. subir no perfil de desenvolvimento
 cd back
-mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+docker compose up -d                                   # PostgreSQL 16, banco e usuário purrbytes
+mvn spring-boot:run "-Dspring-boot.run.profiles=dev"   # o Flyway cria tudo e aplica o seed fictício
 ```
+
+O banco sobe vazio; quem cria schemas, tabelas e visões é o Flyway, quando a API sobe. No
+perfil `dev` ele também aplica `db/seed-dev/R__dados_ficticios.sql`: 6 sujeitos, avaliações
+pré/pós e 2 partidas, todos fictícios (UUIDs começando com `f1c71c10`). Os dados ficam no
+volume Docker, nunca no repositório; `docker compose down -v` devolve um banco do zero.
+
+Sem Docker, um PostgreSQL 16 instalado também serve: crie o usuário e o banco `purrbytes`
+com a senha `purrbytes_dev` (ou defina `PB_DB_PASSWORD`).
 
 No perfil `dev` a API cria uma **chave de desenvolvimento** e a imprime no log de boot:
 `pb_ingestao_dev_nao_usar_em_coleta_real`. Para o jogo usar a API, no `config.cfg`:
@@ -274,8 +306,19 @@ importada. A segunda importação sai limpa; no 4.7 isso não acontece.
 | `tools/sessao_de_demonstracao.gd` | abre e encerra uma sessão MOCK e imprime o JSONL (gera os exemplos do contrato) |
 | `tools/simular_queda.gd -- encher` / `-- drenar` | demonstra a resiliência: a fila sobrevive ao processo morto e drena sem perder nem duplicar evento |
 | `python tools/servidor_eco.py 8091 log.jsonl` | servidor de eco das quatro rotas, para o modo HTTP sem a API |
-| `python tools/arte/extrair_gato.py`, `extrair_cachorro.py` | normalizam as folhas de sprite originais |
-| `tools/gerar_sprite_frames.gd` | monta os `SpriteFrames` a partir das folhas |
+| `python tools/arte/montar_gatos_autorais.py` | monta as folhas dos gatos amarelo, cálico e siamês a partir das pranchas autorais da equipe ([ADR 0024](docs/decisoes/0024-calico-autoral-e-labirinto-em-tela-cheia.md), [ADR 0030](docs/decisoes/0030-tres-gatos-e-escolha-antes-da-fase.md)) |
+| `python tools/arte/montar_logo_e_vinhas.py` | monta o logo e o siamês que abana o rabo no menu ([ADR 0031](docs/decisoes/0031-logo-gatinho-e-moldura-de-vinhas.md), [ADR 0039](docs/decisoes/0039-siames-no-menu.md)); a moldura de vinhas é desenhada pelo jogo, para qualquer tamanho de cartão e nas cores de cada wallpaper ([ADR 0034](docs/decisoes/0034-todas-as-telas-no-estilo-do-menu.md), [ADR 0044](docs/decisoes/0044-vinhas-no-tom-do-wallpaper.md)) |
+| `python tools/arte/montar_arte_do_menu.py` | monta os seis fundos da galeria do menu, a moldura dos botões no tom de cada fundo, o ícone da galeria e a porta antiga ([ADR 0027](docs/decisoes/0027-menu-de-floresta-e-porta.md), [ADR 0029](docs/decisoes/0029-tons-pasteis-e-brejo.md), [ADR 0033](docs/decisoes/0033-galeria-de-fundos-do-menu.md)) |
+| `tools/gerar_previas_de_cenarios.gd` | recorta do jogo a miniatura de cada cenário, usada na escolha antes da fase (precisa de janela; `--resolution 640x360`) |
+| `python tools/arte/montar_cenarios.py` | monta o chão, a cerca e os enfeites de cada cenário do labirinto e a porta em arco ([ADR 0035](docs/decisoes/0035-cenarios-do-labirinto-e-porta-em-arco.md)) |
+| `python tools/arte/montar_labirinto_provisorio.py` | monta a grama e as peças de cerca viva provisórias do labirinto ([ADR 0025](docs/decisoes/0025-grama-e-arbustos-provisorios.md)) |
+| `python tools/arte/montar_folhas_32.py` | monta as folhas dos cachorros husky e pastor a partir dos quadros da equipe ([ADR 0037](docs/decisoes/0037-husky-novo-e-caramelo-em-espera.md), [ADR 0042](docs/decisoes/0042-pastor-e-mistura-de-cachorros.md)) |
+| `python tools/arte/montar_itens.py` | recorta os itens dos pacotes (novelo, peixe e rato) desenhados pela equipe ([ADR 0043](docs/decisoes/0043-itens-nos-pacotes.md)) |
+| `python tools/arte/extrair_cachorro.py` | (histórico) normalizava a folha antiga do cachorro, de 24×24 |
+| `tools/gerar_sprite_frames.gd` | monta os `SpriteFrames` (gatos amarelo, cálico e siamês; cachorros husky e pastor) a partir das folhas |
+| `tools/capturar_galeria.gd -- <pasta> [fundo ...]` | salva um print de cada tela e painel do jogo em cada fundo da galeria, para conferir se tudo combina (precisa de janela) |
+| `tools/capturar_telas.gd -- <pasta>` | salva prints do menu, das telas e da fase (precisa de janela; gera `docs/imagens/`) |
+| `tools/video_demonstracao.gd [-- --fundo=<nome>]` | grava o vídeo legendado de demonstração com o Movie Maker (`--write-movie <saida.avi> --fixed-fps 30`); `--fundo` escolhe o wallpaper que dá o tema, como `piquenique` |
 
 Os scripts `.gd` rodam com `& $godot --headless --path . --script res://<caminho>`.
 

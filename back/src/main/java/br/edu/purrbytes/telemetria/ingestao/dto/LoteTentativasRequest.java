@@ -2,7 +2,9 @@ package br.edu.purrbytes.telemetria.ingestao.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
-public record LoteTentativasRequest(@NotEmpty @Valid List<TentativaRequest> tentativas) {
+// Ver o comentario equivalente em LoteEventosRequest.
+public record LoteTentativasRequest(@NotEmpty List<@NotNull @Valid TentativaRequest> tentativas) {
 }

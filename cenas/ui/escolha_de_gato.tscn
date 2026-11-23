@@ -1,0 +1,66 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://cenas/ui/escolha_de_gato.gd" id="1_escolha"]
+[ext_resource type="Theme" path="res://recursos/temas/tema_telas_secundarias.tres" id="2_tema"]
+
+
+[node name="EscolhaDeGato" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_tema")
+script = ExtResource("1_escolha")
+
+[node name="Veu" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.184, 0.29, 0.208, 0.45)
+
+[node name="Painel" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -112.0
+offset_right = 200.0
+offset_bottom = 112.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Coluna" type="VBoxContainer" parent="Painel"]
+theme_override_constants/separation = 6
+
+[node name="Titulo" type="Label" parent="Painel/Coluna"]
+theme_override_font_sizes/font_size = 14
+text = "escolha seu gatinho"
+horizontal_alignment = 1
+
+[node name="Subtitulo" type="Label" parent="Painel/Coluna"]
+theme_type_variation = &"TextoSuave"
+theme_override_font_sizes/font_size = 8
+text = "só muda o visual: as regras são as mesmas para os três"
+horizontal_alignment = 1
+
+[node name="Cartoes" type="HBoxContainer" parent="Painel/Coluna"]
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Rodape" type="HBoxContainer" parent="Painel/Coluna"]
+theme_override_constants/separation = 8
+
+[node name="Dica" type="Label" parent="Painel/Coluna/Rodape"]
+size_flags_horizontal = 3
+theme_type_variation = &"TextoSuave"
+theme_override_font_sizes/font_size = 8
+text = "setas escolhem · Enter confirma · Esc volta"
+vertical_alignment = 1
+
+[node name="Voltar" type="Button" parent="Painel/Coluna/Rodape"]
+custom_minimum_size = Vector2(70, 0)
+theme_override_font_sizes/font_size = 9
+text = "voltar"

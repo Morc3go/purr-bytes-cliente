@@ -123,3 +123,30 @@ func teste_tela_de_captura_pode_ser_fechada_com_enter() -> void:
 	_fase.tela_captura._input(enter)
 	afirmar_falso(_fase.tela_captura.visible, "depois do tempo minimo, Enter continua o jogo")
 	afirmar_falso(get_tree().paused, "sem esperar o tempo todo travado")
+
+
+## Gato piscando (logo depois de uma captura): quem vem atras dele para uma
+## celula antes, sem subir em cima do desenho do gato. Fora disso, a rota vai
+## ate o gato, como sempre.
+func teste_cachorro_nao_pisa_no_gato_que_ele_nao_pode_pegar() -> void:
+	var alvo: Cachorro = _fase.cachorros[0]
+	var celula_do_gato: Vector2i = _fase.labirinto.local_to_map(_fase.labirinto.to_local(_fase.jogador.global_position))
+	var vizinha: Vector2i = celula_do_gato
+	for passo: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
+		var dado: TileData = _fase.labirinto.get_cell_tile_data(celula_do_gato + passo)
+		if dado != null and not bool(dado.get_custom_data("solido")):
+			vizinha = celula_do_gato + passo
+			break
+	afirmar_verdadeiro(vizinha != celula_do_gato, "o gato tem uma celula livre ao lado")
+	var rota := PackedVector2Array([
+		_fase.labirinto.to_global(_fase.labirinto.map_to_local(vizinha)),
+		_fase.jogador.global_position])
+
+	_fase._invulneravel_ate_ms = 0
+	afirmar_igual(_fase._sem_pisar_no_gato(alvo, rota).size(), 2, "pode pegar: a rota vai ate o gato")
+
+	_fase._invulneravel_ate_ms = Time.get_ticks_msec() + 60_000
+	var curta: PackedVector2Array = _fase._sem_pisar_no_gato(alvo, rota)
+	afirmar_igual(curta.size(), 1, "gato piscando: a rota para uma celula antes")
+	afirmar_igual(curta[0], rota[0], "e termina na celula vizinha")
+	_fase._invulneravel_ate_ms = 0

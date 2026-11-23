@@ -56,6 +56,7 @@ var _cor: Color = Color(0.85, 0.85, 0.85)
 @onready var _linha_de_visao: RayCast2D = $LinhaDeVisao
 @onready var _sprite: AnimadorDirecional = $Sprite
 @onready var _marcador: MarcadorDeCor = $Marcador
+var _pelagem: String = PelagemCachorro.HUSKY
 
 
 func _ready() -> void:
@@ -75,6 +76,19 @@ func definir_cor(nova_cor: Color) -> void:
 	_cor = nova_cor
 	if _marcador != null:
 		_marcador.cor = _cor
+
+
+## Troca a folha do desenho mantendo a animacao em curso (ADR 0022).
+func definir_pelagem(pelagem: String) -> void:
+	var animacao: StringName = _sprite.animation
+	_sprite.sprite_frames = PelagemCachorro.quadros(pelagem)
+	_pelagem = pelagem
+	if _sprite.sprite_frames.has_animation(animacao):
+		_sprite.play(animacao)
+
+
+func pelagem() -> String:
+	return _pelagem
 
 
 func cor() -> Color:
@@ -115,7 +129,28 @@ func _seguir_caminho() -> void:
 ## Caminho em coordenadas de mundo, ja convertido de celulas pelo chamador.
 func definir_caminho(pontos: PackedVector2Array) -> void:
 	_caminho = pontos
-	_indice = 0
+	_indice = primeiro_ponto_a_frente(pontos, global_position, tolerancia_de_chegada)
+
+
+## O A* parte do centro da celula em que o cachorro esta. Se ele ja saiu desse
+## centro rumo ao segundo ponto, voltar ao primeiro seria dar meia-volta a cada
+## replanejamento (1 vez por segundo): o desenho virava para tras por alguns
+## quadros e o cachorro "tremia" no corredor. Pula o primeiro ponto so quando o
+## cachorro esta SOBRE o trecho entre os dois (mesma linha, entre um e outro);
+## se a rota nova sai para outro lado, ele precisa mesmo voltar ao centro antes
+## de virar, senao cortaria a quina da cerca.
+static func primeiro_ponto_a_frente(pontos: PackedVector2Array, posicao: Vector2, folga: float) -> int:
+	if pontos.size() < 2:
+		return 0
+	var trecho: Vector2 = pontos[1] - pontos[0]
+	if trecho.length_squared() == 0.0:
+		return 1
+	var andado: Vector2 = posicao - pontos[0]
+	var fracao: float = andado.dot(trecho) / trecho.length_squared()
+	var fora_da_linha: float = (andado - trecho * fracao).length()
+	if fracao > 0.0 and fracao <= 1.0 and fora_da_linha <= folga:
+		return 1
+	return 0
 
 
 func parar() -> void:

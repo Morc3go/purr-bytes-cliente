@@ -31,6 +31,12 @@ extends Resource
 ## mude uma linha.
 @export var cor: Color = Color(0, 0, 0, 0)
 
+## Pelagem guardada no JSON: "husky", "pastor", "caramelo" (valor antigo) ou
+## vazio. Desde a ADR 0042 ela nao decide o desenho: toda fase alterna husky e
+## pastor pela ordem dos vigias. Continua lida e gravada para fases antigas
+## abrirem e salvarem iguais. Cosmetica, independente da cor do anel e da regra.
+@export var pelagem: String = ""
+
 ## COMO este cachorro e bloqueado -- os tres modos que o jogo tem:
 ##
 ##   CIFRA   (padrao) -- so a cifra de `algoritmo_exigido` protege. E o modo das

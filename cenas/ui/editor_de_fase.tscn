@@ -1,16 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://cenas/ui/editor_de_fase.gd" id="1_editor"]
+[ext_resource type="Script" path="res://scripts/visual/fundo_da_galeria.gd" id="9_fundo_galeria"]
 [ext_resource type="Theme" path="res://recursos/temas/tema_telas_secundarias.tres" id="2_tema"]
-[ext_resource type="Texture2D" path="res://recursos/arte/wallpaper_telas_secundarias.png" id="3_wallpaper"]
+[ext_resource type="Texture2D" path="res://recursos/arte/fundos/brejo.png" id="3_wallpaper"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_painel"]
-bg_color = Color(0.129, 0.145, 0.188, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.4, 0.443, 0.549, 0.7)
 
 [node name="EditorDeFase" type="Control"]
 anchor_right = 1.0
@@ -21,6 +15,7 @@ theme = ExtResource("2_tema")
 script = ExtResource("1_editor")
 
 [node name="Fundo" type="TextureRect" parent="."]
+script = ExtResource("9_fundo_galeria")
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
@@ -34,13 +29,12 @@ texture_filter = 2
 [node name="Raiz" type="PanelContainer" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 6.0
-offset_top = 6.0
-offset_right = -6.0
-offset_bottom = -6.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_painel")
 
 [node name="Margem" type="MarginContainer" parent="Raiz"]
 theme_override_constants/margin_left = 8
@@ -52,7 +46,6 @@ theme_override_constants/margin_bottom = 6
 theme_override_constants/separation = 6
 
 [node name="Titulo" type="Label" parent="Raiz/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 13
 text = "criar fase"
 horizontal_alignment = 1
@@ -83,9 +76,8 @@ theme_override_constants/v_separation = 6
 columns = 2
 
 [node name="RotuloTitulo" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
-text = "titulo da fase"
+text = "título da fase"
 
 [node name="CampoTitulo" type="LineEdit" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
 custom_minimum_size = Vector2(260, 0)
@@ -94,7 +86,6 @@ theme_override_font_sizes/font_size = 9
 placeholder_text = "ex.: Senhas fortes"
 
 [node name="RotuloVidas" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "vidas"
 
@@ -104,7 +95,6 @@ max_value = 10.0
 value = 3.0
 
 [node name="RotuloMapa" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "mapa (largura x altura)"
 
@@ -115,31 +105,38 @@ theme_override_constants/separation = 6
 min_value = 9.0
 max_value = 41.0
 step = 2.0
-value = 21.0
+value = 39.0
 
 [node name="CampoAltura" type="SpinBox" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais/LinhaMapa"]
 min_value = 9.0
 max_value = 31.0
 step = 2.0
-value = 15.0
+value = 19.0
 
 [node name="RotuloSemente" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
-theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
 text = "semente (0 = sortear)"
 
 [node name="CampoSemente" type="SpinBox" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
 max_value = 999999.0
 
+
+[node name="RotuloCenario" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
+theme_override_font_sizes/font_size = 9
+text = "cenário sugerido"
+
+[node name="CampoCenario" type="OptionButton" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna/CamposGerais"]
+size_flags_horizontal = 3
+tooltip_text = "já vem marcado quando o jogador escolhe o cenário; só muda a aparência"
+theme_override_font_sizes/font_size = 9
 [node name="MostrarComandos" type="CheckBox" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"]
 theme_override_font_sizes/font_size = 9
 button_pressed = true
 text = "mostrar ao jogador o comando que para cada vigia"
 
 [node name="RotuloBriefing" type="Label" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.937, 0.945, 0.973, 1)
 theme_override_font_sizes/font_size = 9
-text = "briefing (o que o jogador le ao entrar)"
+text = "briefing (o que o jogador lê ao entrar)"
 
 [node name="CampoBriefing" type="TextEdit" parent="Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"]
 custom_minimum_size = Vector2(0, 70)
@@ -161,9 +158,9 @@ size_flags_vertical = 3
 theme_override_constants/separation = 6
 
 [node name="AjudaVigias" type="Label" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.8, 0.72, 0.62, 1)
+theme_type_variation = &"TextoSuave"
 theme_override_font_sizes/font_size = 8
-text = "escolha como cada vigia e parado. comando livre: o jogador digita EXATAMENTE a frase. cifra de Cesar / Vigenere e hash SHA-256: o jogador protege a palavra com a chave pelo terminal (ex.: cifrar senha chave=3). so persegue: nao ha defesa, so fugir."
+text = "escolha como cada vigia é parado. comando livre: o jogador digita a frase (maiúsculas e espaços extras não importam). cifra de César / Vigenère e hash SHA-256: o jogador protege a palavra com a chave pelo terminal (ex.: cifrar senha chave=3). só persegue: não há defesa, só fugir."
 autowrap_mode = 3
 
 [node name="RolagemVigias" type="ScrollContainer" parent="Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"]
@@ -191,9 +188,9 @@ size_flags_vertical = 3
 theme_override_constants/separation = 6
 
 [node name="AjudaTerminais" type="Label" parent="Raiz/Margem/Coluna/Abas/Perguntas/Margem/Coluna"]
-theme_override_colors/font_color = Color(0.8, 0.72, 0.62, 1)
+theme_type_variation = &"TextoSuave"
 theme_override_font_sizes/font_size = 8
-text = "marque a opcao correta no circulo a esquerda. o jogador precisa coletar todos os terminais para a porta abrir."
+text = "marque a opção correta no círculo à esquerda. o jogador precisa coletar todos os terminais para a porta abrir."
 autowrap_mode = 3
 
 [node name="RolagemTerminais" type="ScrollContainer" parent="Raiz/Margem/Coluna/Abas/Perguntas/Margem/Coluna"]
@@ -210,7 +207,7 @@ text = "+ terminal"
 
 [node name="Erros" type="RichTextLabel" parent="Raiz/Margem/Coluna"]
 custom_minimum_size = Vector2(0, 38)
-theme_override_colors/default_color = Color(0.92, 0.42, 0.38, 1)
+theme_override_colors/default_color = Color(1, 0.706, 0.659, 1)
 theme_override_font_sizes/normal_font_size = 8
 theme_override_font_sizes/bold_font_size = 8
 bbcode_enabled = true

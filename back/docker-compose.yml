@@ -1,0 +1,41 @@
+# Banco de desenvolvimento do Purr Bytes (ADR 0019).
+#
+#   cd back
+#   docker compose up -d        # sobe o PostgreSQL 16 vazio
+#   mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+#
+# O Compose so cria o banco e o usuario. Quem cria schemas, tabelas, visoes e
+# o seed FICTICIO e o Flyway, quando a API sobe -- o mesmo caminho de qualquer
+# outro ambiente, entao nao ha SQL duplicado aqui.
+#
+# Os dados ficam no volume "purrbytes-dados", nunca no repositorio.
+# "docker compose down -v" apaga o volume e devolve um banco do zero.
+#
+# Credenciais iguais as de application-dev.yml. Sao de desenvolvimento e nao
+# protegem nada de valor: o projeto nao usa dados de pessoas reais (LGPD, ADR 0019).
+# A porta fica presa em 127.0.0.1 para o banco nao ficar visivel na rede da sala.
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: purrbytes-postgres
+    environment:
+      POSTGRES_DB: purrbytes
+      POSTGRES_USER: purrbytes
+      POSTGRES_PASSWORD: ${PB_DB_PASSWORD:-purrbytes_dev}
+      # TIMESTAMPTZ e gravado em UTC de qualquer forma; isto so deixa o psql
+      # exibir no mesmo fuso que a API usa (hibernate.jdbc.time_zone: UTC).
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - purrbytes-dados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U purrbytes -d purrbytes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  purrbytes-dados:

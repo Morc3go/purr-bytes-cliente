@@ -25,6 +25,10 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 
 @onready var labirinto: TileMapLayer = $Labirinto
 @onready var jogador: Jogador = $Jogador
+
+## Gato escolhido para esta partida (ADR 0030). Atribuido pelo IniciadorDeFase
+## antes do _ready, como `configuracao`; vazio = PelagemGato.resolver("").
+var pelagem_do_gato: String = ""
 ## Cachorro que ja vem na cena pai. Continua sendo o cachorro numero 1 da fase
 ## (as fases nao precisam instanciar o primeiro); os demais nascem de
 ## FaseConfig.cachorros em _configurar_cachorros(). Use `cachorros` para
@@ -50,6 +54,15 @@ var _encerrada: bool = false
 var _capturas: int = 0
 var _camera_segue_jogador: bool = true
 
+@export_group("Enquadramento")
+## Faixa do HUD no alto da tela (vidas, pontos, titulo): o mapa comeca abaixo.
+@export_range(0.0, 60.0, 1.0) var margem_superior_px: float = 20.0
+## Dica de comandos no pe da tela.
+@export_range(0.0, 60.0, 1.0) var margem_inferior_px: float = 20.0
+## Teto do zoom: labirinto pequeno enche a tela, mas sem virar pixel gigante.
+@export_range(1.0, 4.0, 0.25) var zoom_maximo: float = 2.0
+@export_group("")
+
 ## IA de perseguicao (scripts/ia/navegacao.gd, wrapper de AStarGrid2D). Uma
 ## instancia por fase porque a grade depende do labirinto desta cena.
 var _navegacao: Navegacao = Navegacao.new()
@@ -58,6 +71,10 @@ var _temporizador_replanejamento: Timer = null
 ## (que e a que vai para a telemetria) mora em _visao_por_cachorro.
 var _cachorro_com_linha_de_visao: bool = false
 var _depuracao_astar_visivel: bool = false
+## Camada da rota do A* (F3), POR CIMA do labirinto. O _draw() de um Node2D
+## pinta antes dos filhos, entao desenhado na propria FaseBase o caminho
+## ficava escondido embaixo do TileMapLayer -- a demo da IA nunca aparecia.
+var _camada_depuracao: Node2D = null
 
 ## Todos os cachorros da fase, incluindo o da cena pai na posicao 0.
 var cachorros: Array[Cachorro] = []
@@ -121,7 +138,15 @@ func _ready() -> void:
 		return
 
 	_configurada = true
+	pelagem_do_gato = PelagemGato.resolver(pelagem_do_gato)
+	jogador.definir_pelagem(pelagem_do_gato)
 	_conectar_sinais()
+
+	_camada_depuracao = Node2D.new()
+	_camada_depuracao.name = "DepuracaoAStar"
+	_camada_depuracao.z_index = 50
+	add_child(_camada_depuracao)
+	_camada_depuracao.draw.connect(_desenhar_rotas_astar)
 
 	# O mapa e a PRIMEIRA coisa: ele repinta o labirinto e reposiciona entrada e
 	# saida, e todo o resto (navegacao, cachorros, pacotes, camera) depende
@@ -132,9 +157,15 @@ func _ready() -> void:
 	jogador.velocidade = maxf(jogador.velocidade, 1.0)
 	_configurar_cachorros()
 	_configurar_pacotes()
+	# A roupa do labirinto vem depois de pacotes e cachorros no lugar: os
+	# enfeites do cenario nao podem cair em cima deles (ADR 0035).
+	_vestir_labirinto()
 
 	_navegacao.configurar(labirinto)
 	_configurar_camera()
+	# Janela redimensionada ou maximizada: refaz a conta do zoom.
+	if not get_viewport().size_changed.is_connected(_configurar_camera):
+		get_viewport().size_changed.connect(_configurar_camera)
 	_configurar_temporizador_replanejamento()
 	_configurar_diretor()
 	_configurar_temporizador_desempenho()
@@ -144,9 +175,9 @@ func _ready() -> void:
 	# ja precisa sair com id_fase preenchido.
 	Sessao.entrar_na_fase(configuracao.numero, configuracao.vidas_iniciais,
 		configuracao.garantir_id_fase(), configuracao.titulo)
-	hud.definir_titulo("fase %d -- %s" % [configuracao.numero, configuracao.titulo])
-	if configuracao.mostrar_comandos:
-		hud.mostrar_comandos(_legenda_de_comandos())
+	# So o titulo: toda fase de autoria tem numero 1 (legado da constraint do
+	# banco, ADR 0012), e o HUD dizia "fase 1" ate na quarta fase da trilha.
+	hud.definir_titulo(configuracao.titulo)
 
 	Telemetria.registrar_evento(CatalogoEventos.FASE_INICIADA, {
 		"algoritmo": configuracao.algoritmo,
@@ -174,7 +205,7 @@ func _physics_process(_delta: float) -> void:
 	_conferir_contato_apos_invulnerabilidade()
 
 
-func _draw() -> void:
+func _desenhar_rotas_astar() -> void:
 	# Depuracao visual obrigatoria (secao 6 do CLAUDE.md, apontamento 7): F3
 	# mostra o caminho que o AStarGrid2D calculou por ultimo. Os "nos
 	# expandidos" do algoritmo NAO aparecem aqui de proposito -- AStarGrid2D
@@ -194,13 +225,24 @@ func _draw() -> void:
 
 		var pontos_locais := PackedVector2Array()
 		for ponto: Vector2 in caminho:
-			pontos_locais.append(to_local(ponto))
+			pontos_locais.append(_camada_depuracao.to_local(ponto))
 
 		var cor_do_caminho: Color = alvo.cor()
 		cor_do_caminho.a = 0.9
-		draw_polyline(pontos_locais, cor_do_caminho, 1.5)
+		_camada_depuracao.draw_polyline(pontos_locais, cor_do_caminho, 1.5)
 		for ponto_local: Vector2 in pontos_locais:
-			draw_circle(ponto_local, 2.0, cor_do_caminho)
+			_camada_depuracao.draw_circle(ponto_local, 2.0, cor_do_caminho)
+
+
+## F3: mostra/esconde a rota que o AStarGrid2D calculou para cada cachorro.
+func alternar_rotas_astar() -> void:
+	_depuracao_astar_visivel = not _depuracao_astar_visivel
+	if _camada_depuracao != null:
+		_camada_depuracao.queue_redraw()
+
+
+func rotas_astar_visiveis() -> bool:
+	return _depuracao_astar_visivel
 
 
 func _unhandled_input(evento: InputEvent) -> void:
@@ -208,8 +250,7 @@ func _unhandled_input(evento: InputEvent) -> void:
 		return
 
 	if evento.is_action_pressed("alternar_depuracao"):
-		_depuracao_astar_visivel = not _depuracao_astar_visivel
-		queue_redraw()
+		alternar_rotas_astar()
 		get_viewport().set_input_as_handled()
 		return
 
@@ -288,7 +329,8 @@ func reiniciar() -> void:
 	_encerrada = true
 	_registrar_abandono()
 	fase_abandonada.emit(configuracao.numero)
-	IniciadorDeFase.jogar(get_tree(), configuracao)
+	# Reiniciar nao pergunta de novo: o jogador continua com o mesmo gato.
+	IniciadorDeFase.jogar(get_tree(), configuracao, pelagem_do_gato)
 
 
 ## Telemetria e saida da sessao compartilhadas por abandonar() e reiniciar():
@@ -369,10 +411,13 @@ func _ao_chegar_na_saida(corpo: Node2D) -> void:
 	if not (corpo is Jogador):
 		return
 	if _porta_trancada():
-		terminal.escrever("a porta esta trancada: faltam %d pacote(s) de dados."
+		terminal.escrever("a porta está trancada: faltam %d pacote(s) de dados."
 			% (pacotes.size() - _pacotes_coletados))
 		return
-	concluir()
+	# Diferido: este metodo roda dentro do callback de fisica da porta (Area2D),
+	# e concluir() troca de cena -- remover corpos de colisao no meio do callback
+	# e proibido pela engine.
+	concluir.call_deferred()
 
 
 func _porta_trancada() -> bool:
@@ -438,7 +483,7 @@ func _protegido_contra(cachorro_alvo: Cachorro) -> bool:
 		return false
 
 	if cachorro_alvo.bloqueia_por_comando():
-		return jogador.comando_protegido == cachorro_alvo.comando_para_bloquear
+		return jogador.comando_protegido == normalizar_comando_livre(cachorro_alvo.comando_para_bloquear)
 
 	return jogador.algoritmo_protegido == cachorro_alvo.algoritmo_exigido
 
@@ -453,18 +498,18 @@ func _apenas_persegue(cachorro_alvo: Cachorro) -> bool:
 ## pego" (secao 7 do CLAUDE.md: enquadramento pedagogico, nao punitivo).
 func _explicacao_da_captura(cachorro_alvo: Cachorro) -> String:
 	if _apenas_persegue(cachorro_alvo):
-		return "este vigia nao tem comando que o pare: a unica defesa e fugir dele."
+		return "este vigia não tem comando que o pare: a única defesa é fugir dele."
 
 	if cachorro_alvo.bloqueia_por_comando():
 		if configuracao.mostrar_comandos:
-			return "este vigia so para com o comando '%s' no terminal (tecla T)." \
+			return "este vigia só para com o comando '%s' no terminal (tecla T)." \
 				% cachorro_alvo.comando_para_bloquear
-		return "este vigia so para com o comando certo no terminal (tecla T). descubra qual."
+		return "este vigia só para com o comando certo no terminal (tecla T). descubra qual."
 
 	var exigido: String = LegendaCores.nome(cachorro_alvo.algoritmo_exigido)
 
 	if not jogador.protecao_ativa:
-		var texto: String = ("o pacote viajava em texto claro. este interceptador le %s: "
+		var texto: String = ("o pacote viajava em texto claro. este interceptador lê %s: "
 			+ "use o terminal para cifrar antes de atravessar.") % exigido
 		var config_do_cachorro: CachorroConfig = _config_por_cachorro.get(cachorro_alvo) as CachorroConfig
 		if configuracao.mostrar_comandos and config_do_cachorro != null \
@@ -472,8 +517,8 @@ func _explicacao_da_captura(cachorro_alvo: Cachorro) -> String:
 			texto += " comando: %s" % config_do_cachorro.comando_da_cifra()
 		return texto
 
-	return ("a cifra ativa era %s, mas este interceptador so e enganado por %s. "
-		+ "cifrar nao basta: tem que ser a cifra certa para o interceptador certo.") % [
+	return ("a cifra ativa era %s, mas este interceptador só é enganado por %s. "
+		+ "cifrar não basta: tem que ser a cifra certa para o interceptador certo.") % [
 			LegendaCores.nome(jogador.algoritmo_protegido), exigido]
 
 
@@ -521,7 +566,7 @@ func _ao_esgotar_vidas() -> void:
 		return
 	# Vidas zeradas reinicia a fase; nao expulsa do jogo (secao 7 do CLAUDE.md).
 	Sessao.repor_vidas(configuracao.vidas_iniciais)
-	terminal.escrever("vidas esgotadas. a fase recomeca -- o pacote volta ao inicio.")
+	terminal.escrever("vidas esgotadas. a fase recomeça e o pacote volta ao início.")
 
 
 # ---------------------------------------------------------------------------
@@ -546,12 +591,12 @@ func _ao_submeter_comando(texto: String, tempo_resposta_ms: int) -> void:
 ## Devolve true quando o texto bloqueou algum cachorro -- e ai o comando ja foi
 ## tratado e registrado, e o pipeline lexico nao roda.
 func _tentar_comando_de_bloqueio(texto: String, tempo_resposta_ms: int) -> bool:
-	var limpo: String = texto.strip_edges()
+	var limpo: String = normalizar_comando_livre(texto)
 	if limpo.is_empty():
 		return false
 
 	for alvo: Cachorro in cachorros:
-		if not alvo.bloqueia_por_comando() or alvo.comando_para_bloquear != limpo:
+		if not alvo.bloqueia_por_comando() or normalizar_comando_livre(alvo.comando_para_bloquear) != limpo:
 			continue
 
 		jogador.ativar_protecao(configuracao.duracao_cifra_s, "", limpo)
@@ -568,11 +613,19 @@ func _tentar_comando_de_bloqueio(texto: String, tempo_resposta_ms: int) -> bool:
 	return false
 
 
+## Frase de conduta comparada sem ligar para maiusculas nem espacos repetidos:
+## o mesmo "trim + minusculas" que o analisador lexico aplica aos comandos de
+## cifra (ADR 0006). Antes, "Ativar 2FA" ou "ativar  2fa" eram recusados e o
+## aluno perdia vida por digitacao, nao por nao saber a conduta.
+static func normalizar_comando_livre(texto: String) -> String:
+	return " ".join(texto.strip_edges().to_lower().split(" ", false))
+
+
 func _analisar_comando(texto: String, tempo_resposta_ms: int) -> void:
 	var resultado: ResultadoComando = AnalisadorComando.analisar(texto)
 
 	if resultado.resultado == CatalogoResultados.ERRO_LEXICO:
-		terminal.escrever("erro lexico: caractere nao reconhecido no comando.")
+		terminal.escrever("erro léxico: caractere não reconhecido no comando.")
 		Telemetria.registrar_evento(CatalogoEventos.ERRO_LEXICO, {}, configuracao.numero)
 		_registrar_tentativa(resultado, resultado.resultado, resultado.codigo_erro, tempo_resposta_ms)
 		if _diretor != null:
@@ -580,7 +633,7 @@ func _analisar_comando(texto: String, tempo_resposta_ms: int) -> void:
 		return
 
 	if resultado.resultado == CatalogoResultados.ERRO_SINTATICO:
-		terminal.escrever("erro sintatico: comando mal formado. digite 'status' para ver o desafio atual.")
+		terminal.escrever("erro sintático: comando mal formado. digite 'status' para ver o desafio atual.")
 		Telemetria.registrar_evento(CatalogoEventos.ERRO_SINTATICO, {}, configuracao.numero)
 		_registrar_tentativa(resultado, resultado.resultado, resultado.codigo_erro, tempo_resposta_ms)
 		if _diretor != null:
@@ -640,9 +693,9 @@ func _explicar_no_terminal(desafio: DesafioConfig, algoritmo: String) -> void:
 	if algoritmo == "SHA256":
 		# Hash nao tem "antes e depois" para alinhar: a licao dele e outra, e a
 		# confusao hash x cifra e o erro conceitual mais comum do tema.
-		terminal.escrever("o resumo confere: o conteudo nao foi adulterado no caminho.")
-		terminal.escrever("repare que voce NAO escondeu nada -- o resumo e de mao unica, "
-			+ "nao existe desfazer. ele serve para provar integridade, nao para dar sigilo.")
+		terminal.escrever("o resumo confere: o conteúdo não foi adulterado no caminho.")
+		terminal.escrever("repare que você NÃO escondeu nada: o resumo é de mão única, "
+			+ "não existe desfazer. ele serve para provar integridade, não para dar sigilo.")
 		return
 
 	var cifra: Cifra = FabricaCifra.para_algoritmo(algoritmo)
@@ -662,11 +715,11 @@ func _explicar_no_terminal(desafio: DesafioConfig, algoritmo: String) -> void:
 		chaves += "%-3s" % (linha.chave if linha.chave != "" else "-")
 		cifrado += "%-3s" % linha.cifrado
 
-	terminal.escrever("--- o que aconteceu com o pacote ---")
+	terminal.escrever("o que aconteceu com o pacote:")
 	terminal.escrever("claro   : %s" % claro)
 	terminal.escrever("chave   : %s" % chaves)
 	terminal.escrever("cifrado : %s" % cifrado)
-	terminal.escrever("o cachorro agora ve '%s', e nao '%s' -- e por isso que ele passa direto."
+	terminal.escrever("o cachorro agora vê '%s', e não '%s'. por isso ele passa direto."
 		% [cifra.cifrar(desafio.texto_claro, desafio.chave_esperada), desafio.texto_claro])
 
 
@@ -739,12 +792,12 @@ func _avancar_desafio() -> void:
 		if _desafios_resolvidos.size() >= configuracao.desafios.size():
 			# "Desafios", nao "pacotes": a porta depende dos pacotes (perguntas),
 			# e dizer "va ate a porta" aqui mandava o jogador a uma porta trancada.
-			terminal.escrever("todos os desafios de cifra desta fase ja foram resolvidos. "
+			terminal.escrever("todos os desafios de cifra desta fase já foram resolvidos. "
 				+ "os comandos continuam valendo para se proteger no caminho.")
 
 	var proximo: DesafioConfig = _desafio_atual()
 	if proximo != null:
-		terminal.escrever("proximo desafio (%s): %s"
+		terminal.escrever("próximo desafio (%s): %s"
 			% [LegendaCores.nome(proximo.algoritmo_efetivo(configuracao.algoritmo)), proximo.enunciado])
 
 
@@ -755,13 +808,13 @@ func _avancar_desafio() -> void:
 ## Os limites saem de TileMapLayer.get_used_rect(), e nao de constante nenhuma:
 ## trocar o desenho do labirinto reajusta a camera sozinho.
 ##
-## Duas situacoes, decididas por medida e nao por fase: se o labirinto inteiro
-## cabe na viewport (o caso das tres fases atuais -- 25x19 tiles de 16 = 400x304
-## numa viewport de 640x360), a camera fica FIXA no centro do mapa e o jogador
-## enxerga o labirinto todo, que e o enquadramento certo para um jogo de rota e
-## perseguicao: esconder metade do mapa so tornaria o cachorro injusto. Se um
-## mapa futuro passar do tamanho da tela, a camera volta a seguir o jogador,
-## agora presa aos limites -- sem nunca mostrar o vazio fora do labirinto.
+## O labirinto ocupa a tela (ADR 0024): a camera aproxima ate o mapa encher a
+## area entre a faixa do HUD e a dica de comandos, com o zoom escolhido por
+## Enquadramento para os pixels da arte nao ficarem de tamanhos diferentes.
+## Com o mapa inteiro a vista, a camera fica FIXA: num jogo de rota e
+## perseguicao, esconder metade do mapa so tornaria o cachorro injusto. So um
+## mapa grande demais para caber (o editor deixa ir ate 41x31) faz a camera
+## seguir o gato, presa aos limites para nunca mostrar o vazio fora dele.
 func _configurar_camera() -> void:
 	var regiao: Rect2i = labirinto.get_used_rect()
 	if regiao.size == Vector2i.ZERO or labirinto.tile_set == null:
@@ -770,23 +823,77 @@ func _configurar_camera() -> void:
 	var tamanho_tile: Vector2i = labirinto.tile_set.tile_size
 	var canto: Vector2 = labirinto.to_global(Vector2(regiao.position * tamanho_tile))
 	var tamanho_mundo: Vector2 = Vector2(regiao.size * tamanho_tile)
-	var tamanho_visivel: Vector2 = get_viewport_rect().size / camera.zoom
+	var tela: Vector2 = get_viewport_rect().size
+	var area_util: Vector2 = tela - Vector2(0.0, margem_superior_px + margem_inferior_px)
 
 	camera.limit_left = int(canto.x)
 	camera.limit_top = int(canto.y)
 	camera.limit_right = int(canto.x + tamanho_mundo.x)
 	camera.limit_bottom = int(canto.y + tamanho_mundo.y)
 
-	_camera_segue_jogador = (tamanho_mundo.x > tamanho_visivel.x
-		or tamanho_mundo.y > tamanho_visivel.y)
-	if not _camera_segue_jogador:
-		camera.position_smoothing_enabled = false
-		camera.global_position = canto + tamanho_mundo * 0.5
+	var escala: float = _escala_da_janela(tela)
+	_camera_segue_jogador = not Enquadramento.cabe(area_util, tamanho_mundo)
+	if _camera_segue_jogador:
+		camera.zoom = Vector2.ONE * Enquadramento.zoom_para_seguir(escala)
+		camera.position_smoothing_enabled = true
+		return
+
+	var zoom: float = Enquadramento.zoom_para_caber(area_util, tamanho_mundo, escala, zoom_maximo)
+	camera.zoom = Vector2.ONE * zoom
+	camera.position_smoothing_enabled = false
+	# Mapa visto inteiro dispensa os limites: com eles, a camera "batia" na
+	# borda do mapa e nao conseguia centralizar quando sobra tela em volta.
+	camera.limit_left = -10000000
+	camera.limit_top = -10000000
+	camera.limit_right = 10000000
+	camera.limit_bottom = 10000000
+	# Centro da area util, nao da tela: se o HUD de cima e a dica de baixo
+	# tiverem alturas diferentes, o mapa fica no meio do espaco que sobra.
+	var deslocamento: float = (margem_superior_px - margem_inferior_px) * 0.5 / zoom
+	camera.global_position = canto + tamanho_mundo * 0.5 - Vector2(0.0, deslocamento)
+	camera.reset_smoothing()
+
+
+## Quantos pixels do monitor cada pixel da tela base (640x360) ocupa. O modo
+## de estica canvas_items mantem a proporcao, entao vale o menor dos dois eixos.
+func _escala_da_janela(tela: Vector2) -> float:
+	var janela: Vector2 = Vector2(get_window().size)
+	if tela.x <= 0.0 or tela.y <= 0.0 or janela.x <= 0.0 or janela.y <= 0.0:
+		return 1.0
+	return minf(janela.x / tela.x, janela.y / tela.y)
 
 
 # ---------------------------------------------------------------------------
 # Mapa: o texto de MapaConfig vira o labirinto e as posicoes
 # ---------------------------------------------------------------------------
+
+## Chao, cerca e enfeites do cenario da fase por cima do labirinto ja pintado
+## (ADR 0025 e 0035). So visual: o TileMapLayer continua sendo a fonte de
+## parede para colisao e A*.
+func _vestir_labirinto() -> void:
+	var arbustos: ArbustosDoLabirinto = labirinto.get_node_or_null("Arbustos") as ArbustosDoLabirinto
+	if arbustos == null:
+		arbustos = ArbustosDoLabirinto.new()
+		arbustos.name = "Arbustos"
+		labirinto.add_child(arbustos)
+	arbustos.vestir(labirinto, configuracao.cenario, celulas_ocupadas(), configuracao.semente_do_mapa)
+
+
+## Celulas que os enfeites do cenario devem deixar livres: entrada, saida,
+## pacotes e onde cada cachorro nasce.
+func celulas_ocupadas() -> Array[Vector2i]:
+	var pontos: Array[Vector2] = [ponto_de_entrada.global_position, ponto_de_saida.global_position]
+	for pacote: Node2D in pacotes:
+		pontos.append(pacote.global_position)
+	for cachorro: Node2D in cachorros:
+		pontos.append(cachorro.global_position)
+	var celulas: Array[Vector2i] = []
+	for ponto: Vector2 in pontos:
+		var celula: Vector2i = labirinto.local_to_map(labirinto.to_local(ponto))
+		if not celulas.has(celula):
+			celulas.append(celula)
+	return celulas
+
 
 ## Repinta o TileMapLayer a partir do texto e leva entrada e saida para as
 ## celulas marcadas nele. Fase sem MapaConfig fica exatamente como era: o
@@ -873,6 +980,8 @@ func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig, indi
 	alvo.velocidade = velocidade
 	alvo.alcance_deteccao = alcance
 	alvo.definir_algoritmo(algoritmo)
+	# Toda fase mistura husky e pastor pela ordem dos vigias (ADR 0042).
+	alvo.definir_pelagem(PelagemCachorro.do_vigia(indice))
 	alvo.definir_cor(config_do_cachorro.cor_efetiva() if config_do_cachorro != null
 		else LegendaCores.cor(algoritmo))
 	alvo.contato_com_jogador.connect(_ao_encostar_no_jogador.bind(alvo))
@@ -881,23 +990,6 @@ func _preparar_cachorro(alvo: Cachorro, config_do_cachorro: CachorroConfig, indi
 	_config_por_cachorro[alvo] = config_do_cachorro
 	_visao_por_cachorro[alvo] = false
 	_ancora_por_cachorro[alvo] = 0
-
-
-## Uma linha por vigia, na cor dele: o que o jogador precisa digitar, ou que
-## aquele nao tem comando. So os vigias de comando e os que so perseguem
-## entram -- vigia de cifra (fases de cifra) se resolve pelo desafio.
-func _legenda_de_comandos() -> Array[Dictionary]:
-	var itens: Array[Dictionary] = []
-	for alvo: Cachorro in cachorros:
-		if alvo.bloqueia_por_comando():
-			itens.append({"cor": alvo.cor(), "texto": alvo.comando_para_bloquear})
-		elif _apenas_persegue(alvo):
-			itens.append({"cor": alvo.cor(), "texto": "sem comando: fuja"})
-		else:
-			var config_do_cachorro: CachorroConfig = _config_por_cachorro.get(alvo) as CachorroConfig
-			if config_do_cachorro != null and not config_do_cachorro.comando_da_cifra().is_empty():
-				itens.append({"cor": alvo.cor(), "texto": config_do_cachorro.comando_da_cifra()})
-	return itens
 
 
 func _mundo_da_celula(celula: Vector2i) -> Vector2:
@@ -938,7 +1030,7 @@ func _configurar_pacotes() -> void:
 		pacote.name = "Pacote_%s" % config_do_pacote.identificador
 		pacotes_no.add_child(pacote)
 		pacote.global_position = _mundo_da_celula(celulas[i])
-		pacote.definir(config_do_pacote)
+		pacote.definir(config_do_pacote, i)
 		pacote.alcancado.connect(_ao_alcancar_pacote)
 		pacotes.append(pacote)
 
@@ -1052,12 +1144,12 @@ func _coletar_pacote(pacote: Pacote) -> void:
 	hud.mostrar_pacotes(_pacotes_coletados, pacotes.size())
 
 	if _porta_trancada():
-		terminal.escrever("pacote coletado (%d de %d). a porta ainda esta trancada."
+		terminal.escrever("pacote coletado (%d de %d). a porta ainda está trancada."
 			% [_pacotes_coletados, pacotes.size()])
 		return
 
 	ponto_de_saida.definir_trancada(false)
-	terminal.escrever("todos os pacotes coletados. a porta se abriu -- siga para a saida.")
+	terminal.escrever("todos os pacotes coletados. a porta se abriu. siga para a saída.")
 
 
 # ---------------------------------------------------------------------------
@@ -1090,7 +1182,7 @@ func _replanejar_caminho_do_cachorro() -> void:
 			alvo.global_position, _alvo_de_perseguicao(alvo))
 		_soma_replanejamento_us += Time.get_ticks_usec() - inicio_us
 		_contagem_replanejamento += 1
-		alvo.definir_caminho(caminho)
+		alvo.definir_caminho(_sem_pisar_no_gato(alvo, caminho))
 
 		# Alvo sem rota (regiao separada, por exemplo): avanca a varredura em
 		# vez de insistir no mesmo ponto inalcancavel para sempre. E o segundo
@@ -1098,8 +1190,26 @@ func _replanejar_caminho_do_cachorro() -> void:
 		if caminho.is_empty() and _diretor != null:
 			_indice_varredura += 1
 
-	if _depuracao_astar_visivel:
-		queue_redraw()
+	if _depuracao_astar_visivel and _camada_depuracao != null:
+		_camada_depuracao.queue_redraw()
+
+
+## Cachorro que nao pode pegar o gato agora (gato piscando depois de uma
+## captura, ou protegido pela cifra ou pelo comando certo contra ESTE vigia)
+## para uma celula antes dele, em vez de subir em cima do desenho do gato: o
+## jogador ve que o vigia o seguiu e nao o reconheceu, sem os dois sprites
+## empilhados. So muda ONDE a rota termina; o A*, a deteccao e as regras de
+## captura continuam os mesmos.
+func _sem_pisar_no_gato(alvo: Cachorro, caminho: PackedVector2Array) -> PackedVector2Array:
+	if caminho.size() < 2:
+		return caminho
+	if not (jogador_invulneravel() or _protegido_contra(alvo)):
+		return caminho
+	var celula_do_gato: Vector2i = labirinto.local_to_map(labirinto.to_local(jogador.global_position))
+	var celula_final: Vector2i = labirinto.local_to_map(labirinto.to_local(caminho[caminho.size() - 1]))
+	if celula_final != celula_do_gato:
+		return caminho
+	return caminho.slice(0, caminho.size() - 1)
 
 
 ## CACHORRO_DETECTOU/CACHORRO_PERDEU sao emitidos na borda de subida/descida da
@@ -1323,7 +1433,7 @@ func _alternar_painel_de_demonstracao() -> void:
 		return
 
 	if configuracao.texto_exemplo_demonstracao.is_empty():
-		terminal.escrever("esta fase nao tem exemplo de demonstracao configurado.")
+		terminal.escrever("esta fase não tem exemplo de demonstração configurado.")
 		return
 
 	if configuracao.algoritmo == "SHA256":
@@ -1332,11 +1442,11 @@ func _alternar_painel_de_demonstracao() -> void:
 		painel_cifra.abrir_avalanche("efeito avalanche: um caractere a mais muda tudo", texto_a, texto_b)
 	else:
 		if configuracao.chave_exemplo_demonstracao.is_empty():
-			terminal.escrever("esta fase nao tem exemplo de demonstracao configurado.")
+			terminal.escrever("esta fase não tem exemplo de demonstração configurado.")
 			return
 		var cifra: Cifra = FabricaCifra.para_algoritmo(configuracao.algoritmo)
 		if cifra == null:
-			terminal.escrever("nao ha demonstracao disponivel para o algoritmo '%s'." % configuracao.algoritmo)
+			terminal.escrever("não há demonstração disponível para o algoritmo '%s'." % configuracao.algoritmo)
 			return
 		painel_cifra.abrir(
 			"como o %s desloca cada letra" % configuracao.algoritmo,
@@ -1355,13 +1465,13 @@ func _alternar_painel_de_demonstracao() -> void:
 
 func _diagnosticar() -> String:
 	if configuracao == null:
-		return ("fase_base.tscn e a cena pai e nao roda sozinha.\n"
+		return ("fase_base.tscn é a cena pai e não roda sozinha.\n"
 			+ "abra uma cena herdada (cenas/fases/fase_0N.tscn) ou atribua um\n"
 			+ "FaseConfig no Inspector, no campo 'configuracao'.")
 
 	var problemas: PackedStringArray = configuracao.problemas()
 	if not problemas.is_empty():
-		return "FaseConfig invalido:\n- %s" % "\n- ".join(problemas)
+		return "FaseConfig inválido:\n- %s" % "\n- ".join(problemas)
 
 	return ""
 

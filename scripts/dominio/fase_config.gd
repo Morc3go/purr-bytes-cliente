@@ -87,11 +87,17 @@ extends Resource
 
 @export_multiline var briefing_pedagogico: String = ""
 
-## Mostra ao jogador o comando que para cada vigia (legenda na HUD e lista no
-## terminal ao entrar). Decisao do professor, por fase: numa fase de
+## Mostra ao jogador o comando que para cada vigia (lista no terminal ao entrar
+## e na tela de captura; o rodape da HUD mostra so as teclas, ADR 0026). Decisao do professor, por fase: numa fase de
 ## APRESENTACAO o comando e o conteudo sendo ensinado e precisa estar a vista;
 ## numa fase de AVALIACAO, mostrar entregaria a resposta.
 @export var mostrar_comandos: bool = false
+
+## Cenario do labirinto (ADR 0035): jardim, outono, cerejeira, lago, inverno,
+## ruinas, bosque ou lavanda. So aparencia: parede, colisao, A* e telemetria
+## sao os mesmos em todos (ver CenarioDoLabirinto). Vazio ou desconhecido =
+## jardim, o visual de antes.
+@export var cenario: String = "jardim"
 
 ## Exemplo FIXO usado pelo painel de demonstração (CIFRA_DEMONSTRADA, Marco 2)
 ## -- de propósito independente do desafio corrente: o painel ensina o
@@ -135,10 +141,10 @@ func problemas() -> PackedStringArray:
 	var lista := PackedStringArray()
 
 	if numero < 1 or numero > 4:
-		lista.append("numero %d fora de 1..4 (constraint do banco)" % numero)
+		lista.append("número %d fora de 1..4 (constraint do banco)" % numero)
 
 	if titulo.strip_edges().is_empty():
-		lista.append("titulo vazio")
+		lista.append("título vazio")
 
 	if verbos_permitidos.is_empty():
 		lista.append("verbos_permitidos vazio: o terminal recusaria qualquer comando")
@@ -148,7 +154,7 @@ func problemas() -> PackedStringArray:
 	# por comando livre (ou so perseguem) e valida sem nenhum desafio -- exigir
 	# um ali seria pedir dado que a mecanica dela nao usa.
 	if desafios.is_empty() and _algum_cachorro_exige_cifra():
-		lista.append("nenhum desafio configurado, mas ha cachorro que so e enganado por cifra")
+		lista.append("nenhum desafio configurado, mas há cachorro que só é enganado por cifra")
 
 	if faixa_chave_minima > faixa_chave_maxima:
 		lista.append("faixa de chave invertida (%d > %d)"
@@ -166,7 +172,7 @@ func problemas() -> PackedStringArray:
 			lista.append("identificador de desafio repetido: %s" % desafio.identificador)
 		identificadores[desafio.identificador] = true
 		if not verbos_permitidos.has(desafio.verbo_esperado):
-			lista.append("desafio '%s' espera o verbo '%s', que nao esta em verbos_permitidos"
+			lista.append("desafio '%s' espera o verbo '%s', que não está em verbos_permitidos"
 				% [desafio.identificador, desafio.verbo_esperado])
 
 	var identificadores_de_cachorro: Dictionary = {}
@@ -254,8 +260,8 @@ func garantir_id_fase() -> String:
 
 	id_fase = Identificador.uuid_v4()
 	Registro.aviso("FaseConfig", ("fase '%s' sem id_fase gravado; gerado um temporario (%s). "
-		+ "Rode tools/gerar_fase_0N.gd para grava-lo no recurso -- sem isso, cada execucao "
-		+ "usa um id diferente e a analise nao consegue juntar as sessoes desta fase.")
+		+ "Rode tools/gerar_fase_0N.gd para grava-lo no recurso; sem isso, cada execução "
+		+ "usa um id diferente e a análise não consegue juntar as sessões desta fase.")
 		% [titulo, id_fase])
 	return id_fase
 
