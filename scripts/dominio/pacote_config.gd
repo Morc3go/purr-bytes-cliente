@@ -64,14 +64,14 @@ func problemas() -> PackedStringArray:
 	if enunciado.strip_edges().is_empty():
 		lista.append("pacote '%s' sem enunciado" % identificador)
 	if opcoes.size() < 2:
-		lista.append("pacote '%s' precisa de ao menos duas opcoes" % identificador)
+		lista.append("pacote '%s' precisa de ao menos duas opções" % identificador)
 	if not opcoes.has(resposta_correta):
-		lista.append("pacote '%s': a resposta correta '%s' nao esta entre as opcoes"
+		lista.append("pacote '%s': a resposta correta '%s' não está entre as opções"
 			% [identificador, resposta_correta])
 	if opcoes_de_algoritmo():
 		for opcao: String in opcoes:
 			if not LegendaCores.conhece(opcao):
-				lista.append("pacote '%s' e de APLICACAO, entao a opcao '%s' precisa ser um "
+				lista.append("pacote '%s' é de APLICACAO, então a opção '%s' precisa ser um "
 					% [identificador, opcao] + "algoritmo conhecido")
 
 		# Regra 3 do banco de perguntas, virada em validacao: se o enunciado cita
@@ -82,15 +82,15 @@ func problemas() -> PackedStringArray:
 		var minusculo: String = enunciado.to_lower()
 		for termo: String in [resposta_correta.to_lower(), LegendaCores.nome(resposta_correta).to_lower()]:
 			if not termo.is_empty() and minusculo.contains(termo):
-				lista.append("pacote '%s': o enunciado cita '%s', que e a propria resposta"
+				lista.append("pacote '%s': o enunciado cita '%s', que é a própria resposta"
 					% [identificador, termo])
 				break
 	else:
 		for opcao: String in opcoes:
 			if opcao.strip_edges().is_empty():
-				lista.append("pacote '%s' tem opcao vazia" % identificador)
+				lista.append("pacote '%s' tem opção vazia" % identificador)
 			elif LegendaCores.conhece(opcao):
-				lista.append(("pacote '%s' e de %s, entao as opcoes sao frases -- '%s' e nome "
+				lista.append(("pacote '%s' é de %s, então as opções são frases: '%s' é nome "
 					+ "de algoritmo e pertence a uma pergunta de APLICACAO")
 					% [identificador, tipo, opcao])
 

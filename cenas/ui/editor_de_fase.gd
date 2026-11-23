@@ -20,9 +20,6 @@ const CENA_DO_MENU: String = "res://cenas/ui/menu_principal.tscn"
 const CENA_DA_SELECAO: String = "res://cenas/ui/selecao_de_fases.tscn"
 
 const _COR_PADRAO_DO_VIGIA: Color = Color(0.40, 0.66, 1.0)
-## Mesmo vermelho ja usado no painel de erros: uma so cor de alerta em toda a
-## tela, para "isto remove algo" ser reconhecivel de relance.
-const _COR_BOTAO_DESTRUTIVO: Color = Color(1, 0.62, 0.6, 1)
 
 const _GERAL: String = "Raiz/Margem/Coluna/Abas/Geral/Margem/Coluna"
 const _CACHORROS: String = "Raiz/Margem/Coluna/Abas/Cachorros/Margem/Coluna"
@@ -34,6 +31,8 @@ const _PERGUNTAS: String = "Raiz/Margem/Coluna/Abas/Perguntas/Margem/Coluna"
 @onready var _campo_largura: SpinBox = get_node(_GERAL + "/CamposGerais/LinhaMapa/CampoLargura")
 @onready var _campo_altura: SpinBox = get_node(_GERAL + "/CamposGerais/LinhaMapa/CampoAltura")
 @onready var _campo_semente: SpinBox = get_node(_GERAL + "/CamposGerais/CampoSemente")
+## Cenario do labirinto (ADR 0035), na ordem de CenarioDoLabirinto.ORDEM.
+@onready var _campo_cenario: OptionButton = get_node(_GERAL + "/CamposGerais/CampoCenario")
 @onready var _campo_briefing: TextEdit = get_node(_GERAL + "/CampoBriefing")
 ## Marcado por padrao numa fase nova: sem ver o comando, quem joga pela
 ## primeira vez nao sabe o que digitar. Desmarcar e para fase de avaliacao.
@@ -52,6 +51,12 @@ var _id_fase: String = ""
 
 
 func _ready() -> void:
+	# Mesma cara do menu: vidro, vinhas e baloes no tom do fundo (ADR 0034).
+	EnfeiteDaGaleria.enfeitar(self, [$Raiz] as Array[Control])
+	_campo_cenario.theme_type_variation = &"OpcaoCompacta"
+	for cenario: String in CenarioDoLabirinto.ORDEM:
+		_campo_cenario.add_item(CenarioDoLabirinto.nome(cenario))
+	selecionar_cenario(CenarioDoLabirinto.PADRAO)
 	_montar_botoes_de_vigia()
 	get_node(_PERGUNTAS + "/AdicionarTerminal").pressed.connect(
 		func() -> void: _adicionar_terminal())
@@ -107,6 +112,14 @@ func _preparar_fase_nova() -> void:
 	_adicionar_terminal()
 
 
+func selecionar_cenario(cenario: String) -> void:
+	_campo_cenario.select(CenarioDoLabirinto.ORDEM.find(CenarioDoLabirinto.resolver(cenario)))
+
+
+func cenario_escolhido() -> String:
+	return CenarioDoLabirinto.ORDEM[maxi(0, _campo_cenario.selected)]
+
+
 func _carregar(caminho: String) -> void:
 	var resultado: CarregadorFaseJson.Resultado = CarregadorFaseJson.de_arquivo(caminho)
 	if not resultado.ok():
@@ -123,16 +136,21 @@ func _carregar(caminho: String) -> void:
 	_campo_vidas.value = config.vidas_iniciais
 	_campo_briefing.text = config.briefing_pedagogico
 	_campo_mostrar_comandos.button_pressed = config.mostrar_comandos
-	_campo_largura.value = config.mapa.largura() if config.mapa != null else 21
-	_campo_altura.value = config.mapa.altura() if config.mapa != null else 15
+	_campo_largura.value = config.mapa.largura() if config.mapa != null else CarregadorFaseJson.LARGURA_PADRAO
+	_campo_altura.value = config.mapa.altura() if config.mapa != null else CarregadorFaseJson.ALTURA_PADRAO
 	# A semente volta para o campo: sem ela, salvar geraria OUTRO labirinto e a
 	# fase editada nao seria mais a fase que o professor testou.
 	_campo_semente.value = config.semente_do_mapa
+	selecionar_cenario(config.cenario)
 
-	for cachorro: CachorroConfig in config.cachorros:
+	for i: int in config.cachorros.size():
+		var cachorro: CachorroConfig = config.cachorros[i]
+		# Fase sem pelagem escolhida mostra a que o jogo usaria (alternada), para
+		# o editor nao trocar a aparencia dos vigias so por abrir e salvar.
 		_adicionar_vigia(cachorro.cor_efetiva(), cachorro.comando_para_bloquear,
 			cachorro.modo_de_bloqueio, cachorro.algoritmo_exigido,
-			cachorro.palavra_da_cifra, cachorro.chave_da_cifra)
+			cachorro.palavra_da_cifra, cachorro.chave_da_cifra,
+			PelagemCachorro.resolver(cachorro.pelagem, i))
 	for pacote: PacoteConfig in config.pacotes:
 		_adicionar_terminal(pacote.enunciado, pacote.opcoes, pacote.resposta_correta,
 			pacote.explicacao_correta)
@@ -146,34 +164,55 @@ func _carregar(caminho: String) -> void:
 ## (modo_de_bloqueio, algoritmo_exigido) que o JSON grava.
 const _TIPOS_DE_VIGIA: Array[Dictionary] = [
 	{"rotulo": "comando livre", "modo": "COMANDO", "algoritmo": "CESAR",
-		"dica": "o jogador digita exatamente a frase que voce escrever (ex.: trocar senha)"},
-	{"rotulo": "cifra de Cesar", "modo": "CIFRA", "algoritmo": "CESAR",
+		"dica": "o jogador digita a frase que você escrever, sem importar maiúsculas (ex.: trocar senha)"},
+	{"rotulo": "cifra de César", "modo": "CIFRA", "algoritmo": "CESAR",
 		"dica": "cada letra anda N casas no alfabeto. palavra + chave de 1 a 25 (ex.: cifrar senha chave=3)"},
-	{"rotulo": "cifra de Vigenere", "modo": "CIFRA", "algoritmo": "VIGENERE",
-		"dica": "a chave e uma palavra; cada letra dela da um deslocamento (ex.: cifrar pacote chave=gato)"},
+	{"rotulo": "cifra de Vigenère", "modo": "CIFRA", "algoritmo": "VIGENERE",
+		"dica": "a chave é uma palavra; cada letra dela dá um deslocamento (ex.: cifrar pacote chave=gato)"},
 	{"rotulo": "hash SHA-256", "modo": "CIFRA", "algoritmo": "SHA256",
-		"dica": "o jogador calcula o resumo com 'hash' e confere com 'verificar' -- integridade, nao sigilo"},
-	{"rotulo": "so persegue", "modo": "NENHUM", "algoritmo": "CESAR",
-		"dica": "nenhum comando para este vigia: a unica defesa e fugir"},
+		"dica": "o jogador calcula o resumo com 'hash' e confere com 'verificar': integridade, não sigilo"},
+	{"rotulo": "só persegue", "modo": "NENHUM", "algoritmo": "CESAR",
+		"dica": "nenhum comando para este vigia: a única defesa é fugir"},
 ]
 
 
 func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "",
 		modo: String = "COMANDO", algoritmo: String = "CESAR",
-		palavra: String = "", chave: String = "") -> HBoxContainer:
+		palavra: String = "", chave: String = "", pelagem: String = "") -> HBoxContainer:
 	var linha := HBoxContainer.new()
 	linha.add_theme_constant_override("separation", 6)
 
 	var seletor := ColorPickerButton.new()
+	seletor.theme_type_variation = &"BotaoCompacto"
 	seletor.custom_minimum_size = Vector2(38, 20)
 	seletor.color = cor
 	seletor.name = "Cor"
 	linha.add_child(seletor)
 
+	# Pelagem guardada no JSON (ADR 0022 e 0042). O jogo alterna husky e pastor
+	# sozinho, entao o seletor fica escondido: ele so guarda o valor que a fase
+	# ja trazia (ou a alternancia, num vigia novo) para salvar a fase igual.
+	var seletor_pelagem := OptionButton.new()
+	seletor_pelagem.theme_type_variation = &"OpcaoCompacta"
+	seletor_pelagem.name = "Pelagem"
+	seletor_pelagem.tooltip_text = "pelagem do cachorro (só aparência)"
+	seletor_pelagem.add_theme_font_size_override("font_size", 9)
+	for nome: String in PelagemCachorro.ORDEM:
+		seletor_pelagem.add_item(nome)
+	var escolhida: String = PelagemCachorro.resolver(pelagem, _vigias.get_child_count())
+	seletor_pelagem.set_meta(&"pelagem_guardada", escolhida)
+	seletor_pelagem.select(maxi(0, PelagemCachorro.ORDEM.find(escolhida)))
+	seletor_pelagem.item_selected.connect(func(indice: int) -> void:
+		seletor_pelagem.set_meta(&"pelagem_guardada", PelagemCachorro.ORDEM[indice]))
+	# A fase mistura husky e pastor sozinha (ADR 0042): nao ha o que escolher.
+	seletor_pelagem.visible = false
+	linha.add_child(seletor_pelagem)
+
 	# OptionButton e nao um campo de texto: o tipo do vigia decide quais campos
 	# fazem sentido, e escolher de uma lista fechada nao deixa o professor
 	# escrever um algoritmo que o jogo nao conhece.
 	var tipo := OptionButton.new()
+	tipo.theme_type_variation = &"OpcaoCompacta"
 	tipo.name = "Tipo"
 	tipo.add_theme_font_size_override("font_size", 9)
 	for item: Dictionary in _TIPOS_DE_VIGIA:
@@ -185,7 +224,7 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "",
 	var campo := LineEdit.new()
 	campo.name = "Comando"
 	campo.text = comando
-	campo.placeholder_text = "comando que bloqueia (vazio = so persegue)"
+	campo.placeholder_text = "comando que bloqueia (vazio = só persegue)"
 	campo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	campo.add_theme_font_size_override("font_size", 9)
 	linha.add_child(campo)
@@ -206,6 +245,7 @@ func _adicionar_vigia(cor: Color = _COR_PADRAO_DO_VIGIA, comando: String = "",
 	linha.add_child(campo_chave)
 
 	var remover := Button.new()
+	remover.theme_type_variation = &"BotaoCompacto"
 	remover.text = "x"
 	remover.add_theme_font_size_override("font_size", 9)
 	_estilizar_botao_destrutivo(remover)
@@ -227,6 +267,7 @@ func _montar_botoes_de_vigia() -> void:
 	var linha: HBoxContainer = get_node(_CACHORROS + "/AdicionarVigias") as HBoxContainer
 	for item: Dictionary in _TIPOS_DE_VIGIA:
 		var botao := Button.new()
+		botao.theme_type_variation = &"BotaoCompacto"
 		botao.text = "+ %s" % item["rotulo"]
 		botao.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		botao.add_theme_font_size_override("font_size", 8)
@@ -284,7 +325,7 @@ func _adicionar_terminal(enunciado: String = "", opcoes: PackedStringArray = Pac
 	var campo_enunciado := LineEdit.new()
 	campo_enunciado.name = "Enunciado"
 	campo_enunciado.text = enunciado
-	campo_enunciado.placeholder_text = "pergunta (ex.: qual destas e a senha mais dificil de descobrir?)"
+	campo_enunciado.placeholder_text = "pergunta (ex.: qual destas é a senha mais difícil de descobrir?)"
 	campo_enunciado.add_theme_font_size_override("font_size", 9)
 	bloco.add_child(campo_enunciado)
 
@@ -301,20 +342,22 @@ func _adicionar_terminal(enunciado: String = "", opcoes: PackedStringArray = Pac
 	var campo_explicacao := LineEdit.new()
 	campo_explicacao.name = "Explicacao"
 	campo_explicacao.text = explicacao
-	campo_explicacao.placeholder_text = "explicacao mostrada ao acertar (opcional)"
+	campo_explicacao.placeholder_text = "explicação mostrada ao acertar (opcional)"
 	campo_explicacao.add_theme_font_size_override("font_size", 8)
 
 	var acoes := HBoxContainer.new()
 	acoes.add_theme_constant_override("separation", 6)
 
 	var adicionar_opcao := Button.new()
-	adicionar_opcao.text = "+ opcao"
+	adicionar_opcao.theme_type_variation = &"BotaoCompacto"
+	adicionar_opcao.text = "+ opção"
 	adicionar_opcao.add_theme_font_size_override("font_size", 8)
 	adicionar_opcao.pressed.connect(func() -> void:
 		_adicionar_opcao(lista_de_opcoes, grupo, "", false))
 	acoes.add_child(adicionar_opcao)
 
 	var remover := Button.new()
+	remover.theme_type_variation = &"BotaoCompacto"
 	remover.text = "remover terminal"
 	remover.add_theme_font_size_override("font_size", 8)
 	_estilizar_botao_destrutivo(remover)
@@ -360,6 +403,7 @@ func _adicionar_opcao(lista: VBoxContainer, grupo: ButtonGroup, texto: String,
 	linha.add_child(campo)
 
 	var remover := Button.new()
+	remover.theme_type_variation = &"BotaoCompacto"
 	remover.text = "x"
 	remover.add_theme_font_size_override("font_size", 8)
 	_estilizar_botao_destrutivo(remover)
@@ -372,10 +416,11 @@ func _adicionar_opcao(lista: VBoxContainer, grupo: ButtonGroup, texto: String,
 	return linha
 
 
+## Desde o ADR 0034 todos os botoes sao o mesmo balao com texto branco, a
+## pedido da equipe; o botao de remover se distingue pelo texto e pela dica.
 func _estilizar_botao_destrutivo(botao: Button) -> void:
-	botao.add_theme_color_override("font_color", _COR_BOTAO_DESTRUTIVO)
-	botao.add_theme_color_override("font_hover_color", _COR_BOTAO_DESTRUTIVO)
-	botao.add_theme_color_override("font_pressed_color", _COR_BOTAO_DESTRUTIVO)
+	if botao.tooltip_text.is_empty():
+		botao.tooltip_text = "remover esta linha"
 
 
 # ---------------------------------------------------------------------------
@@ -392,12 +437,14 @@ func montar_dicionario() -> Dictionary:
 		var modo: String = item["modo"]
 		var comando: String = (linha.get_node("Comando") as LineEdit).text.strip_edges()
 		if modo == "COMANDO" and comando.is_empty():
-			modo = "NENHUM"  # comando em branco sempre significou "so persegue"
+			modo = "NENHUM"  # comando em branco sempre significou "só persegue"
 		var vigia: Dictionary = {
 			"cor": (linha.get_node("Cor") as ColorPickerButton).color.to_html(false),
 			"comando_para_bloquear": comando if modo == "COMANDO" else "",
 			"modo_de_bloqueio": modo,
 			"algoritmo_exigido": item["algoritmo"],
+			"pelagem": String((linha.get_node("Pelagem") as OptionButton).get_meta(&"pelagem_guardada",
+				PelagemCachorro.HUSKY)),
 		}
 		if modo == "CIFRA":
 			vigia["palavra"] = (linha.get_node("Palavra") as LineEdit).text.strip_edges().to_lower()
@@ -429,6 +476,7 @@ func montar_dicionario() -> Dictionary:
 		"id_fase": _id_fase,
 		"briefing": _campo_briefing.text,
 		"mostrar_comandos": _campo_mostrar_comandos.button_pressed,
+		"cenario": cenario_escolhido(),
 		"vidas": int(_campo_vidas.value),
 		"mapa": {
 			"largura": int(_campo_largura.value),
@@ -461,7 +509,7 @@ func _salvar(jogar_depois: bool) -> void:
 	CarregadorFaseJson.garantir_pasta()
 	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
 	if arquivo == null:
-		_mostrar_erros(PackedStringArray(["nao foi possivel gravar %s (erro %d)"
+		_mostrar_erros(PackedStringArray(["não foi possível gravar %s (erro %d)"
 			% [caminho, FileAccess.get_open_error()]]))
 		return
 
@@ -476,14 +524,14 @@ func _salvar(jogar_depois: bool) -> void:
 		return
 
 	_erros.clear()
-	_erros.append_text("[color=#1a6b2c]fase salva em %s[/color]" % caminho.get_file())
+	_erros.append_text("[color=#c8f5b8]fase salva em %s[/color]" % caminho.get_file())
 
 
 func _mostrar_erros(erros: PackedStringArray) -> void:
 	_erros.clear()
 	if erros.is_empty():
 		return
-	_erros.append_text("[b]a fase ainda nao pode ser salva:[/b]\n- %s" % "\n- ".join(erros))
+	_erros.append_text("[b]a fase ainda não pode ser salva:[/b]\n- %s" % "\n- ".join(erros))
 
 
 func _ao_voltar() -> void:

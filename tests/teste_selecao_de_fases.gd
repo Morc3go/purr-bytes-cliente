@@ -110,10 +110,7 @@ func teste_a_tela_e_opaca() -> void:
 
 	afirmar_fundo_opaco(tela.get_node("Fundo"), "fundo opaco")
 
-	var painel: PanelContainer = tela.get_node("Raiz") as PanelContainer
-	var estilo: StyleBoxFlat = painel.get_theme_stylebox("panel") as StyleBoxFlat
-	afirmar_nao_nulo(estilo, "o painel tem StyleBox proprio, nao o default semitransparente do tema")
-	afirmar_igual(estilo.bg_color.a, 1.0, "e ele e opaco")
+	afirmar_vidro_com_vinhas(tela.get_node("Raiz") as PanelContainer, "selecao")
 
 	tela.queue_free()
 	await get_tree().process_frame

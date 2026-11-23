@@ -25,6 +25,9 @@ signal voltar_ao_menu_pressionado()
 
 func _ready() -> void:
 	visible = false
+	# Vidro com vinhas e veu no tom do fundo escolhido na galeria (ADR 0034).
+	EnfeiteDaGaleria.enfeitar($Raiz, [$Raiz/Painel] as Array[Control])
+	EnfeiteDaGaleria.veu($Raiz/Fundo)
 	_botao_continuar.pressed.connect(fechar)
 	_botao_reiniciar.pressed.connect(func() -> void: reiniciar_pressionado.emit())
 	_botao_voltar.pressed.connect(func() -> void: voltar_ao_menu_pressionado.emit())

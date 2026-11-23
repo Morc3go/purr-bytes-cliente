@@ -4,6 +4,13 @@
 > inegociáveis e critérios de aceite, organizados por marco de entrega. Antes de implementar
 > qualquer marco, leia este documento inteiro e os ADRs em `docs/decisoes/`. Um marco só
 > começa quando o anterior tem seus critérios de aceite verdes.
+>
+> **Estado atual (22/11/2026).** Os marcos 0 a 3 estão concluídos, e o projeto foi além
+> deles: o jogo se chama **Crypto Cats**, as fases são criadas no editor (JSON) em vez de
+> cenas fixas, e há uma trilha de demonstração de cinco fases. Tudo o que mudou em
+> relação ao texto abaixo está no **Apêndice** ao final e nos ADRs 0001 a 0044. Para o
+> panorama do jogo hoje, leia o `README.md`; para a evolução, o
+> `docs/historico-de-desenvolvimento.md`.
 
 ---
 
@@ -525,3 +532,10 @@ Cada um tem justificativa completa no ADR indicado.
 | `id_fase` "sempre presente" em todo evento | `null` em eventos de sessão (não pertencem a fase); tentativa continua exigindo | ADR 0018, `docs/contrato-telemetria.md` |
 | `4xx` sempre permanente (lote descartado) | `401/403/404/408/425/429` são transitórios: chave ou URL errada não apaga a coleta | ADR 0018 |
 | Coleta com participantes reais (TCLE, pré/pós-teste) | Somente dados fictícios por decisão de LGPD; PostgreSQL 16 local via Docker Compose, seed fictício no perfil `dev` | ADR 0019 |
+| Godot 4.4 ou superior | Projeto em Godot 4.6 (`config/features` do `project.godot`), testado em 4.6 e 4.7.2 | `project.godot`, README |
+| Quatro fases fixas, uma por algoritmo (César, Vigenère, SHA-256, AES), em `cenas/fases/fase_0N.tscn` com `recursos/fases/*.tres` | Sem fases fixas: o professor cria as fases no editor, gravadas em JSON, e `fase_base.tscn` é a única cena de fase. O jogo traz uma trilha de demonstração de cinco fases (César, Vigenère, SHA-256, golpes digitais e avaliação final). O AES ficou fora | ADR 0011, 0012, 0021 |
+| Labirinto desenhado à mão no `TileMapLayer` de cada fase | Gerado a partir de largura, altura e semente (`GeradorDeMapa`), sempre solucionável, com braiding. A entrada fica sempre num ciclo, para o gato poder fugir | ADR 0012, 0041 |
+| Um cachorro por fase | Vários vigias por fase, de três tipos: de cifra, de comando livre e que só persegue. Toda fase alterna husky e pastor; a pelagem é só aparência | ADR 0010, 0015, 0022, 0042 |
+| Diretor de IA nas fases | Liga só quando a fase declara regiões. As fases de autoria usam linha de visão e patrulha | ADR 0002, `docs/conformidade-monografia.md` |
+| Pacote de dados sem forma definida | Desenhado como novelo, peixe ou rato, com pergunta de múltipla escolha ao coletar; a porta só abre com todos coletados | ADR 0010, 0043 |
+| Menu simples (Jogar, Telemetria, Sair) | Todas as telas no estilo do menu: wallpaper da galeria, vidro fosco, moldura de vinhas e botões no tom do fundo. A cor da vinha também segue o wallpaper | ADR 0033, 0034, 0044 |

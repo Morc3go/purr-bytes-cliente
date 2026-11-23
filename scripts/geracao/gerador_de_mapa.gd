@@ -68,7 +68,7 @@ static func gerar(largura: int, altura: int, semente: int,
 	# Chegar aqui significa que nem doze sementes produziram mapa valido para as
 	# medidas pedidas -- tipicamente area pequena demais para tantas entidades.
 	if resultado.erros.is_empty():
-		resultado.erros.append("nao foi possivel gerar um mapa %dx%d com %d pacote(s) e %d cachorro(s)"
+		resultado.erros.append("não foi possível gerar um mapa %dx%d com %d pacote(s) e %d cachorro(s)"
 			% [largura_util, altura_util, pacotes, cachorros])
 	return resultado
 
@@ -94,6 +94,9 @@ static func _construir(largura: int, altura: int, semente: int,
 
 	_escavar(grade, Vector2i(1, 1), largura, altura, rng)
 	_abrir_ciclos(grade, largura, altura, rng)
+	# A entrada e livres[0] logo abaixo: a primeira celula de piso na ordem de
+	# leitura, que e sempre (1, 1), onde o backtracker comecou.
+	_garantir_fuga_na_entrada(grade, Vector2i(1, 1), largura, altura)
 
 	var livres: Array[Vector2i] = []
 	for y: int in altura:
@@ -212,6 +215,100 @@ static func _abrir_ciclos(grade: Array, largura: int, altura: int,
 			continue
 		var escolhida: Vector2i = candidatas[rng.randi_range(0, candidatas.size() - 1)]
 		grade[escolhida.y][escolhida.x] = MapaConfig.PISO
+
+
+## A entrada precisa de rota de fuga (ADR 0041). O braiding deixa alguns becos,
+## e as vezes um deles e justamente o comeco: o gato nasce num corredor com uma
+## saida so, o cachorro vem por ela e nao ha para onde correr -- o jogador fica
+## preso sem ter errado nada. Por isso a entrada tem de estar num CICLO: com
+## duas direcoes para sair, da sempre para dar a volta no perseguidor.
+##
+## Mapa que ja nasce assim nao muda nada (a mesma semente continua dando o mesmo
+## labirinto). Senao, abre o minimo: primeiro a outra parede da propria entrada
+## (o mapa e conexo, entao essa passagem nova fecha um ciclo que passa por ela);
+## se ainda nao bastar, a parede mais perto da entrada que a ponha num ciclo.
+## Nada aqui usa o rng: a correcao e a mesma para a mesma semente.
+static func _garantir_fuga_na_entrada(grade: Array, entrada: Vector2i, largura: int, altura: int) -> void:
+	if entrada_tem_fuga(grade, entrada):
+		return
+	for direcao: Vector2i in _DIRECOES:
+		if _abre_passagem(grade, entrada, direcao, largura, altura) and entrada_tem_fuga(grade, entrada):
+			return
+	for celula: Vector2i in _ordem_por_distancia(grade, entrada):
+		for direcao: Vector2i in _DIRECOES:
+			if not _abre_passagem(grade, celula, direcao, largura, altura):
+				continue
+			if entrada_tem_fuga(grade, entrada):
+				return
+			var parede: Vector2i = celula + direcao
+			grade[parede.y][parede.x] = MapaConfig.PAREDE
+
+
+const _DIRECOES: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
+
+
+## Derruba a parede de celula + direcao se do outro lado houver piso e ela nao
+## for a borda. Devolve se abriu.
+static func _abre_passagem(grade: Array, celula: Vector2i, direcao: Vector2i,
+		largura: int, altura: int) -> bool:
+	var parede: Vector2i = celula + direcao
+	var alem: Vector2i = celula + direcao * 2
+	if parede.x < 1 or parede.y < 1 or parede.x > largura - 2 or parede.y > altura - 2:
+		return false
+	if alem.x < 1 or alem.y < 1 or alem.x > largura - 2 or alem.y > altura - 2:
+		return false
+	if grade[parede.y][parede.x] != MapaConfig.PAREDE or grade[alem.y][alem.x] == MapaConfig.PAREDE:
+		return false
+	grade[parede.y][parede.x] = MapaConfig.PISO
+	return true
+
+
+## A entrada esta num ciclo? Sai por um vizinho e tenta voltar a ela sem usar o
+## mesmo passo: se consegue, ha duas rotas e o gato pode dar a volta. Publica
+## para os testes e para o validador conferirem mapas prontos.
+static func entrada_tem_fuga(grade: Array, entrada: Vector2i) -> bool:
+	for direcao: Vector2i in _DIRECOES:
+		var primeiro: Vector2i = entrada + direcao
+		if not _e_piso(grade, primeiro):
+			continue
+		var visitadas: Dictionary = {primeiro: true}
+		var fila: Array[Vector2i] = [primeiro]
+		while not fila.is_empty():
+			var atual: Vector2i = fila.pop_front()
+			for passo: Vector2i in _DIRECOES:
+				var vizinho: Vector2i = atual + passo
+				if atual == primeiro and vizinho == entrada:
+					continue
+				if vizinho == entrada:
+					return true
+				if visitadas.has(vizinho) or not _e_piso(grade, vizinho):
+					continue
+				visitadas[vizinho] = true
+				fila.append(vizinho)
+	return false
+
+
+static func _e_piso(grade: Array, celula: Vector2i) -> bool:
+	return celula.y >= 0 and celula.y < grade.size() \
+		and celula.x >= 0 and celula.x < grade[celula.y].size() \
+		and grade[celula.y][celula.x] != MapaConfig.PAREDE
+
+
+## Celulas de piso da mais perto para a mais longe da entrada (andando).
+static func _ordem_por_distancia(grade: Array, entrada: Vector2i) -> Array[Vector2i]:
+	var ordem: Array[Vector2i] = [entrada]
+	var visitadas: Dictionary = {entrada: true}
+	var i: int = 0
+	while i < ordem.size():
+		var atual: Vector2i = ordem[i]
+		i += 1
+		for passo: Vector2i in _DIRECOES:
+			var vizinho: Vector2i = atual + passo
+			if visitadas.has(vizinho) or not _e_piso(grade, vizinho):
+				continue
+			visitadas[vizinho] = true
+			ordem.append(vizinho)
+	return ordem
 
 
 static func _vizinhos_livres(grade: Array, celula: Vector2i) -> int:

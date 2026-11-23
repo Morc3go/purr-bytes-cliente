@@ -125,10 +125,8 @@ func teste_a_tela_carrega_com_fundo_opaco_e_diagnostico_acessivel() -> void:
 	afirmar_fundo_opaco(tela.get_node_or_null("Fundo"),
 		"o fundo e OPACO: painel transparente sobre o jogo foi o bug historico das telas")
 
-	var painel: PanelContainer = tela.get_node("Raiz") as PanelContainer
-	var estilo: StyleBoxFlat = painel.get_theme_stylebox("panel") as StyleBoxFlat
-	afirmar_nao_nulo(estilo, "o painel principal tem StyleBox proprio, nao o default do tema")
-	afirmar_igual(estilo.bg_color.a, 1.0, "e ele tambem e opaco")
+	for nome: String in ["Raiz", "PainelFases", "PainelDetalhe", "PainelDiagnostico"]:
+		afirmar_vidro_com_vinhas(tela.get_node(nome) as PanelContainer, "dashboard/%s" % nome)
 
 	var diagnostico: PanelContainer = tela.get_node("PainelDiagnostico") as PanelContainer
 	afirmar_falso(diagnostico.visible, "o diagnostico tecnico comeca fechado")

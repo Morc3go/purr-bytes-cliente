@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://cenas/base/pacote.gd" id="1_pacote"]
+[ext_resource type="Texture2D" path="res://recursos/arte/itens/novelo.png" id="2_item"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_pacote"]
 radius = 7.0
@@ -12,3 +13,6 @@ script = ExtResource("1_pacote")
 
 [node name="Colisao" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_pacote")
+
+[node name="Item" type="Sprite2D" parent="."]
+texture = ExtResource("2_item")

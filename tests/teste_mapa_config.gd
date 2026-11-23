@@ -69,7 +69,7 @@ func teste_recusa_pacote_ilhado() -> void:
 	])
 	var problemas: PackedStringArray = _mapa(linhas).problemas()
 	afirmar_verdadeiro(problemas.size() >= 1, "pacote inalcancavel reprova o mapa")
-	afirmar_contem(" ".join(problemas), "inalcancavel",
+	afirmar_contem(" ".join(problemas), "inalcançável",
 		"a mensagem diz que o pacote nao tem caminho ate ele")
 
 

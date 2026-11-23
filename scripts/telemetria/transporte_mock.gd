@@ -37,7 +37,7 @@ func enviar(pacote: Dictionary) -> ResultadoEnvio:
 
 	var linhas: PackedStringArray = _linhas_do_pacote(pacote)
 	if linhas.is_empty():
-		return ResultadoEnvio.falha_permanente("pacote sem conteudo reconhecivel")
+		return ResultadoEnvio.falha_permanente("pacote sem conteúdo reconhecível")
 
 	var arquivo: FileAccess = FileAccess.open(_caminho, FileAccess.READ_WRITE)
 	if arquivo == null:
@@ -46,7 +46,7 @@ func enviar(pacote: Dictionary) -> ResultadoEnvio:
 		# Disco cheio ou sem permissao: transitorio de proposito, para a fila
 		# segurar o dado em memoria em vez de descartar.
 		return ResultadoEnvio.falha_transitoria(
-			"nao foi possivel abrir %s (erro %d)" % [_caminho, FileAccess.get_open_error()])
+			"não foi possível abrir %s (erro %d)" % [_caminho, FileAccess.get_open_error()])
 
 	arquivo.seek_end()
 	for linha: String in linhas:

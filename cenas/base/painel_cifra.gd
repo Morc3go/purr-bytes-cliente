@@ -15,8 +15,11 @@ signal aberto()
 signal fechado()
 
 const _TAMANHO_FONTE: int = 8
-const _COR_CHAVE: Color = Color(1.0, 0.85, 0.3)
-const _COR_DIVERGENTE: Color = Color(1.0, 0.4, 0.4)
+# Sobre o vidro escuro no tom do fundo (ADR 0034): chave em amarelo claro e
+# diferenca em rosa claro, os dois legiveis ao lado do texto branco.
+const _COR_CHAVE: Color = TemaDaGaleria.COR_DE_DESTAQUE
+const _COR_DIVERGENTE: Color = TemaDaGaleria.COR_DE_ERRO
+const _COR_IGUAL: Color = Color.WHITE
 
 @onready var _raiz: Control = $Raiz
 @onready var _titulo: Label = $Raiz/Painel/Margem/Coluna/Titulo
@@ -25,6 +28,8 @@ const _COR_DIVERGENTE: Color = Color(1.0, 0.4, 0.4)
 
 func _ready() -> void:
 	visible = false
+	# Vidro com vinhas e veu no tom do fundo escolhido na galeria (ADR 0034).
+	EnfeiteDaGaleria.enfeitar($Raiz, [$Raiz/Painel] as Array[Control])
 
 
 func abrir(titulo: String, texto_claro: String, chave: String, cifra: Cifra) -> void:
@@ -98,7 +103,7 @@ func _montar_colunas_avalanche(texto_a: String, texto_b: String) -> void:
 
 func _criar_coluna_avalanche(coluna: DemonstracaoAvalanche.Coluna) -> VBoxContainer:
 	var caixa := VBoxContainer.new()
-	var cor: Color = _COR_DIVERGENTE if coluna.diferente else Color.WHITE
+	var cor: Color = _COR_DIVERGENTE if coluna.diferente else _COR_IGUAL
 
 	var rotulo_a := Label.new()
 	rotulo_a.text = coluna.digito_a

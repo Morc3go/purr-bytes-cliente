@@ -21,6 +21,9 @@ signal evento_registrado(evento: Dictionary)
 signal tentativa_registrada(tentativa: Dictionary)
 signal lote_confirmado(rota: String, quantidade: int)
 signal falha_de_envio(rota: String, detalhe: String, permanente: bool)
+## Fim de uma descarga (com ou sem sucesso). Existe para quem chama
+## descarregar() durante uma descarga ja em curso poder ESPERAR por ela.
+signal descarga_concluida()
 
 const CAMINHO_FILA_PADRAO: String = "user://fila_telemetria.json"
 
@@ -78,6 +81,10 @@ var _sequencia: int = 0
 var _sessao_aberta: bool = false
 
 var _descarregando: bool = false
+## Muda a cada reiniciar(). Uma descarga que comecou antes de um reiniciar e
+## ainda estava esperando o transporte antigo nao pode mexer na fila nova: ao
+## acordar, ela confere a geracao e sai sem tocar em nada.
+var _geracao: int = 0
 var _falhas_consecutivas: int = 0
 var _temporizador: Timer = null
 
@@ -150,6 +157,7 @@ func reiniciar(transporte: TransporteTelemetria, caminho_fila: String) -> void:
 	_falhas_consecutivas = 0
 	_eventos_descartados = 0
 	_descarregando = false
+	_geracao += 1
 	configurar(transporte, caminho_fila)
 
 
@@ -334,9 +342,16 @@ func registrar_tentativa(
 ## Drena a fila. E corrotina: o temporizador chama sem await, os testes e o
 ## encerramento do jogo chamam com await para saber que terminou.
 func descarregar() -> void:
-	if _descarregando or _transporte == null:
+	if _transporte == null:
+		return
+	if _descarregando:
+		# Antes voltava na hora: o painel de telemetria, aberto enquanto o
+		# temporizador drenava, lia o registro pela metade (sessao faltando,
+		# fase com 0% de acerto). Quem pede com await espera a descarga em curso.
+		await descarga_concluida
 		return
 	_descarregando = true
+	var geracao: int = _geracao
 
 	# Escrita adiantada: o disco passa a refletir o que ainda nao saiu ANTES da
 	# primeira tentativa. Um processo morto no meio do envio perde no maximo os
@@ -349,6 +364,10 @@ func descarregar() -> void:
 			break
 
 		var resultado: ResultadoEnvio = await _transporte.enviar(pacote)
+		if geracao != _geracao:
+			# reiniciar() trocou fila e transporte durante o envio: este pacote
+			# era da fila antiga. Remover dele itens da fila nova apagaria dados.
+			return
 		var rota: String = String(pacote["rota"])
 
 		if resultado.sucesso:
@@ -359,6 +378,8 @@ func descarregar() -> void:
 				# Falha aqui nao volta o item para a fila: o servidor ja o tem,
 				# reenviar duplicaria dado de pesquisa por causa de uma copia local.
 				await _historico_local.enviar(pacote)
+				if geracao != _geracao:
+					return
 			lote_confirmado.emit(rota, quantidade)
 		elif resultado.permanente:
 			# 4xx: reenviar daria o mesmo erro para sempre. Descarta e grita --
@@ -378,6 +399,7 @@ func descarregar() -> void:
 
 	_persistir()
 	_descarregando = false
+	descarga_concluida.emit()
 
 
 ## Caminho do registro local da coleta -- a fonte do Dashboard de Telemetria.

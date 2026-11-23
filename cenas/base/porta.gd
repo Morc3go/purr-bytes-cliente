@@ -9,13 +9,16 @@ extends Area2D
 ## objetivo: da para olhar do outro lado do labirinto e saber que ainda falta
 ## coisa, que e o que faz os pacotes valerem a pena procurar.
 ##
-## Desenhada com _draw() pelo mesmo motivo de cenas/base/pacote.gd: nao ha arte
-## de porta ainda, e uma forma geometrica legivel no tile de 16 nao deixa
-## arquivo de imagem orfao quando a arte definitiva chegar.
+## Arte: arco de pedra com porta de madeira, fechada enquanto falta pacote e
+## aberta (a passagem escura) quando o gato resgatou todas as mensagens. O
+## desenho tem 18x16, do tamanho de uma celula, proporcional ao gato e aos
+## cachorros (ADR 0035; antes era 24x32 e subia pela cerca). Os pes ficam na
+## base da celula, e a area de colisao continua sendo a celula.
 
-const _COR_TRANCADA: Color = Color(0.85, 0.32, 0.32)
-const _COR_ABERTA: Color = Color(0.40, 0.88, 0.52)
-const _LADO: float = 14.0
+const TEXTURA_FECHADA: Texture2D = preload("res://recursos/arte/porta_fechada.png")
+const TEXTURA_ABERTA: Texture2D = preload("res://recursos/arte/porta_aberta.png")
+## Metade da celula: onde fica a base dela em relacao ao centro do no.
+const _BASE_DA_CELULA: float = 8.0
 
 var trancada: bool = true
 
@@ -27,21 +30,14 @@ func definir_trancada(valor: bool) -> void:
 	queue_redraw()
 
 
+func textura_atual() -> Texture2D:
+	return TEXTURA_FECHADA if trancada else TEXTURA_ABERTA
+
+
 func _draw() -> void:
-	var cor: Color = _COR_TRANCADA if trancada else _COR_ABERTA
-	var quadro := Rect2(-_LADO / 2.0, -_LADO / 2.0, _LADO, _LADO)
-
-	var fundo: Color = cor
-	fundo.a = 0.22
-	draw_rect(quadro, fundo)
-	draw_rect(quadro, cor, false, 1.0)
-
-	if trancada:
-		# Cadeado: arco em cima, corpo embaixo. Duas primitivas bastam para a
-		# leitura "isto esta fechado" a 16 pixels.
-		draw_arc(Vector2(0, -1.0), 3.0, PI, TAU, 8, cor, 1.0)
-		draw_rect(Rect2(-3.0, -1.0, 6.0, 5.0), cor)
-	else:
-		# Vao aberto: a barra vertical de um lado so, como uma porta escancarada.
-		draw_line(Vector2(-2.0, -5.0), Vector2(-2.0, 5.0), cor, 1.0)
-		draw_line(Vector2(-2.0, 0.0), Vector2(4.0, 0.0), cor, 1.0)
+	var textura: Texture2D = textura_atual()
+	var tamanho: Vector2 = textura.get_size()
+	# A aberta tem 2 px a mais embaixo (a folha da porta solta do batente): a
+	# base do batente das duas fica na mesma linha.
+	var sobra: float = tamanho.y - TEXTURA_FECHADA.get_size().y
+	draw_texture(textura, Vector2(-floorf(tamanho.x / 2.0), _BASE_DA_CELULA - tamanho.y + sobra))

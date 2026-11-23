@@ -136,6 +136,28 @@ func afirmar_fundo_opaco(fundo: Node, mensagem: String) -> bool:
 	return false
 
 
+## Cartao de tela no estilo do menu (ADR 0034): vidro fosco (o shader devolve
+## pixel opaco, entao o texto nunca fica sobre o wallpaper nitido), com a tinta
+## do fundo escolhido e a moldura de vinhas em volta.
+func afirmar_vidro_com_vinhas(cartao: Control, mensagem: String) -> bool:
+	var material: ShaderMaterial = cartao.material as ShaderMaterial
+	var ok: bool = afirmar_verdadeiro(material != null and material.shader != null
+		and material.shader.resource_path == "res://recursos/shaders/vidro_fosco.gdshader",
+		"%s: o painel e vidro fosco" % mensagem)
+	var estilo: StyleBoxFlat = cartao.get_theme_stylebox("panel") as StyleBoxFlat
+	if afirmar_nao_nulo(estilo, "%s: o painel tem a tinta do tema" % mensagem):
+		ok = afirmar_igual(estilo.bg_color, GaleriaDeFundos.tinta(GaleriaDeFundos.atual()),
+			"%s: a tinta e a do fundo escolhido" % mensagem) and ok
+	var moldura: MolduraDeVinhas = EnfeiteDaGaleria.moldura_de(cartao)
+	if afirmar_nao_nulo(moldura, "%s: tem a moldura de vinhas" % mensagem):
+		ok = afirmar_igual(moldura.cartao, cartao, "%s: a moldura contorna este cartao" % mensagem) and ok
+		ok = afirmar_verdadeiro(moldura.get_index() > cartao.get_index(),
+			"%s: a moldura fica por cima da borda do vidro" % mensagem) and ok
+		ok = afirmar_igual(moldura.fundo_em_uso(), GaleriaDeFundos.atual(),
+			"%s: a vinha nas cores do fundo escolhido (ADR 0044)" % mensagem) and ok
+	return ok
+
+
 func falhar(mensagem: String) -> void:
 	afirmar(false, mensagem)
 

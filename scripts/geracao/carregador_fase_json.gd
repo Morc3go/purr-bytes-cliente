@@ -15,6 +15,7 @@ extends RefCounted
 ##     "id_fase": "uuid-v4",                  ausente = gerado ao carregar
 ##     "briefing": "texto mostrado ao entrar",
 ##     "mostrar_comandos": true,              comandos dos vigias a vista (padrao false)
+##     "cenario": "outono",                   aparencia do labirinto (padrao "jardim", ADR 0035)
 ##     "mapa":   {"largura": 21, "altura": 15, "seed": 12345},
 ##     "vidas": 3,
 ##     "cachorros": [
@@ -43,8 +44,15 @@ const PASTA_DAS_FASES: String = "user://fases"
 ## antes, um teste interrompido no meio deixava "Fase de teste" no menu.
 static var pasta_das_fases: String = PASTA_DAS_FASES
 const _VIDAS_PADRAO: int = 3
-const _LARGURA_PADRAO: int = 21
-const _ALTURA_PADRAO: int = 15
+## Tamanho que enche a tela do jogo (ADR 0024): 39x19 tiles de 16 px sao
+## 624x304, o maior labirinto impar que cabe entre o HUD e a dica de comandos
+## na tela base de 640x360, com zoom 1.
+const LARGURA_PADRAO: int = 39
+const ALTURA_PADRAO: int = 19
+## Tamanhos padrao de antes da ADR 0024. Fase de demonstracao ou exemplo com
+## um destes tamanhos e a semente original nunca foi redimensionada pelo
+## professor, entao pode crescer junto com o jogo (ver _ampliar_mapa_antigo).
+const _TAMANHOS_ANTIGOS: Array[Vector2i] = [Vector2i(21, 15), Vector2i(25, 17)]
 const _LIMITE_DO_TITULO: int = 60
 ## Palavra que o jogador cifra: curta de proposito, ela vai inteira no comando
 ## e na explicacao letra a letra do terminal.
@@ -90,16 +98,77 @@ static func semear_exemplo() -> void:
 	Registro.info("Fases", "fase de exemplo criada em %s" % caminho)
 
 
+## Fases de demonstracao que vem com o jogo (ADR 0021): uma trilha pronta para
+## a banca e para a primeira coleta -- Cesar, Vigenere, SHA-256, golpes
+## digitais e uma avaliacao final sem os comandos na tela.
+##
+## Continuam sendo fases de AUTORIA comuns: JSON copiado para user://fases,
+## que o professor edita, exporta ou exclui como qualquer outra. O id_fase de
+## cada uma e FIXO no arquivo, entao a telemetria de maquinas diferentes cai na
+## mesma fase no banco.
+const PASTA_DAS_FASES_DEMO: String = "res://recursos/fases_demo"
+## Sobe quando entrar fase nova na trilha. A marca fica num arquivo oculto da
+## pasta de fases: fase demo que o professor excluiu nao volta sozinha.
+## v2: labirintos do tamanho da tela (ADR 0024).
+## v3: um cenario por fase (ADR 0035).
+const VERSAO_DAS_FASES_DEMO: int = 3
+const _MARCA_DAS_FASES_DEMO: String = ".fases_demo"
+
+
+static func semear_fases_demo() -> void:
+	garantir_pasta()
+	var marca: String = pasta_das_fases.path_join(_MARCA_DAS_FASES_DEMO)
+	var versao_instalada: int = 0
+	if FileAccess.file_exists(marca):
+		versao_instalada = FileAccess.get_file_as_string(marca).strip_edges().to_int()
+	if versao_instalada >= VERSAO_DAS_FASES_DEMO:
+		return
+
+	var copiadas: int = 0
+	for nome: String in DirAccess.get_files_at(PASTA_DAS_FASES_DEMO):
+		if nome.get_extension().to_lower() != "json":
+			continue
+		var destino: String = pasta_das_fases.path_join(nome)
+		var texto: String = FileAccess.get_file_as_string(PASTA_DAS_FASES_DEMO.path_join(nome))
+		if FileAccess.file_exists(destino):
+			# Nunca por cima do que esta la; so o mapa de uma copia antiga, que
+			# o professor nao redimensionou, cresce para o tamanho novo.
+			_atualizar_mapa_da_demo(destino, texto)
+			continue
+		if versao_instalada >= 1:
+			# A trilha ja foi instalada antes: demo que falta foi excluida pelo
+			# professor e nao volta. (A v2 so ampliou mapas; uma versao futura
+			# que acrescentar fase nova precisa liberar o nome dela aqui.)
+			continue
+		if texto.is_empty():
+			continue
+		var arquivo: FileAccess = FileAccess.open(destino, FileAccess.WRITE)
+		if arquivo == null:
+			Registro.aviso("Fases", "nao foi possivel gravar %s" % destino)
+			continue
+		arquivo.store_string(texto)
+		arquivo.close()
+		copiadas += 1
+
+	var arquivo_marca: FileAccess = FileAccess.open(marca, FileAccess.WRITE)
+	if arquivo_marca != null:
+		arquivo_marca.store_string(str(VERSAO_DAS_FASES_DEMO))
+		arquivo_marca.close()
+	if copiadas > 0:
+		Registro.info("Fases", "%d fase(s) de demonstracao instalada(s)" % copiadas)
+
+
 const NOME_DO_EXEMPLO: String = "exemplo-senhas-fortes.json"
 ## Sobe quando o exemplo muda de um jeito que vale levar para quem ja tem o
 ## arquivo gravado (ver atualizar_exemplo).
-const VERSAO_DO_EXEMPLO: int = 2
-const BRIEFING_DO_EXEMPLO: String = ("o pacote precisa atravessar a rede ate a porta.\n"
-	+ "abra o terminal (tecla T) e digite o comando do vigia que esta no caminho:\n"
+## v4: labirinto do tamanho da tela (ADR 0024).
+const VERSAO_DO_EXEMPLO: int = 4
+const BRIEFING_DO_EXEMPLO: String = ("o pacote precisa atravessar a rede até a porta.\n"
+	+ "abra o terminal (tecla T) e digite o comando do vigia que está no caminho:\n"
 	+ "  vigia azul: trocar senha\n"
 	+ "  vigia laranja: ativar 2fa\n"
-	+ "  vigia verde: cifrar senha chave=3 (cifra de Cesar -- F4 mostra como ela funciona)\n"
-	+ "o vigia vermelho nao tem comando -- desse voce foge.")
+	+ "  vigia verde: cifrar senha chave=3 (cifra de César; F4 mostra como ela funciona)\n"
+	+ "o vigia vermelho não tem comando: desse você foge.")
 ## Briefings das versoes anteriores do exemplo. So um exemplo com um DESTES
 ## textos e atualizado: se o professor reescreveu, o arquivo e dele.
 const _BRIEFINGS_ANTIGOS_DO_EXEMPLO: PackedStringArray = [
@@ -111,7 +180,56 @@ const _BRIEFINGS_ANTIGOS_DO_EXEMPLO: PackedStringArray = [
 		+ "  vigia azul: trocar senha\n"
 		+ "  vigia laranja: ativar 2fa\n"
 		+ "o vigia vermelho nao tem comando -- desse voce foge."),
+	# v2 (sem acentos); a v3 acentuou os textos e trocou o "--" por pontuacao.
+	("o pacote precisa atravessar a rede ate a porta.\n"
+		+ "abra o terminal (tecla T) e digite o comando do vigia que esta no caminho:\n"
+		+ "  vigia azul: trocar senha\n"
+		+ "  vigia laranja: ativar 2fa\n"
+		+ "  vigia verde: cifrar senha chave=3 (cifra de Cesar -- F4 mostra como ela funciona)\n"
+		+ "o vigia vermelho nao tem comando -- desse voce foge."),
 ]
+
+
+## Leva o mapa de uma demo ja instalada para o tamanho da versao atual, so se
+## e a mesma fase (id_fase) com o mapa intocado de uma versao anterior.
+static func _atualizar_mapa_da_demo(destino: String, texto_atual: String) -> void:
+	var instalada: Variant = JSON.parse_string(FileAccess.get_file_as_string(destino))
+	var atual: Variant = JSON.parse_string(texto_atual)
+	if typeof(instalada) != TYPE_DICTIONARY or typeof(atual) != TYPE_DICTIONARY:
+		return
+	var dados: Dictionary = instalada as Dictionary
+	if String(dados.get("id_fase", "")) != String((atual as Dictionary).get("id_fase", "")):
+		return
+	var ampliou: bool = _ampliar_mapa_antigo(dados, (atual as Dictionary).get("mapa", {}) as Dictionary)
+	# Demo instalada antes dos cenarios ganha o da trilha; se o professor ja
+	# escolheu um, o dele fica.
+	var ganhou_cenario: bool = not dados.has("cenario") and (atual as Dictionary).has("cenario")
+	if ganhou_cenario:
+		dados["cenario"] = (atual as Dictionary)["cenario"]
+	if not ampliou and not ganhou_cenario:
+		return
+	var arquivo: FileAccess = FileAccess.open(destino, FileAccess.WRITE)
+	if arquivo == null:
+		return
+	arquivo.store_string(JSON.stringify(dados, "\t"))
+	arquivo.close()
+	Registro.info("Fases", "fase de demonstracao %s atualizada" % destino.get_file())
+
+
+## Troca o mapa por novo_mapa se o atual e um tamanho padrao antigo com a
+## MESMA semente: e o sinal de que ninguem mexeu nele. Devolve se trocou.
+static func _ampliar_mapa_antigo(dados: Dictionary, novo_mapa: Dictionary) -> bool:
+	var mapa: Dictionary = dados.get("mapa", {}) as Dictionary
+	if mapa.is_empty() or novo_mapa.is_empty():
+		return false
+	if int(mapa.get("seed", -1)) != int(novo_mapa.get("seed", -2)):
+		return false
+	var tamanho := Vector2i(int(mapa.get("largura", 0)), int(mapa.get("altura", 0)))
+	var novo := Vector2i(int(novo_mapa.get("largura", 0)), int(novo_mapa.get("altura", 0)))
+	if tamanho == novo or not _TAMANHOS_ANTIGOS.has(tamanho):
+		return false
+	dados["mapa"] = novo_mapa.duplicate()
+	return true
 
 
 ## Leva a fase de exemplo ja gravada por uma versao anterior para a atual:
@@ -120,7 +238,8 @@ const _BRIEFINGS_ANTIGOS_DO_EXEMPLO: PackedStringArray = [
 ##
 ## semear_exemplo() nunca escreve por cima do que existe, entao este passo
 ## atualiza SO o exemplo intocado (um briefing antigo conhecido), preservando
-## o id_fase -- a telemetria ja coletada continua ligada a ele -- e o mapa.
+## o id_fase -- a telemetria ja coletada continua ligada a ele. O mapa so
+## muda se ainda e o tamanho padrao antigo com a semente original (v4, ADR 0024).
 static func atualizar_exemplo() -> void:
 	var caminho: String = pasta_das_fases.path_join(NOME_DO_EXEMPLO)
 	if not FileAccess.file_exists(caminho):
@@ -131,12 +250,14 @@ static func atualizar_exemplo() -> void:
 	var dados: Dictionary = lido as Dictionary
 	if int(dados.get("versao_do_exemplo", 0)) >= VERSAO_DO_EXEMPLO:
 		return
-	if not _BRIEFINGS_ANTIGOS_DO_EXEMPLO.has(String(dados.get("briefing", ""))):
+	var briefing: String = String(dados.get("briefing", ""))
+	if not _BRIEFINGS_ANTIGOS_DO_EXEMPLO.has(briefing) and briefing != BRIEFING_DO_EXEMPLO:
 		return
 
 	var atual: Dictionary = _exemplo()
-	for campo: String in ["briefing", "mostrar_comandos", "cachorros", "versao_do_exemplo"]:
+	for campo: String in ["briefing", "mostrar_comandos", "cachorros", "terminais", "versao_do_exemplo"]:
 		dados[campo] = atual[campo]
+	_ampliar_mapa_antigo(dados, atual["mapa"] as Dictionary)
 	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
 	if arquivo == null:
 		return
@@ -154,7 +275,7 @@ static func _exemplo() -> Dictionary:
 		"versao_do_exemplo": VERSAO_DO_EXEMPLO,
 		"algoritmo": "CESAR",
 		"vidas": 3,
-		"mapa": {"largura": 21, "altura": 15, "seed": 20260914},
+		"mapa": {"largura": LARGURA_PADRAO, "altura": ALTURA_PADRAO, "seed": 20260914},
 		"cachorros": [
 			{"cor": "#4da3ff", "comando_para_bloquear": "trocar senha", "algoritmo_exigido": "CESAR"},
 			{"cor": "#ffb44d", "comando_para_bloquear": "ativar 2fa", "algoritmo_exigido": "CESAR"},
@@ -164,25 +285,25 @@ static func _exemplo() -> Dictionary:
 		],
 		"terminais": [
 			{
-				"enunciado": "qual destas e a senha mais dificil de descobrir?",
-				"opcoes": ["uma frase longa que so voce lembra", "seu nome com o ano de nascimento",
-					"a palavra 'senha' com um numero no fim"],
-				"correta": "uma frase longa que so voce lembra",
+				"enunciado": "qual destas é a senha mais difícil de descobrir?",
+				"opcoes": ["uma frase longa que só você lembra", "seu nome com o ano de nascimento",
+					"a palavra 'senha' com um número no fim"],
+				"correta": "uma frase longa que só você lembra",
 				"explicacao": "tamanho vale mais que simbolo: frase longa demora seculos para ser testada.",
 			},
 			{
-				"enunciado": "um site que voce usa vazou as senhas. o que fazer primeiro?",
+				"enunciado": "um site que você usa vazou as senhas. o que fazer primeiro?",
 				"opcoes": ["trocar a senha desse site e de onde ela se repetia",
-					"esperar o site avisar por e-mail", "so trocar se perceber algo estranho"],
+					"esperar o site avisar por e-mail", "só trocar se perceber algo estranho"],
 				"correta": "trocar a senha desse site e de onde ela se repetia",
 				"explicacao": "senha repetida transforma um vazamento em varios: o risco viaja junto.",
 			},
 			{
-				"enunciado": "para que serve a verificacao em duas etapas?",
-				"opcoes": ["pedir algo alem da senha, que o invasor nao tem",
-					"deixar a senha mais comprida", "esconder a senha do proprio site"],
-				"correta": "pedir algo alem da senha, que o invasor nao tem",
-				"explicacao": "mesmo com a senha certa, falta o segundo fator -- e por isso ela ainda protege.",
+				"enunciado": "para que serve a verificação em duas etapas?",
+				"opcoes": ["pedir algo além da senha, que o invasor não tem",
+					"deixar a senha mais comprida", "esconder a senha do próprio site"],
+				"correta": "pedir algo além da senha, que o invasor não tem",
+				"explicacao": "mesmo com a senha certa, falta o segundo fator, e por isso ela ainda protege.",
 			},
 		],
 	}
@@ -224,12 +345,12 @@ static func titulos_por_id() -> Dictionary:
 static func de_arquivo(caminho: String) -> Resultado:
 	var resultado := Resultado.new()
 	if not FileAccess.file_exists(caminho):
-		resultado.erros.append("arquivo nao encontrado: %s" % caminho)
+		resultado.erros.append("arquivo não encontrado: %s" % caminho)
 		return resultado
 
 	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.READ)
 	if arquivo == null:
-		resultado.erros.append("nao foi possivel abrir %s (erro %d)"
+		resultado.erros.append("não foi possível abrir %s (erro %d)"
 			% [caminho, FileAccess.get_open_error()])
 		return resultado
 
@@ -245,7 +366,7 @@ static func de_texto(texto: String) -> Resultado:
 
 	var lido: Variant = JSON.parse_string(texto)
 	if typeof(lido) != TYPE_DICTIONARY:
-		resultado.erros.append("o arquivo nao e um JSON de objeto valido")
+		resultado.erros.append("o arquivo não é um JSON de objeto válido")
 		return resultado
 
 	var dados: Dictionary = lido as Dictionary
@@ -262,6 +383,16 @@ static func de_texto(texto: String) -> Resultado:
 
 	config.briefing_pedagogico = String(dados.get("briefing", ""))
 	config.mostrar_comandos = dados.get("mostrar_comandos", false) == true
+	# Cenario e so aparencia: ausente = jardim. Nome desconhecido e erro, para
+	# o professor nao achar que escolheu um cenario que o jogo nao tem.
+	var cenario_lido: String = String(dados.get("cenario", CenarioDoLabirinto.PADRAO)).strip_edges().to_lower()
+	if cenario_lido.is_empty():
+		cenario_lido = CenarioDoLabirinto.PADRAO
+	if CenarioDoLabirinto.conhece(cenario_lido):
+		config.cenario = cenario_lido
+	else:
+		resultado.erros.append("cenário '%s' desconhecido (use: %s)"
+			% [cenario_lido, ", ".join(CenarioDoLabirinto.ORDEM)])
 	config.vidas_iniciais = clampi(int(dados.get("vidas", _VIDAS_PADRAO)), 1, 10)
 
 	# Numero so ordena a lista; a identidade e o id_fase. Fase de autoria nao
@@ -278,8 +409,8 @@ static func de_texto(texto: String) -> Resultado:
 	config.pacotes = _ler_terminais(dados.get("terminais", []), resultado)
 
 	var mapa_pedido: Dictionary = dados.get("mapa", {}) as Dictionary
-	var largura: int = int(mapa_pedido.get("largura", _LARGURA_PADRAO))
-	var altura: int = int(mapa_pedido.get("altura", _ALTURA_PADRAO))
+	var largura: int = int(mapa_pedido.get("largura", LARGURA_PADRAO))
+	var altura: int = int(mapa_pedido.get("altura", ALTURA_PADRAO))
 	var semente: int = int(mapa_pedido.get("seed", 0))
 
 	var gerado: GeradorDeMapa.Resultado = GeradorDeMapa.gerar(
@@ -312,7 +443,7 @@ static func _ler_cachorros(bruto: Variant, resultado: Resultado) -> Array[Cachor
 	for item: Variant in bruto as Array:
 		indice += 1
 		if typeof(item) != TYPE_DICTIONARY:
-			resultado.erros.append("cachorro %d nao e um objeto" % indice)
+			resultado.erros.append("cachorro %d não é um objeto" % indice)
 			continue
 
 		var dados: Dictionary = item as Dictionary
@@ -333,6 +464,10 @@ static func _ler_cachorros(bruto: Variant, resultado: Resultado) -> Array[Cachor
 			cachorro.algoritmo_exigido = "CESAR"
 		cachorro.palavra_da_cifra = String(dados.get("palavra", "")).strip_edges().to_lower()
 		cachorro.chave_da_cifra = String(dados.get("chave", "")).strip_edges().to_lower()
+		# Pelagem desconhecida ou ausente vira "" (alterna sozinha): e cosmetica,
+		# entao um valor estranho no arquivo nao deve recusar a fase.
+		var pelagem: String = String(dados.get("pelagem", "")).strip_edges().to_lower()
+		cachorro.pelagem = pelagem if PelagemCachorro.conhece(pelagem) else ""
 		lista.append(cachorro)
 
 	return lista
@@ -360,11 +495,11 @@ static func _montar_desafios_dos_vigias(config: FaseConfig, resultado: Resultado
 		# verbo no lugar do argumento e erro sintatico -- o jogador nunca
 		# conseguiria digitar o comando certo).
 		if not _e_identificador(palavra) or palavra.length() > _LIMITE_DA_PALAVRA:
-			resultado.erros.append(("%s: a palavra precisa comecar com letra e ter so letras "
-				+ "minusculas, numeros ou _ (ate %d)") % [rotulo, _LIMITE_DA_PALAVRA])
+			resultado.erros.append(("%s: a palavra precisa começar com letra e ter só letras "
+				+ "minúsculas, números ou _ (até %d)") % [rotulo, _LIMITE_DA_PALAVRA])
 			continue
 		if reservadas.has(palavra):
-			resultado.erros.append("%s: '%s' e palavra reservada do terminal" % [rotulo, palavra])
+			resultado.erros.append("%s: '%s' é palavra reservada do terminal" % [rotulo, palavra])
 			continue
 
 		var desafio := DesafioConfig.new()
@@ -376,23 +511,23 @@ static func _montar_desafios_dos_vigias(config: FaseConfig, resultado: Resultado
 			"CESAR":
 				var chave: String = cachorro.chave_da_cifra
 				if not chave.is_valid_int() or int(chave) < 1 or int(chave) > 25:
-					resultado.erros.append("%s: a chave de Cesar e um numero de 1 a 25" % rotulo)
+					resultado.erros.append("%s: a chave de César é um número de 1 a 25" % rotulo)
 					continue
 				desafio.chave_esperada = str(int(chave))
 				desafio.verbo_esperado = "cifrar"
-				desafio.enunciado = "proteja '%s' com a cifra de Cesar, deslocamento %s: cifrar %s chave=%s" \
+				desafio.enunciado = "proteja '%s' com a cifra de César, deslocamento %s: cifrar %s chave=%s" \
 					% [palavra, desafio.chave_esperada, palavra, desafio.chave_esperada]
 				desafio.dica = "cada letra anda %s casas no alfabeto." % desafio.chave_esperada
 			"VIGENERE":
 				var chave_v: String = cachorro.chave_da_cifra
 				if not _so_letras(chave_v) or chave_v.length() > config.faixa_chave_maxima \
 						or reservadas.has(chave_v):
-					resultado.erros.append("%s: a chave de Vigenere e uma palavra so de letras (ate %d)"
+					resultado.erros.append("%s: a chave de Vigenère é uma palavra só de letras (até %d)"
 						% [rotulo, config.faixa_chave_maxima])
 					continue
 				desafio.chave_esperada = chave_v
 				desafio.verbo_esperado = "cifrar"
-				desafio.enunciado = "proteja '%s' com Vigenere, chave '%s': cifrar %s chave=%s" \
+				desafio.enunciado = "proteja '%s' com Vigenère, chave '%s': cifrar %s chave=%s" \
 					% [palavra, chave_v, palavra, chave_v]
 				desafio.dica = "a chave se repete ao longo da palavra: cada letra dela da um deslocamento."
 			"SHA256":
@@ -402,7 +537,7 @@ static func _montar_desafios_dos_vigias(config: FaseConfig, resultado: Resultado
 				desafio.resposta_esperada = Sha256.digest_hex(palavra).substr(0, 8)
 				desafio.enunciado = ("confira a integridade de '%s': 'hash %s' calcula o resumo, "
 					+ "e 'verificar %s <8 primeiros>' confere.") % [palavra, palavra, palavra]
-				desafio.dica = "o hash e de mao unica: serve para conferir, nao para esconder."
+				desafio.dica = "o hash é de mão única: serve para conferir, não para esconder."
 			_:
 				resultado.erros.append("%s: algoritmo sem desafio no editor" % rotulo)
 				continue
@@ -441,7 +576,7 @@ static func _ler_terminais(bruto: Variant, resultado: Resultado) -> Array[Pacote
 	for item: Variant in bruto as Array:
 		indice += 1
 		if typeof(item) != TYPE_DICTIONARY:
-			resultado.erros.append("terminal %d nao e um objeto" % indice)
+			resultado.erros.append("terminal %d não é um objeto" % indice)
 			continue
 
 		var dados: Dictionary = item as Dictionary
@@ -496,6 +631,7 @@ static func para_dicionario(config: FaseConfig) -> Dictionary:
 			"modo_de_bloqueio": cachorro.modo_de_bloqueio,
 			"palavra": cachorro.palavra_da_cifra,
 			"chave": cachorro.chave_da_cifra,
+			"pelagem": cachorro.pelagem,
 		})
 
 	var terminais: Array[Dictionary] = []
@@ -512,11 +648,12 @@ static func para_dicionario(config: FaseConfig) -> Dictionary:
 		"id_fase": config.id_fase,
 		"briefing": config.briefing_pedagogico,
 		"mostrar_comandos": config.mostrar_comandos,
+		"cenario": CenarioDoLabirinto.resolver(config.cenario),
 		"algoritmo": config.algoritmo,
 		"vidas": config.vidas_iniciais,
 		"mapa": {
-			"largura": config.mapa.largura() if config.mapa != null else _LARGURA_PADRAO,
-			"altura": config.mapa.altura() if config.mapa != null else _ALTURA_PADRAO,
+			"largura": config.mapa.largura() if config.mapa != null else LARGURA_PADRAO,
+			"altura": config.mapa.altura() if config.mapa != null else ALTURA_PADRAO,
 			# A semente e o que torna o round-trip fiel: sem ela, reabrir a fase
 			# geraria OUTRO labirinto com as mesmas medidas.
 			"seed": config.semente_do_mapa,
@@ -532,7 +669,7 @@ static func salvar(config: FaseConfig, caminho: String) -> PackedStringArray:
 
 	var arquivo: FileAccess = FileAccess.open(caminho, FileAccess.WRITE)
 	if arquivo == null:
-		erros.append("nao foi possivel escrever %s (erro %d)"
+		erros.append("não foi possível escrever %s (erro %d)"
 			% [caminho, FileAccess.get_open_error()])
 		return erros
 

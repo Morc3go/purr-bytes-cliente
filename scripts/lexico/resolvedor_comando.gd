@@ -49,14 +49,14 @@ static func resolver(
 		resultado_comando: ResultadoComando) -> VeredictoComando:
 
 	assert(resultado_comando.passou_lexico_e_sintatico(),
-		"ResolvedorComando so roda apos lexico e sintatico passarem")
+		"ResolvedorComando só roda após léxico e sintático passarem")
 
 	var ast: NoAst = resultado_comando.ast
 	var verbo: String = ast.verbo
 
 	if not configuracao.verbos_permitidos.has(verbo):
 		return VeredictoComando.semantico(_CODIGO_VERBO_NAO_PERMITIDO,
-			"'%s' nao e um comando desta fase." % verbo)
+			"'%s' não é um comando desta fase." % verbo)
 
 	match verbo:
 		"status":
@@ -75,14 +75,13 @@ static func resolver(
 
 static func _resolver_status(configuracao: FaseConfig, desafio: DesafioConfig) -> VeredictoComando:
 	var enunciado: String = desafio.enunciado if desafio != null else "todos os desafios resolvidos."
-	return VeredictoComando.sucesso("fase %d -- %s\n%s"
-		% [configuracao.numero, configuracao.titulo, enunciado])
+	return VeredictoComando.sucesso("%s\n%s" % [configuracao.titulo, enunciado])
 
 
 static func _resolver_dica(desafio: DesafioConfig) -> VeredictoComando:
 	if desafio == null:
 		return VeredictoComando.semantico(_CODIGO_SEM_DESAFIO_ATIVO,
-			"nao ha desafio ativo para pedir dica.")
+			"não há desafio ativo para pedir dica.")
 
 	var veredicto: VeredictoComando = VeredictoComando.sucesso(desafio.dica)
 	veredicto.dica_solicitada = true
@@ -94,11 +93,11 @@ static func _resolver_cifra(
 		configuracao: FaseConfig, desafio: DesafioConfig, numero_tentativa: int, ast: NoAst) -> VeredictoComando:
 	if desafio == null:
 		return VeredictoComando.semantico(_CODIGO_SEM_DESAFIO_ATIVO,
-			"nao ha desafio ativo para %s." % ast.verbo)
+			"não há desafio ativo para %s." % ast.verbo)
 
 	if ast.verbo != desafio.verbo_esperado:
 		return VeredictoComando.semantico(_CODIGO_VERBO_NAO_ESPERADO,
-			"este desafio espera '%s', nao '%s'." % [desafio.verbo_esperado, ast.verbo])
+			"este desafio espera '%s', não '%s'." % [desafio.verbo_esperado, ast.verbo])
 
 	if not ast.tem_par_chave("chave"):
 		return VeredictoComando.semantico(_CODIGO_CHAVE_AUSENTE,
@@ -112,12 +111,12 @@ static func _resolver_cifra(
 	var cifra: Cifra = FabricaCifra.para_algoritmo(algoritmo)
 	if cifra == null:
 		return VeredictoComando.semantico(_CODIGO_ALGORITMO_NAO_SUPORTADO,
-			"algoritmo '%s' nao esta disponivel nesta fase." % algoritmo)
+			"algoritmo '%s' não está disponível nesta fase." % algoritmo)
 
 	var chave: String = ast.par_chave("chave")
 	if not cifra.chave_sintaticamente_valida(chave):
 		return VeredictoComando.semantico(_CODIGO_CHAVE_INVALIDA,
-			"'%s' nao e uma chave valida para %s." % [chave, algoritmo])
+			"'%s' não é uma chave válida para %s." % [chave, algoritmo])
 
 	if not cifra.dentro_da_faixa(chave, configuracao.faixa_chave_minima, configuracao.faixa_chave_maxima):
 		return VeredictoComando.semantico(_CODIGO_CHAVE_FORA_DA_FAIXA,
@@ -126,10 +125,10 @@ static func _resolver_cifra(
 
 	if not _chaves_equivalentes(chave, desafio.chave_esperada):
 		return VeredictoComando.semantico(_CODIGO_CHAVE_INCORRETA,
-			"essa chave nao protege o pacote deste desafio.")
+			"essa chave não protege o pacote deste desafio.")
 
 	var veredicto: VeredictoComando = VeredictoComando.sucesso(
-		"pacote protegido em %s. quem le %s nao reconhece mais o conteudo -- os outros interceptadores, sim."
+		"pacote protegido em %s. quem lê %s não reconhece mais o conteúdo. os outros interceptadores, sim."
 		% [LegendaCores.nome(algoritmo), LegendaCores.nome(algoritmo)])
 	veredicto.resolveu_desafio = true
 	veredicto.duracao_protecao_s = configuracao.duracao_cifra_s
@@ -184,21 +183,28 @@ static func _resolver_hash(ast: NoAst) -> VeredictoComando:
 static func _resolver_verificar(
 		configuracao: FaseConfig, desafio: DesafioConfig, numero_tentativa: int, ast: NoAst) -> VeredictoComando:
 	if desafio == null:
-		return VeredictoComando.semantico(_CODIGO_SEM_DESAFIO_ATIVO, "nao ha pacote ativo para verificar.")
+		return VeredictoComando.semantico(_CODIGO_SEM_DESAFIO_ATIVO, "não há pacote ativo para verificar.")
 
 	if ast.verbo != desafio.verbo_esperado:
 		return VeredictoComando.semantico(_CODIGO_VERBO_NAO_ESPERADO,
-			"este desafio espera '%s', nao 'verificar'." % desafio.verbo_esperado)
+			"este desafio espera '%s', não 'verificar'." % desafio.verbo_esperado)
 
 	var soltos: Array[String] = ast.argumentos_soltos()
 	if soltos.size() < 2:
 		return VeredictoComando.semantico(_CODIGO_ARGUMENTO_AUSENTE,
 			"digite 'verificar <palavra> <prefixo_hash>'.")
 
-	var prefixo_digitado: String = soltos[1]
+	# O AFD separa um prefixo como "4a4d23dd" em NUMERO "4" + IDENTIFICADOR
+	# "a4d23dd": cada classe de token e lida por inteiro (maior casamento), e
+	# hexadecimal nao e classe da gramatica. Quem sabe que ali vem UM digest e a
+	# semantica do verificar, entao e aqui que os pedacos sao reunidos. Antes
+	# disto, todo digest comecando por digito (10 em 16 palavras) era impossivel
+	# de verificar -- a fase de exemplo so passava porque sha256("senha") comeca
+	# com letra. A gramatica e o AFD da monografia nao mudam.
+	var prefixo_digitado: String = "".join(soltos.slice(1))
 	if prefixo_digitado != desafio.resposta_esperada:
 		return VeredictoComando.semantico(_CODIGO_DIGEST_INCORRETO,
-			"esse prefixo nao bate com o digest do pacote. o conteudo pode ter sido adulterado.")
+			"esse prefixo não bate com o digest do pacote. o conteúdo pode ter sido adulterado.")
 
 	var veredicto: VeredictoComando = VeredictoComando.sucesso(
 		"integridade confirmada. o pacote pode ser entregue.")

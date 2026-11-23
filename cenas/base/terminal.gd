@@ -25,6 +25,8 @@ var _linhas: int = 0
 
 
 func _ready() -> void:
+	# Vidro com vinhas no tom do fundo escolhido na galeria (ADR 0034).
+	EnfeiteDaGaleria.enfeitar($Painel, [$Painel] as Array[Control])
 	_entrada.text_submitted.connect(_ao_submeter)
 	visible = false
 

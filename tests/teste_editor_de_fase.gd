@@ -72,10 +72,7 @@ func teste_editor_novo_abre_com_uma_linha_de_cada() -> void:
 func teste_a_tela_do_editor_e_opaca() -> void:
 	var tela: Control = await _abrir_editor()
 	afirmar_fundo_opaco(tela.get_node("Fundo"), "fundo opaco")
-	var estilo: StyleBoxFlat = (tela.get_node("Raiz") as PanelContainer).get_theme_stylebox(
-		"panel") as StyleBoxFlat
-	afirmar_nao_nulo(estilo, "painel com StyleBox proprio")
-	afirmar_igual(estilo.bg_color.a, 1.0, "e opaco")
+	afirmar_vidro_com_vinhas(tela.get_node("Raiz") as PanelContainer, "editor")
 
 
 func teste_trocar_de_aba_nao_perde_dado_digitado() -> void:
@@ -148,6 +145,10 @@ func teste_salvar_grava_json_valido_e_jogavel() -> void:
 func teste_round_trip_do_editor_nao_perde_nada() -> void:
 	var tela: Control = await _abrir_editor()
 	_preencher(tela, "Fase round trip")
+	# Pelagem guardada (ADR 0022) tem que sobreviver ao reabrir, mesmo a que
+	# saiu do editor por enquanto (o caramelo, ADR 0037).
+	var primeira: Node = tela._vigias.get_child(0)
+	(primeira.get_node("Pelagem") as OptionButton).set_meta(&"pelagem_guardada", PelagemCachorro.CARAMELO)
 	tela._salvar(false)
 
 	var caminho: String = CarregadorFaseJson.nome_de_arquivo("Fase round trip")
@@ -174,6 +175,8 @@ func teste_round_trip_do_editor_nao_perde_nada() -> void:
 		String(antes["terminais"][0]["correta"]), "a resposta marcada continua marcada")
 	afirmar_igual(int(depois_de_reabrir["mapa"]["seed"]), int(antes["mapa"]["seed"]),
 		"a semente sobrevive: o labirinto reaberto e o mesmo que foi testado")
+	afirmar_igual(String(depois_de_reabrir["cachorros"][0]["pelagem"]), PelagemCachorro.CARAMELO,
+		"a pelagem escolhida sobrevive")
 
 
 func teste_editar_salva_por_cima_do_mesmo_arquivo() -> void:
@@ -238,15 +241,15 @@ func teste_um_botao_por_tipo_de_vigia_inclusive_as_cifras() -> void:
 	var rotulos: Array[String] = []
 	for botao: Node in botoes.get_children():
 		rotulos.append((botao as Button).text)
-	afirmar_igual(rotulos, ["+ comando livre", "+ cifra de Cesar", "+ cifra de Vigenere",
-		"+ hash SHA-256", "+ so persegue"], "as cifras aparecem como botoes, nao escondidas no menu")
+	afirmar_igual(rotulos, ["+ comando livre", "+ cifra de César", "+ cifra de Vigenère",
+		"+ hash SHA-256", "+ só persegue"], "as cifras aparecem como botoes, nao escondidas no menu")
 
 	var antes: int = tela._vigias.get_child_count()
 	(botoes.get_child(1) as Button).pressed.emit()  # + cifra de Cesar
 	afirmar_igual(tela._vigias.get_child_count(), antes + 1, "o botao adiciona um vigia")
 	var linha: Node = tela._vigias.get_child(antes)
 	afirmar_igual((linha.get_node("Tipo") as OptionButton).get_item_text(
-		(linha.get_node("Tipo") as OptionButton).selected), "cifra de Cesar", "ja no tipo certo")
+		(linha.get_node("Tipo") as OptionButton).selected), "cifra de César", "ja no tipo certo")
 	afirmar_verdadeiro((linha.get_node("Palavra") as Control).visible, "pede a palavra")
 	afirmar_verdadeiro((linha.get_node("Chave") as Control).visible, "e a chave")
 	afirmar_falso((linha.get_node("Comando") as Control).visible, "e nao o comando livre")

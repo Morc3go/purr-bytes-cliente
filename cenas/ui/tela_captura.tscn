@@ -2,17 +2,6 @@
 
 [ext_resource type="Script" path="res://cenas/ui/tela_captura.gd" id="1_captura"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_opaco"]
-bg_color = Color(1, 1, 1, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.851, 0.482, 1)
-content_margin_left = 6.0
-content_margin_top = 5.0
-content_margin_right = 6.0
-content_margin_bottom = 5.0
 
 [node name="TelaCaptura" type="CanvasLayer"]
 layer = 3
@@ -31,10 +20,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.145, 0.129, 0.106, 0.72)
+color = Color(0.184, 0.29, 0.208, 0.55)
 
 [node name="Painel" type="PanelContainer" parent="Raiz"]
-theme_override_styles/panel = SubResource("StyleBoxFlat_opaco")
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5

@@ -54,7 +54,7 @@ func enviar(pacote: Dictionary) -> ResultadoEnvio:
 
 	var corpo: Dictionary = _corpo_do_pacote(pacote, rota)
 	if corpo.is_empty():
-		return ResultadoEnvio.falha_permanente("pacote sem corpo reconhecivel para a rota %s" % rota)
+		return ResultadoEnvio.falha_permanente("pacote sem corpo reconhecível para a rota %s" % rota)
 
 	var cabecalhos: PackedStringArray = PackedStringArray([
 		"Content-Type: application/json",
